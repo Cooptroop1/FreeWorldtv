@@ -130,7 +130,7 @@ export default function Home() {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
-        setData(null); // Clear old data
+        setData(null); // Clear old data immediately
 
         try {
           let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
@@ -160,7 +160,9 @@ export default function Home() {
   }, [region, contentType, currentPage, debouncedSearch, selectedGenre, tab]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    startTransition(() => {
+      setCurrentPage(1);
+    });
   }, [region, contentType, debouncedSearch, selectedGenre]);
 
   // TMDB posters
@@ -379,7 +381,7 @@ export default function Home() {
       {tab === 'discover' && (
         <>
           {(loading || isPending) && (
-            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40 pointer-events-none">
               <div className="text-center">
                 <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
                 <p className="text-xl font-medium">Loading...</p>
