@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { WatchmodeClient } from '@watchmode/api-client';
 
 const client = new WatchmodeClient({
-  apiKey: process.env.WATCHMODE_API_KEY || '',  // ← Uses env var
+  apiKey: process.env.WATCHMODE_API_KEY || '',
 });
 
 export async function GET(request: Request) {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
         );
         if (hasFree) freeTitles.push(title);
       } catch (err) {
-        // Skip if error
+        // Skip
       }
     }
 
