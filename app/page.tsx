@@ -583,11 +583,11 @@ export default function Home() {
   <section className="max-w-7xl mx-auto">
     <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
       <Radio className="text-purple-400" size={32} />
-      Live & Free UK TV Channels
+      Live & Free UK TV Services
     </h2>
     <p className="text-gray-400 mb-10 text-lg">
       Click any service to open the official live or catch-up player in a new tab.<br />
-      Some may require a UK TV licence or VPN if you're outside the UK.
+      Some require a UK TV licence or VPN if you're outside the UK.
     </p>
 
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
@@ -605,7 +605,6 @@ export default function Home() {
             </h3>
             <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
             
-            {/* Push button to bottom */}
             <div className="flex-grow"></div>
             
             <a
