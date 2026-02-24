@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { WatchmodeClient } from '@watchmode/api-client';
 
 const client = new WatchmodeClient({
-  apiKey: process.env.WATCHMODE_API_KEY || '',  // ← Uses env var
+  apiKey: process.env.WATCHMODE_API_KEY || '',
 });
 
 export async function GET(request: Request) {
@@ -19,20 +19,19 @@ export async function GET(request: Request) {
       regions: region,
     });
 
-    const freeSources = result.data.filter((source: any) => 
-      source.type === 'free' || 
-      source.price === 0 ||
-      source.free_with_ads === true
-    );
+    const freeSources = result.data?.filter((source: any) => 
+      source.type === 'free' || source.price === 0 || source.free_with_ads === true
+    ) || [];
 
     return NextResponse.json({ 
       success: true,
       titleId,
-      allSources: result.data,
+      allSources: result.data || [],
       freeSources,
       message: freeSources.length > 0 ? `${freeSources.length} free options found!` : 'No free sources in this region'
     });
   } catch (error: any) {
+    console.error('Title sources error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
