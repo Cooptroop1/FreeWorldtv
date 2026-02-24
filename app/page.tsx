@@ -84,6 +84,7 @@ export default function Home() {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
+  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -109,6 +110,7 @@ export default function Home() {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
 
+  // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
@@ -117,6 +119,7 @@ export default function Home() {
 
   const [isPending, startTransition] = useTransition();
 
+  // Fetch titles / search
   useEffect(() => {
     if (tab !== 'discover') {
       startTransition(() => {
@@ -130,7 +133,7 @@ export default function Home() {
       const fetchData = async () => {
         setLoading(true);
         setError(null);
-        setData(null); // Clear old data immediately
+        setData(null);
 
         try {
           let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
@@ -165,14 +168,21 @@ export default function Home() {
     });
   }, [region, contentType, debouncedSearch, selectedGenre]);
 
-  // TMDB posters
+  // TMDB posters with caching + lazy load support
   useEffect(() => {
     if (!data?.titles?.length || !TMDB_READ_TOKEN) return;
 
     const fetchPosters = async () => {
+      const cachedPosters = JSON.parse(localStorage.getItem('posterCache') || '{}');
+
       const updatedTitles = await Promise.all(
         data.titles.map(async (title: any) => {
           if (!title.tmdb_id || !title.tmdb_type) return title;
+
+          // Check cache first
+          if (cachedPosters[title.id]) {
+            return { ...title, poster_path: cachedPosters[title.id] };
+          }
 
           const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
           try {
@@ -184,12 +194,19 @@ export default function Home() {
             });
             if (!res.ok) throw new Error('TMDB error');
             const json = await res.json();
-            return { ...title, poster_path: json.poster_path };
+            
+            const posterPath = json.poster_path;
+            if (posterPath) {
+              cachedPosters[title.id] = posterPath;
+              localStorage.setItem('posterCache', JSON.stringify(cachedPosters));
+            }
+            return { ...title, poster_path: posterPath };
           } catch (err) {
             return title;
           }
         })
       );
+
       setData((prev: any) => ({ ...prev, titles: updatedTitles }));
     };
 
@@ -381,11 +398,9 @@ export default function Home() {
       {tab === 'discover' && (
         <>
           {(loading || isPending) && (
-            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40 pointer-events-none">
-              <div className="text-center">
-                <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
-                <p className="text-xl font-medium">Loading...</p>
-              </div>
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
+              <p className="text-xl">Loading...</p>
             </div>
           )}
 
@@ -418,6 +433,8 @@ export default function Home() {
                               <img
                                 src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
                                 alt={title.title}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                 onError={(e) => {
                                   (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
@@ -653,6 +670,8 @@ export default function Home() {
                       <img
                         src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
                         alt={title.title}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
@@ -701,7 +720,7 @@ export default function Home() {
 
       {/* Player Modal */}
       {selectedChannel && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md overflow-hidden">
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
               <h2 className="text-2xl font-bold flex items-center gap-3">
@@ -786,7 +805,6 @@ export default function Home() {
         <p className="mt-2">
           <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> | 
           <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
-          <a href="/about" className="text-blue-400 hover:underline mx-2">About</a>
         </p>
         <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
       </footer>
