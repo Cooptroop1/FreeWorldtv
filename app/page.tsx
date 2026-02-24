@@ -668,9 +668,13 @@ export default function Home() {
       )}
 
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
-        <p>Only public & official free streams. All content belongs to its original owners.</p>
-        <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
-      </footer>
+  <p>Only public & official free streams. All content belongs to its original owners.</p>
+  <p className="mt-2">
+    <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> | 
+    <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
+  </p>
+  <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
+</footer>
     </main>
   );
 }
