@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { WatchmodeClient } from '@watchmode/api-client';
 
 const client = new WatchmodeClient({
-  apiKey: 'b2HmkbZroSfdahf6vZ12p2xYSggJDjNTzWmNROKv',  // ← PASTE YOUR REAL KEY HERE
+  apiKey: process.env.WATCHMODE_API_KEY || '',  // ← Uses env var
 });
 
 export async function GET(request: Request) {
@@ -16,17 +16,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log(`[SEARCH] Starting for query: "${query}", page ${page}, region ${region}`);
-
-    // Step 1: Search titles
     const searchResult = await client.search.byName(query, {
       limit: 20,
       page,
     });
 
-    console.log('[SEARCH] Raw search result count:', searchResult.data?.length || 0);
-
-    // Step 2: Filter to free only
     const freeTitles = [];
     const titlesToCheck = Array.isArray(searchResult.data) ? searchResult.data : [];
 
@@ -34,20 +28,14 @@ export async function GET(request: Request) {
       try {
         const sourcesResult = await client.title.getSources(title.id, { regions: region });
         const sources = sourcesResult.data || [];
-
         const hasFree = sources.some((s: any) => 
           s.type === 'free' || s.price === 0 || s.free_with_ads === true
         );
-
-        if (hasFree) {
-          freeTitles.push(title);
-        }
+        if (hasFree) freeTitles.push(title);
       } catch (err) {
-        console.error(`[SEARCH] Source check failed for title ${title.id} (${title.name || 'unknown'}):`, err.message);
+        // Skip if error
       }
     }
-
-    console.log('[SEARCH] Free titles after filter:', freeTitles.length);
 
     return NextResponse.json({
       success: true,
@@ -58,10 +46,7 @@ export async function GET(request: Request) {
       message: `Found ${freeTitles.length} free matches for "${query}" in ${region}`,
     });
   } catch (error: any) {
-    console.error('[SEARCH ROUTE CRASH]', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error during search' },
-      { status: 500 }
-    );
+    console.error('Search error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
