@@ -16,23 +16,34 @@ const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 const liveChannels = [
   { 
     id: 1, 
-    name: 'France 24 English (Proxied)', 
+    name: 'France 24 English', 
     category: 'News', 
-    url: 'https://corsproxy.io/?' + encodeURIComponent('https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8')
+    officialUrl: 'https://www.france24.com/en/live-tv' 
   },
   { 
     id: 2, 
-    name: 'Al Jazeera English (Proxied)', 
+    name: 'Al Jazeera English', 
     category: 'News', 
-    url: 'https://corsproxy.io/?' + encodeURIComponent('https://live-hls-web-aja.getaj.net/AJA/playlist.m3u8')
+    officialUrl: 'https://www.aljazeera.com/live' 
   },
   { 
     id: 3, 
-    name: 'Big Buck Bunny (No Proxy Needed)', 
-    category: 'Test', 
-    url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8'
+    name: 'TRT World', 
+    category: 'News', 
+    officialUrl: 'https://www.trtworld.com/live' 
   },
-  // Add more proxied if needed
+  { 
+    id: 4, 
+    name: 'Euronews English', 
+    category: 'News', 
+    officialUrl: 'https://www.euronews.com/live' 
+  },
+  { 
+    id: 5, 
+    name: 'NHK World Japan', 
+    category: 'News', 
+    officialUrl: 'https://www3.nhk.or.jp/nhkworld/en/news/' 
+  },
 ];
 
 // Genres (Watchmode IDs)
@@ -445,36 +456,43 @@ export default function Home() {
 
       {/* Live TV Tab */}
       {tab === 'live' && (
-        <section className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-            <Radio className="text-purple-400" size={32} />
-            Live TV Channels (Direct Play)
-          </h2>
-          <p className="text-gray-400 mb-10 text-lg">
-            Click to watch public broadcaster streams live — no login or redirect.
-          </p>
+  <section className="max-w-7xl mx-auto">
+    <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+      <Radio className="text-purple-400" size={32} />
+      Live TV Channels
+    </h2>
+    <p className="text-gray-400 mb-6 text-lg">
+      Click to open official live stream in a new tab — no embeds due to network restrictions.
+    </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-            {liveChannels.map((channel) => (
-              <div
-                key={channel.id}
-                onClick={() => setSelectedChannel(channel)}
-                className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm"
-              >
-                <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
-                  <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg mb-1 group-hover:text-purple-300 transition-colors">
-                    {channel.name}
-                  </h3>
-                  <p className="text-gray-400 text-sm">{channel.category}</p>
-                </div>
-              </div>
-            ))}
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+      {liveChannels.map((channel) => (
+        <div
+          key={channel.id}
+          className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm"
+        >
+          <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+            <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
           </div>
-        </section>
-      )}
+          <div className="p-4">
+            <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+              {channel.name}
+            </h3>
+            <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
+            <a
+              href={channel.officialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors"
+            >
+              Watch Live →
+            </a>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+)}
 
       {/* Sources Modal */}
       {tab === 'discover' && selectedTitle && (
