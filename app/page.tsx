@@ -85,7 +85,7 @@ export default function Home() {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  // Custom links (unchanged)
+  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -118,17 +118,14 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search - with clear old data
+  // Fetch titles / search
   useEffect(() => {
-    if (tab !== 'discover') {
-      setData(null);
-      return;
-    }
+    if (tab !== 'discover') return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      setData(null); // Clear old data immediately to prevent flicker
+      setData(null); // Clear old data to prevent flicker
 
       try {
         let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
@@ -185,7 +182,7 @@ export default function Home() {
           }
         })
       );
-      setData(prev => ({ ...prev, titles: updatedTitles }));
+      setData((prev: any) => ({ ...prev, titles: updatedTitles })); // ← Fixed type error here
     };
 
     fetchPosters();
@@ -258,15 +255,11 @@ export default function Home() {
   }, [selectedChannel]);
 
   const goToNextPage = () => {
-    if (data && currentPage < data.totalPages) {
-      setCurrentPage(prev => prev + 1);
-    }
+    if (data && currentPage < data.totalPages) setCurrentPage(prev => prev + 1);
   };
 
   const goToPrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
-    }
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
   };
 
   const clearSearch = () => {
@@ -394,7 +387,7 @@ export default function Home() {
               </h2>
 
               <p className="text-gray-400 mb-8 text-lg">
-                {data.message || `Found ${Array.isArray(data.titles) ? data.titles.length : 0} titles`} • Page {currentPage} of {data.totalPages || 1}
+                {data.message || `Found ${Array.isArray(data.titles) ? data.titles.length : 0} titles`} • Page {currentPage} of {data.totalPages}
               </p>
 
               {Array.isArray(data.titles) && data.titles.length > 0 ? (
