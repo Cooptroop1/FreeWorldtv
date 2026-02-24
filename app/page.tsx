@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
@@ -64,7 +64,6 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Favorites
   const [favorites, setFavorites] = useState<any[]>([]);
 
   const toggleFavorite = (title: any) => {
@@ -85,7 +84,6 @@ export default function Home() {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -111,46 +109,54 @@ export default function Home() {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
 
-  // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search
+  const [isPending, startTransition] = useTransition();
+
   useEffect(() => {
-    if (tab !== 'discover') return;
+    if (tab !== 'discover') {
+      startTransition(() => {
+        setData(null);
+        setLoading(false);
+      });
+      return;
+    }
 
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
-      setData(null); // Clear old data to prevent flicker
+    startTransition(() => {
+      const fetchData = async () => {
+        setLoading(true);
+        setError(null);
+        setData(null); // Clear old data
 
-      try {
-        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
+        try {
+          let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
 
-        if (debouncedSearch) {
-          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
-        } else if (selectedGenre) {
-          url += `&genres=${selectedGenre}`;
+          if (debouncedSearch) {
+            url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+          } else if (selectedGenre) {
+            url += `&genres=${selectedGenre}`;
+          }
+
+          const res = await fetch(url);
+          const json = await res.json();
+
+          if (json.success) {
+            setData(json);
+          } else {
+            setError(json.error || 'Failed to load');
+          }
+        } catch (err: any) {
+          setError(err.message || 'Network error');
         }
+        setLoading(false);
+      };
 
-        const res = await fetch(url);
-        const json = await res.json();
-
-        if (json.success) {
-          setData(json);
-        } else {
-          setError(json.error || 'Failed to load');
-        }
-      } catch (err: any) {
-        setError(err.message || 'Network error');
-      }
-      setLoading(false);
-    };
-
-    fetchData();
+      fetchData();
+    });
   }, [region, contentType, currentPage, debouncedSearch, selectedGenre, tab]);
 
   useEffect(() => {
@@ -182,7 +188,7 @@ export default function Home() {
           }
         })
       );
-      setData((prev: any) => ({ ...prev, titles: updatedTitles })); // ← Fixed type error here
+      setData((prev: any) => ({ ...prev, titles: updatedTitles }));
     };
 
     fetchPosters();
@@ -255,11 +261,15 @@ export default function Home() {
   }, [selectedChannel]);
 
   const goToNextPage = () => {
-    if (data && currentPage < data.totalPages) setCurrentPage(prev => prev + 1);
+    if (data && currentPage < data.totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
   };
 
   const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
   };
 
   const clearSearch = () => {
@@ -368,18 +378,18 @@ export default function Home() {
       {/* Discover Tab */}
       {tab === 'discover' && (
         <>
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-              <p className="text-xl">
-                {debouncedSearch ? 'Searching free titles...' : 'Loading page...'}
-              </p>
+          {(loading || isPending) && (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 animate-spin text-blue-500 mx-auto mb-4" />
+                <p className="text-xl font-medium">Loading...</p>
+              </div>
             </div>
           )}
 
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
 
-          {!loading && data && (
+          {!loading && !isPending && data && (
             <section className="max-w-7xl mx-auto">
               <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
                 <MonitorPlay className="text-green-400" size={32} />
@@ -451,7 +461,7 @@ export default function Home() {
                   <div className="flex justify-center items-center gap-6 mt-12">
                     <button
                       onClick={goToPrevPage}
-                      disabled={currentPage === 1 || loading}
+                      disabled={currentPage === 1 || loading || isPending}
                       className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft size={20} />
@@ -464,7 +474,7 @@ export default function Home() {
 
                     <button
                       onClick={goToNextPage}
-                      disabled={currentPage >= data.totalPages || loading}
+                      disabled={currentPage >= data.totalPages || loading || isPending}
                       className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
@@ -473,7 +483,7 @@ export default function Home() {
                   </div>
                 </>
               ) : (
-                !loading && (
+                !loading && !isPending && (
                   <div className="text-center py-20 text-xl text-gray-300">
                     {debouncedSearch ? (
                       <>No free matches found for "{debouncedSearch}".<br />Try another term like "Matrix" or "John Wick".</>
@@ -689,7 +699,7 @@ export default function Home() {
 
       {/* Player Modal */}
       {selectedChannel && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md overflow-hidden">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
             <div className="flex justify-between items-center p-5 border-b border-gray-800">
               <h2 className="text-2xl font-bold flex items-center gap-3">
