@@ -5,7 +5,7 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
-// Use env vars
+// Use env vars (set in Vercel/Render)
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -64,8 +64,9 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Favorites (stored in localStorage)
+  // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
+
   const toggleFavorite = (title: any) => {
     const isFav = favorites.some(fav => fav.id === title.id);
     if (isFav) {
@@ -75,7 +76,7 @@ export default function Home() {
     }
   };
 
-  // Load favorites from localStorage on mount
+  // Load favorites on mount
   useEffect(() => {
     const saved = localStorage.getItem('favorites');
     if (saved) setFavorites(JSON.parse(saved));
@@ -86,7 +87,7 @@ export default function Home() {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  // Custom user links (unchanged)
+  // Custom links (unchanged)
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -102,10 +103,7 @@ export default function Home() {
 
   const addCustomLink = () => {
     if (newLinkName.trim() && newLinkUrl.trim().startsWith('http')) {
-      setCustomLinks([
-        ...customLinks,
-        { id: Date.now(), name: newLinkName.trim(), url: newLinkUrl.trim() },
-      ]);
+      setCustomLinks([...customLinks, { id: Date.now(), name: newLinkName.trim(), url: newLinkUrl.trim() }]);
       setNewLinkName('');
       setNewLinkUrl('');
     }
@@ -115,20 +113,22 @@ export default function Home() {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
 
-  // Debounce search (unchanged)
+  // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search (unchanged)
+  // Fetch titles / search
   useEffect(() => {
     if (tab !== 'discover') return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
+      setData(null); // Clear old data to stop flicker
+
       try {
         let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
 
@@ -144,12 +144,10 @@ export default function Home() {
         if (json.success) {
           setData(json);
         } else {
-          setError(json.error || 'Failed to load');
-          setData(null);
+          setError(json.error || 'Failed to load titles');
         }
       } catch (err: any) {
         setError(err.message || 'Network error');
-        setData(null);
       }
       setLoading(false);
     };
@@ -161,7 +159,7 @@ export default function Home() {
     setCurrentPage(1);
   }, [region, contentType, debouncedSearch, selectedGenre]);
 
-  // TMDB posters (unchanged)
+  // TMDB posters
   useEffect(() => {
     if (!data?.titles?.length || !TMDB_READ_TOKEN) return;
 
@@ -192,7 +190,7 @@ export default function Home() {
     fetchPosters();
   }, [data, TMDB_READ_TOKEN]);
 
-  // Sources fetch (unchanged)
+  // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
       setSources([]);
@@ -215,7 +213,7 @@ export default function Home() {
     fetchSources();
   }, [selectedTitle, region, tab]);
 
-  // Video.js player (unchanged)
+  // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
 
@@ -313,13 +311,12 @@ export default function Home() {
               tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Heart size={20} /> Favorites
+            <Heart size={20} /> Favorites ({favorites.length})
           </button>
         </div>
 
         {tab === 'discover' && (
           <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
-            {/* Search, region, content, genre selectors unchanged */}
             <div className="flex items-center gap-3 flex-1 min-w-[220px]">
               <Search size={20} className="text-gray-400" />
               <div className="relative flex-1">
@@ -493,7 +490,7 @@ export default function Home() {
         </>
       )}
 
-      {/* Live TV - Official Links */}
+      {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -547,7 +544,6 @@ export default function Home() {
             Links are saved in your browser only — private & local.
           </p>
 
-          {/* Add new link form */}
           <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -580,7 +576,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Custom links grid */}
           {customLinks.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {customLinks.map((link) => (
@@ -629,10 +624,10 @@ export default function Home() {
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
             <Heart className="text-red-400" size={32} />
-            My Favorites
+            My Favorites ({favorites.length})
           </h2>
           <p className="text-gray-400 mb-10 text-lg">
-            Titles you've saved for later. Click to view free sources.
+            Titles you've saved. Click to view free sources.
           </p>
 
           {favorites.length > 0 ? (
