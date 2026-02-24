@@ -5,11 +5,11 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
-// Use env vars (set in Vercel/Render)
+// Env vars
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-// Public live channels (official links)
+// Live channels (official links)
 const liveChannels = [
   { id: 1, name: 'BBC iPlayer (Live & On-Demand)', category: 'BBC Channels', officialUrl: 'https://www.bbc.co.uk/iplayer' },
   { id: 2, name: 'ITVX (ITV Hub – Live & Catch-up)', category: 'ITV Channels', officialUrl: 'https://www.itv.com/watch' },
@@ -64,7 +64,7 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Favorites (localStorage)
+  // Favorites
   const [favorites, setFavorites] = useState<any[]>([]);
 
   const toggleFavorite = (title: any) => {
@@ -76,13 +76,11 @@ export default function Home() {
     }
   };
 
-  // Load favorites on mount
   useEffect(() => {
     const saved = localStorage.getItem('favorites');
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
-  // Save favorites when changed
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
@@ -120,14 +118,17 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search
+  // Fetch titles / search - with clear old data
   useEffect(() => {
-    if (tab !== 'discover') return;
+    if (tab !== 'discover') {
+      setData(null);
+      return;
+    }
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      setData(null); // Clear old data to stop flicker
+      setData(null); // Clear old data immediately to prevent flicker
 
       try {
         let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
@@ -144,7 +145,7 @@ export default function Home() {
         if (json.success) {
           setData(json);
         } else {
-          setError(json.error || 'Failed to load titles');
+          setError(json.error || 'Failed to load');
         }
       } catch (err: any) {
         setError(err.message || 'Network error');
@@ -184,7 +185,7 @@ export default function Home() {
           }
         })
       );
-      setData({ ...data, titles: updatedTitles });
+      setData(prev => ({ ...prev, titles: updatedTitles }));
     };
 
     fetchPosters();
@@ -257,11 +258,15 @@ export default function Home() {
   }, [selectedChannel]);
 
   const goToNextPage = () => {
-    if (data && currentPage < data.totalPages) setCurrentPage(prev => prev + 1);
+    if (data && currentPage < data.totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
   };
 
   const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
   };
 
   const clearSearch = () => {
@@ -374,7 +379,7 @@ export default function Home() {
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
               <p className="text-xl">
-                {debouncedSearch ? 'Searching free titles...' : 'Loading popular titles...'}
+                {debouncedSearch ? 'Searching free titles...' : 'Loading page...'}
               </p>
             </div>
           )}
