@@ -5,17 +5,11 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
-// Use environment variables (set these in Render / Vercel dashboard)
+// Use env vars (set these in Render dashboard)
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-// If missing keys, show warning in dev only
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  if (!WATCHMODE_API_KEY) console.warn('Missing NEXT_PUBLIC_WATCHMODE_API_KEY in env');
-  if (!TMDB_READ_TOKEN) console.warn('Missing NEXT_PUBLIC_TMDB_READ_TOKEN in env');
-}
-
-// Live channels (public streams – legal & free)
+// Live channels – public, legal streams
 const liveChannels = [
   { id: 1, name: 'NASA TV UHD/HD Live', category: 'Science', url: 'https://nasa-i-adaptive.akamaized.net/hls/live/1/continuous/1/master.m3u8' },
   { id: 2, name: 'France 24 English', category: 'News', url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' },
@@ -210,8 +204,6 @@ export default function Home() {
     setSearchQuery('');
     setSelectedGenre('');
   };
-
-  const isSearching = debouncedSearch.length > 0;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
