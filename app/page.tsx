@@ -10,12 +10,38 @@ const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
 // Live channels – public, legal streams
+// Reliable public live channels (tested to work on Vercel/Render)
 const liveChannels = [
-  { id: 1, name: 'NASA TV UHD/HD Live', category: 'Science', url: 'https://nasa-i-adaptive.akamaized.net/hls/live/1/continuous/1/master.m3u8' },
-  { id: 2, name: 'France 24 English', category: 'News', url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' },
-  { id: 3, name: 'Al Jazeera English Live', category: 'News', url: 'https://live-hls-web-aja.getaj.net/AJA/playlist.m3u8' },
-  { id: 4, name: 'Big Buck Bunny HLS Demo (Test - reliable)', category: 'Test', url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8' },
-  { id: 5, name: 'CGTN Documentary', category: 'Documentary', url: 'https://live.cgtn.com/cgtn/documentary.m3u8' },
+  { 
+    id: 1, 
+    name: 'France 24 English (Reliable News)', 
+    category: 'News', 
+    url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' 
+  },
+  { 
+    id: 2, 
+    name: 'Al Jazeera English Live', 
+    category: 'News', 
+    url: 'https://live-hls-web-aja.getaj.net/AJA/playlist.m3u8' 
+  },
+  { 
+    id: 3, 
+    name: 'TRT World English', 
+    category: 'News', 
+    url: 'https://trtcanlitv-lb.cdn.trt.net.tr/master_720.m3u8' 
+  },
+  { 
+    id: 4, 
+    name: 'Euronews English', 
+    category: 'News', 
+    url: 'https://live-k8s-prod-euw-1.secure.footprint.net/euronews/euronews.smil/playlist.m3u8' 
+  },
+  { 
+    id: 5, 
+    name: 'Big Buck Bunny HLS Demo (Always Works - Test)', 
+    category: 'Test', 
+    url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8' 
+  },
 ];
 
 // Genres (Watchmode IDs)
