@@ -16,42 +16,65 @@ const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 const liveChannels = [
   { 
     id: 1, 
-    name: 'BBC iPlayer Live (UK only - may require VPN outside UK)', 
-    category: 'UK TV / News', 
-    officialUrl: 'https://www.bbc.co.uk/iplayer/live' 
+    name: 'BBC iPlayer (Live & On-Demand)', 
+    category: 'BBC Channels', 
+    officialUrl: 'https://www.bbc.co.uk/iplayer' 
   },
   { 
     id: 2, 
-    name: 'France 24 English', 
-    category: 'International News', 
-    officialUrl: 'https://www.france24.com/en/live-tv' 
+    name: 'ITVX (ITV Hub – Live & Catch-up)', 
+    category: 'ITV Channels', 
+    officialUrl: 'https://www.itv.com/watch' 
   },
   { 
     id: 3, 
-    name: 'Al Jazeera English', 
-    category: 'International News', 
-    officialUrl: 'https://www.aljazeera.com/live' 
+    name: 'Channel 4 (Live & On-Demand)', 
+    category: 'Channel 4 Family', 
+    officialUrl: 'https://www.channel4.com' 
   },
   { 
     id: 4, 
-    name: 'Euronews English', 
-    category: 'European News', 
-    officialUrl: 'https://www.euronews.com/live' 
+    name: 'My5 (Channel 5 Live & Catch-up)', 
+    category: 'Channel 5 Family', 
+    officialUrl: 'https://www.my5.tv' 
   },
   { 
     id: 5, 
-    name: 'TRT World', 
-    category: 'International News', 
-    officialUrl: 'https://www.trtworld.com/live' 
+    name: 'UKTV Play (Drama, Gold, Dave, etc.)', 
+    category: 'UKTV Channels', 
+    officialUrl: 'https://www.uktvplay.co.uk' 
   },
   { 
     id: 6, 
-    name: 'NHK World Japan', 
-    category: 'Japan / Asia News', 
-    officialUrl: 'https://www3.nhk.or.jp/nhkworld/en/news/' 
+    name: 'STV Player (Scottish ITV)', 
+    category: 'Scottish TV', 
+    officialUrl: 'https://player.stv.tv' 
+  },
+  { 
+    id: 7, 
+    name: 'S4C Clic (Welsh Language)', 
+    category: 'Welsh TV', 
+    officialUrl: 'https://s4c.cymru/clic' 
+  },
+  { 
+    id: 8, 
+    name: 'BBC Sounds (Radio & Podcasts)', 
+    category: 'BBC Audio', 
+    officialUrl: 'https://www.bbc.co.uk/sounds' 
+  },
+  { 
+    id: 9, 
+    name: 'Pluto TV UK (FAST Channels)', 
+    category: 'Free Ad-Supported TV', 
+    officialUrl: 'https://pluto.tv/en/live-tv' 
+  },
+  { 
+    id: 10, 
+    name: 'Tubi UK (if available)', 
+    category: 'Free Movies & Shows', 
+    officialUrl: 'https://tubitv.com' 
   },
 ];
-
 // Genres (Watchmode IDs)
 const genres = [
   { id: 28, name: 'Action' },
@@ -560,10 +583,11 @@ export default function Home() {
   <section className="max-w-7xl mx-auto">
     <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
       <Radio className="text-purple-400" size={32} />
-      Live TV Channels
+      Live & Free UK TV Channels
     </h2>
     <p className="text-gray-400 mb-10 text-lg">
-      Click any channel to open the official live stream in a new tab — no embeds, just direct links.
+      Click any service to open the official live or catch-up player in a new tab.<br />
+      Some may require a UK TV licence or VPN if you're outside the UK.
     </p>
 
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
@@ -581,7 +605,7 @@ export default function Home() {
             </h3>
             <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
             
-            {/* Spacer to push button to bottom */}
+            {/* Push button to bottom */}
             <div className="flex-grow"></div>
             
             <a
@@ -590,7 +614,7 @@ export default function Home() {
               rel="noopener noreferrer"
               className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
             >
-              Watch Live →
+              Watch Live / Catch-up →
             </a>
           </div>
         </div>
