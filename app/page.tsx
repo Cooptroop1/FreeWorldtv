@@ -1,81 +1,29 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2 } from 'lucide-react';
+import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2 } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
-// Use env vars (set these in Vercel/Render dashboard)
+// Use env vars (set in Vercel/Render dashboard)
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-// Live channels – public, legal streams
-// Reliable public live channels (tested to work on Vercel/Render)
-// Reliable public live channels (CORS/DNS friendly on Vercel/Render)
-// Proven, cloud-friendly public live channels (work on Vercel/Render)
+// Public live channels (official links only)
 const liveChannels = [
-  { 
-    id: 1, 
-    name: 'BBC iPlayer (Live & On-Demand)', 
-    category: 'BBC Channels', 
-    officialUrl: 'https://www.bbc.co.uk/iplayer' 
-  },
-  { 
-    id: 2, 
-    name: 'ITVX (ITV Hub – Live & Catch-up)', 
-    category: 'ITV Channels', 
-    officialUrl: 'https://www.itv.com/watch' 
-  },
-  { 
-    id: 3, 
-    name: 'Channel 4 (Live & On-Demand)', 
-    category: 'Channel 4 Family', 
-    officialUrl: 'https://www.channel4.com' 
-  },
-  { 
-    id: 4, 
-    name: 'My5 (Channel 5 Live & Catch-up)', 
-    category: 'Channel 5 Family', 
-    officialUrl: 'https://www.my5.tv' 
-  },
-  { 
-    id: 5, 
-    name: 'UKTV Play (Drama, Gold, Dave, etc.)', 
-    category: 'UKTV Channels', 
-    officialUrl: 'https://www.uktvplay.co.uk' 
-  },
-  { 
-    id: 6, 
-    name: 'STV Player (Scottish ITV)', 
-    category: 'Scottish TV', 
-    officialUrl: 'https://player.stv.tv' 
-  },
-  { 
-    id: 7, 
-    name: 'S4C Clic (Welsh Language)', 
-    category: 'Welsh TV', 
-    officialUrl: 'https://s4c.cymru/clic' 
-  },
-  { 
-    id: 8, 
-    name: 'BBC Sounds (Radio & Podcasts)', 
-    category: 'BBC Audio', 
-    officialUrl: 'https://www.bbc.co.uk/sounds' 
-  },
-  { 
-    id: 9, 
-    name: 'Pluto TV UK (FAST Channels)', 
-    category: 'Free Ad-Supported TV', 
-    officialUrl: 'https://pluto.tv/en/live-tv' 
-  },
-  { 
-    id: 10, 
-    name: 'Tubi UK (if available)', 
-    category: 'Free Movies & Shows', 
-    officialUrl: 'https://tubitv.com' 
-  },
+  { id: 1, name: 'BBC iPlayer (Live & On-Demand)', category: 'BBC Channels', officialUrl: 'https://www.bbc.co.uk/iplayer' },
+  { id: 2, name: 'ITVX (ITV Hub – Live & Catch-up)', category: 'ITV Channels', officialUrl: 'https://www.itv.com/watch' },
+  { id: 3, name: 'Channel 4 (Live & On-Demand)', category: 'Channel 4 Family', officialUrl: 'https://www.channel4.com' },
+  { id: 4, name: 'My5 (Channel 5 Live & Catch-up)', category: 'Channel 5 Family', officialUrl: 'https://www.my5.tv' },
+  { id: 5, name: 'UKTV Play (Drama, Gold, Dave, etc.)', category: 'UKTV Channels', officialUrl: 'https://www.uktvplay.co.uk' },
+  { id: 6, name: 'STV Player (Scottish ITV)', category: 'Scottish TV', officialUrl: 'https://player.stv.tv' },
+  { id: 7, name: 'S4C Clic (Welsh Language)', category: 'Welsh TV', officialUrl: 'https://s4c.cymru/clic' },
+  { id: 8, name: 'BBC Sounds (Radio & Podcasts)', category: 'BBC Audio', officialUrl: 'https://www.bbc.co.uk/sounds' },
+  { id: 9, name: 'Pluto TV UK (FAST Channels)', category: 'Free Ad-Supported TV', officialUrl: 'https://pluto.tv/en/live-tv' },
+  { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
-// Genres (Watchmode IDs)
+
+// Genres
 const genres = [
   { id: 28, name: 'Action' },
   { id: 12, name: 'Adventure' },
@@ -98,7 +46,7 @@ const genres = [
 ];
 
 export default function Home() {
-  const [tab, setTab] = useState<'discover' | 'live'>('discover');
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks'>('discover');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState('US');
@@ -116,12 +64,41 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Custom user links (stored in localStorage)
+  const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
+  const [newLinkName, setNewLinkName] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+
+  // Load custom links from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('customLinks');
+    if (saved) setCustomLinks(JSON.parse(saved));
+  }, []);
+
+  // Save custom links to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('customLinks', JSON.stringify(customLinks));
+  }, [customLinks]);
+
+  const addCustomLink = () => {
+    if (newLinkName.trim() && newLinkUrl.trim().startsWith('http')) {
+      setCustomLinks([
+        ...customLinks,
+        { id: Date.now(), name: newLinkName.trim(), url: newLinkUrl.trim() },
+      ]);
+      setNewLinkName('');
+      setNewLinkUrl('');
+    }
+  };
+
+  const deleteCustomLink = (id: number) => {
+    setCustomLinks(customLinks.filter(link => link.id !== id));
+  };
+
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery.trim());
-    }, 600);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -147,7 +124,7 @@ export default function Home() {
         if (json.success) {
           setData(json);
         } else {
-          setError(json.error || 'Failed to load titles');
+          setError(json.error || 'Failed to load');
           setData(null);
         }
       } catch (err: any) {
@@ -218,7 +195,7 @@ export default function Home() {
     fetchSources();
   }, [selectedTitle, region, tab]);
 
-  // IMPROVED Video.js player with native HLS fallback
+  // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
 
@@ -227,7 +204,6 @@ export default function Home() {
       playerRef.current = null;
     }
 
-    // Better config: use native HLS on Safari, override on others
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
     playerRef.current = videojs(videoRef.current, {
@@ -238,9 +214,9 @@ export default function Home() {
       bigPlayButton: true,
       html5: {
         vhs: {
-          overrideNative: !isSafari,  // Native on Safari, Video.js VHS on others
+          overrideNative: !isSafari,
           withCredentials: false,
-          bandwidth: 2000000,         // Initial bandwidth estimate (helps startup)
+          bandwidth: 2000000,
         },
         nativeAudioTracks: isSafari,
         nativeVideoTracks: isSafari,
@@ -250,13 +226,9 @@ export default function Home() {
 
     playerRef.current.on('error', () => {
       const err = playerRef.current.error();
-      console.error('[VideoJS Error] Code:', err?.code, 'Message:', err?.message || '(empty)');
-      setError(`Playback failed: ${err?.message || 'Unknown error - check console'}`);
+      console.error('[VideoJS Error]', err);
+      setError(`Playback failed: ${err?.message || 'Unknown error'}`);
     });
-
-    playerRef.current.on('loadedmetadata', () => console.log('[VideoJS] Metadata loaded'));
-    playerRef.current.on('canplay', () => console.log('[VideoJS] Ready to play'));
-    playerRef.current.on('waiting', () => console.log('[VideoJS] Buffering'));
 
     return () => {
       if (playerRef.current) {
@@ -290,27 +262,36 @@ export default function Home() {
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
 
-        <div className="flex flex-wrap gap-6 mb-8 border-b border-gray-700 pb-4">
+        <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
           <button
             onClick={() => setTab('discover')}
-            className={`flex items-center gap-2 pb-3 px-6 font-semibold text-lg transition-colors ${
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
               tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Tv size={22} /> Discover
+            <Tv size={20} /> Discover
           </button>
           <button
             onClick={() => setTab('live')}
-            className={`flex items-center gap-2 pb-3 px-6 font-semibold text-lg transition-colors ${
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
               tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'
             }`}
           >
-            <Radio size={22} /> Live TV
+            <Radio size={20} /> Live TV
+          </button>
+          <button
+            onClick={() => setTab('mylinks')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Plus size={20} /> My Links
           </button>
         </div>
 
         {tab === 'discover' && (
           <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
+            {/* Search, region, content, genre selectors - unchanged */}
             <div className="flex items-center gap-3 flex-1 min-w-[220px]">
               <Search size={20} className="text-gray-400" />
               <div className="relative flex-1">
@@ -322,10 +303,7 @@ export default function Home() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
                 />
                 {searchQuery && (
-                  <button
-                    onClick={clearSearch}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                  >
+                  <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
                     <X size={18} />
                   </button>
                 )}
@@ -334,11 +312,7 @@ export default function Home() {
 
             <div className="flex items-center gap-3">
               <Globe size={20} />
-              <select
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="US">United States</option>
                 <option value="GB">United Kingdom</option>
                 <option value="CA">Canada</option>
@@ -348,11 +322,7 @@ export default function Home() {
 
             <div className="flex items-center gap-3">
               <Tv size={20} />
-              <select
-                value={contentType}
-                onChange={(e) => setContentType(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="movie,tv_series">All</option>
                 <option value="movie">Movies</option>
                 <option value="tv_series">TV Shows</option>
@@ -361,11 +331,7 @@ export default function Home() {
 
             <div className="flex items-center gap-3">
               <label className="text-lg font-medium hidden md:block">Genre:</label>
-              <select
-                value={selectedGenre}
-                onChange={(e) => setSelectedGenre(e.target.value)}
-                className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+              <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">All Genres</option>
                 {genres.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
@@ -376,6 +342,7 @@ export default function Home() {
         )}
       </header>
 
+      {/* Discover Tab */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -483,7 +450,137 @@ export default function Home() {
         </>
       )}
 
-      
+      {/* Live TV - Official Links Only */}
+      {tab === 'live' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+            <Radio className="text-purple-400" size={32} />
+            Live & Free UK TV Services
+          </h2>
+          <p className="text-gray-400 mb-10 text-lg">
+            Click any service to open the official live or catch-up player in a new tab.<br />
+            Some require a UK TV licence or VPN if you're outside the UK.
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+            {liveChannels.map((channel) => (
+              <div
+                key={channel.id}
+                className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
+              >
+                <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+                  <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
+                </div>
+                <div className="p-5 flex flex-col flex-grow">
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+                    {channel.name}
+                  </h3>
+                  <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
+                  <div className="flex-grow"></div>
+                  <a
+                    href={channel.officialUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
+                  >
+                    Watch Live / Catch-up →
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* My Custom Links Tab */}
+      {tab === 'mylinks' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+            <Plus className="text-purple-400" size={32} />
+            My Custom Streams
+          </h2>
+          <p className="text-gray-400 mb-6 text-lg">
+            Add your own HLS/m3u8 or direct video links (public streams only).<br />
+            Links are saved in your browser only — private & local.
+          </p>
+
+          {/* Add new link form */}
+          <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                <input
+                  type="text"
+                  value={newLinkName}
+                  onChange={(e) => setNewLinkName(e.target.value)}
+                  placeholder="e.g. My Sports Channel"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Stream URL</label>
+                <input
+                  type="url"
+                  value={newLinkUrl}
+                  onChange={(e) => setNewLinkUrl(e.target.value)}
+                  placeholder="https://example.com/stream.m3u8"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+            <button
+              onClick={addCustomLink}
+              disabled={!newLinkName.trim() || !newLinkUrl.trim().startsWith('http')}
+              className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add Link
+            </button>
+          </div>
+
+          {/* Custom links grid */}
+          {customLinks.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+              {customLinks.map((link) => (
+                <div
+                  key={link.id}
+                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
+                >
+                  <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+                    <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
+                  </div>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+                      {link.name}
+                    </h3>
+                    <div className="flex-grow"></div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedChannel({ ...link, officialUrl: link.url })}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors"
+                      >
+                        Play
+                      </button>
+                      <button
+                        onClick={() => deleteCustomLink(link.id)}
+                        className="bg-red-600/70 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
+                        title="Delete link"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 text-xl text-gray-300">
+              No custom links added yet.<br />
+              Paste a public HLS/m3u8 URL above to start.
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Sources Modal */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -540,48 +637,32 @@ export default function Home() {
       )}
 
       {/* Live Player Modal */}
-      {tab === 'live' && (
-  <section className="max-w-7xl mx-auto">
-    <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-      <Radio className="text-purple-400" size={32} />
-      Live & Free UK TV Services
-    </h2>
-    <p className="text-gray-400 mb-10 text-lg">
-      Click any service to open the official live or catch-up player in a new tab.<br />
-      Some require a UK TV licence or VPN if you're outside the UK.
-    </p>
-
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-      {liveChannels.map((channel) => (
-        <div
-          key={channel.id}
-          className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
-        >
-          <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
-            <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
-          </div>
-          <div className="p-5 flex flex-col flex-grow">
-            <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
-              {channel.name}
-            </h3>
-            <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
-            
-            <div className="flex-grow"></div>
-            
-            <a
-              href={channel.officialUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
-            >
-              Watch Live / Catch-up →
-            </a>
+      {tab === 'live' && selectedChannel && (
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+          <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b border-gray-800">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <Radio size={24} className="text-purple-400" />
+                {selectedChannel.name}
+              </h2>
+              <button
+                onClick={() => setSelectedChannel(null)}
+                className="text-gray-400 hover:text-white text-4xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div data-vjs-player className="aspect-video bg-black">
+              <video
+                ref={videoRef}
+                className="video-js vjs-big-play-centered vjs-fluid"
+                playsInline
+              />
+            </div>
           </div>
         </div>
-      ))}
-    </div>
-  </section>
-)}
+      )}
+
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners.</p>
         <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
