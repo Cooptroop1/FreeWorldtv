@@ -5,10 +5,17 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
-// TMDB token
-const TMDB_READ_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4MjFkODVjN2NhNzdhYjNiZTA3OGRhNzZhNDM0OWYxZiIsIm5iZiI6MTc3MTg4MjE3OC40NzMsInN1YiI6IjY5OWNjNmMyMzIyYTBjMWIzMjgwZjZjNyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.CQ-GZV5fCTbbQQO73IMbwJc-o4v4Ewyi3_2WI20rGUs';
+// Use environment variables (set these in Render / Vercel dashboard)
+const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
+const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-// Live channels
+// If missing keys, show warning in dev only
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  if (!WATCHMODE_API_KEY) console.warn('Missing NEXT_PUBLIC_WATCHMODE_API_KEY in env');
+  if (!TMDB_READ_TOKEN) console.warn('Missing NEXT_PUBLIC_TMDB_READ_TOKEN in env');
+}
+
+// Live channels (public streams – legal & free)
 const liveChannels = [
   { id: 1, name: 'NASA TV UHD/HD Live', category: 'Science', url: 'https://nasa-i-adaptive.akamaized.net/hls/live/1/continuous/1/master.m3u8' },
   { id: 2, name: 'France 24 English', category: 'News', url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' },
@@ -17,7 +24,7 @@ const liveChannels = [
   { id: 5, name: 'CGTN Documentary', category: 'Documentary', url: 'https://live.cgtn.com/cgtn/documentary.m3u8' },
 ];
 
-// Genres
+// Genres (Watchmode IDs)
 const genres = [
   { id: 28, name: 'Action' },
   { id: 12, name: 'Adventure' },
@@ -78,7 +85,6 @@ export default function Home() {
         let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
 
         if (debouncedSearch) {
-          console.log('[SEARCH] Query:', debouncedSearch);
           url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
         } else if (selectedGenre) {
           url += `&genres=${selectedGenre}`;
@@ -86,8 +92,6 @@ export default function Home() {
 
         const res = await fetch(url);
         const json = await res.json();
-
-        console.log('[FETCH RESPONSE]', json);
 
         if (json.success) {
           setData(json);
@@ -130,7 +134,6 @@ export default function Home() {
             const json = await res.json();
             return { ...title, poster_path: json.poster_path };
           } catch (err) {
-            console.warn(`Poster fetch failed for ${title.title}:`, err);
             return title;
           }
         })
@@ -184,8 +187,7 @@ export default function Home() {
 
     playerRef.current.on('error', () => {
       const err = playerRef.current.error();
-      console.error('[VideoJS Error] Code:', err?.code, 'Message:', err?.message || '(empty)');
-      setError(`Playback failed: ${err?.message || 'Unknown error'}`);
+      console.error('[VideoJS Error]', err);
     });
 
     return () => {
@@ -248,7 +250,7 @@ export default function Home() {
               <div className="relative flex-1">
                 <input
                   type="text"
-                  placeholder="Search free movies & shows (e.g. Deadpool, John Wick)..."
+                  placeholder="Search free movies & shows..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
