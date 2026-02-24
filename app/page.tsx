@@ -16,32 +16,38 @@ const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 const liveChannels = [
   { 
     id: 1, 
-    name: 'France 24 English', 
-    category: 'News', 
-    officialUrl: 'https://www.france24.com/en/live-tv' 
+    name: 'BBC iPlayer Live (UK only - may require VPN outside UK)', 
+    category: 'UK TV / News', 
+    officialUrl: 'https://www.bbc.co.uk/iplayer/live' 
   },
   { 
     id: 2, 
-    name: 'Al Jazeera English', 
-    category: 'News', 
-    officialUrl: 'https://www.aljazeera.com/live' 
+    name: 'France 24 English', 
+    category: 'International News', 
+    officialUrl: 'https://www.france24.com/en/live-tv' 
   },
   { 
     id: 3, 
-    name: 'TRT World', 
-    category: 'News', 
-    officialUrl: 'https://www.trtworld.com/live' 
+    name: 'Al Jazeera English', 
+    category: 'International News', 
+    officialUrl: 'https://www.aljazeera.com/live' 
   },
   { 
     id: 4, 
     name: 'Euronews English', 
-    category: 'News', 
+    category: 'European News', 
     officialUrl: 'https://www.euronews.com/live' 
   },
   { 
     id: 5, 
+    name: 'TRT World', 
+    category: 'International News', 
+    officialUrl: 'https://www.trtworld.com/live' 
+  },
+  { 
+    id: 6, 
     name: 'NHK World Japan', 
-    category: 'News', 
+    category: 'Japan / Asia News', 
     officialUrl: 'https://www3.nhk.or.jp/nhkworld/en/news/' 
   },
 ];
@@ -550,32 +556,48 @@ export default function Home() {
       )}
 
       {/* Live Player Modal */}
-      {tab === 'live' && selectedChannel && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-          <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
-            <div className="flex justify-between items-center p-5 border-b border-gray-800">
-              <h2 className="text-2xl font-bold flex items-center gap-3">
-                <Radio size={24} className="text-purple-400" />
-                {selectedChannel.name}
-              </h2>
-              <button
-                onClick={() => setSelectedChannel(null)}
-                className="text-gray-400 hover:text-white text-4xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            <div data-vjs-player className="aspect-video bg-black">
-              <video
-                ref={videoRef}
-                className="video-js vjs-big-play-centered vjs-fluid"
-                playsInline
-              />
-            </div>
+      {tab === 'live' && (
+  <section className="max-w-7xl mx-auto">
+    <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+      <Radio className="text-purple-400" size={32} />
+      Live TV Channels
+    </h2>
+    <p className="text-gray-400 mb-10 text-lg">
+      Click any channel to open the official live stream in a new tab — no embeds, just direct links.
+    </p>
+
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+      {liveChannels.map((channel) => (
+        <div
+          key={channel.id}
+          className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
+        >
+          <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+            <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
+          </div>
+          <div className="p-5 flex flex-col flex-grow">
+            <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+              {channel.name}
+            </h3>
+            <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
+            
+            {/* Spacer to push button to bottom */}
+            <div className="flex-grow"></div>
+            
+            <a
+              href={channel.officialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
+            >
+              Watch Live →
+            </a>
           </div>
         </div>
-      )}
-
+      ))}
+    </div>
+  </section>
+)}
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners.</p>
         <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
