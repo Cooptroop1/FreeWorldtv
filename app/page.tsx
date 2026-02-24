@@ -5,42 +5,17 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
-// Use env vars (set these in Render dashboard)
+// Use env vars (set these in Vercel/Render dashboard)
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
 // Live channels – public, legal streams
 const liveChannels = [
-  { 
-    id: 1, 
-    name: 'France 24 English (Reliable)', 
-    category: 'News', 
-    url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' 
-  },
-  { 
-    id: 2, 
-    name: 'Al Jazeera English Live', 
-    category: 'News', 
-    url: 'https://live-hls-web-aja.getaj.net/AJA/playlist.m3u8' 
-  },
-  { 
-    id: 3, 
-    name: 'TRT World (English News)', 
-    category: 'News', 
-    url: 'https://trtcanlitv-lb.cdn.trt.net.tr/master_720.m3u8' 
-  },
-  { 
-    id: 4, 
-    name: 'Big Buck Bunny HLS Demo (Test - always works)', 
-    category: 'Test', 
-    url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8' 
-  },
-  { 
-    id: 5, 
-    name: 'Euronews English', 
-    category: 'News', 
-    url: 'https://live-k8s-prod-euw-1.secure.footprint.net/euronews/euronews.smil/playlist.m3u8' 
-  },
+  { id: 1, name: 'NASA TV UHD/HD Live', category: 'Science', url: 'https://nasa-i-adaptive.akamaized.net/hls/live/1/continuous/1/master.m3u8' },
+  { id: 2, name: 'France 24 English', category: 'News', url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' },
+  { id: 3, name: 'Al Jazeera English Live', category: 'News', url: 'https://live-hls-web-aja.getaj.net/AJA/playlist.m3u8' },
+  { id: 4, name: 'Big Buck Bunny HLS Demo (Test - reliable)', category: 'Test', url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8' },
+  { id: 5, name: 'CGTN Documentary', category: 'Documentary', url: 'https://live.cgtn.com/cgtn/documentary.m3u8' },
 ];
 
 // Genres (Watchmode IDs)
@@ -186,7 +161,7 @@ export default function Home() {
     fetchSources();
   }, [selectedTitle, region, tab]);
 
-  // Live player
+  // IMPROVED Video.js player with native HLS fallback
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
 
@@ -195,19 +170,36 @@ export default function Home() {
       playerRef.current = null;
     }
 
+    // Better config: use native HLS on Safari, override on others
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
     playerRef.current = videojs(videoRef.current, {
       autoplay: 'muted',
       muted: true,
       controls: true,
       fluid: true,
       bigPlayButton: true,
+      html5: {
+        vhs: {
+          overrideNative: !isSafari,  // Native on Safari, Video.js VHS on others
+          withCredentials: false,
+          bandwidth: 2000000,         // Initial bandwidth estimate (helps startup)
+        },
+        nativeAudioTracks: isSafari,
+        nativeVideoTracks: isSafari,
+      },
       sources: [{ src: selectedChannel.url, type: 'application/x-mpegURL' }],
     });
 
     playerRef.current.on('error', () => {
       const err = playerRef.current.error();
-      console.error('[VideoJS Error]', err);
+      console.error('[VideoJS Error] Code:', err?.code, 'Message:', err?.message || '(empty)');
+      setError(`Playback failed: ${err?.message || 'Unknown error - check console'}`);
     });
+
+    playerRef.current.on('loadedmetadata', () => console.log('[VideoJS] Metadata loaded'));
+    playerRef.current.on('canplay', () => console.log('[VideoJS] Ready to play'));
+    playerRef.current.on('waiting', () => console.log('[VideoJS] Buffering'));
 
     return () => {
       if (playerRef.current) {
