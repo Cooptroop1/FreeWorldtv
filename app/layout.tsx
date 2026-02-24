@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     shortcut: '/icon-192.png',
     apple: '/icon-192.png',
   },
-  themeColor: '#111827', // dark gray from your gradient
+  themeColor: '#111827', // Matches your dark background
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -43,26 +43,42 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Manifest for PWA */}
+        {/* PWA Manifest */}
         <link rel="manifest" href="/manifest.json" />
 
-        {/* Theme color */}
+        {/* Theme & Icons */}
         <meta name="theme-color" content="#111827" />
+        <meta name="msapplication-TileColor" content="#111827" />
 
-        {/* iOS / Apple home screen */}
+        {/* Apple / iOS home screen */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="FreeStream World" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
 
-        {/* Android / general icons */}
+        {/* Android / General Icons */}
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
 
-        {/* Optional: Preload icons */}
+        {/* Preload icons for faster load */}
         <link rel="preload" href="/icon-192.png" as="image" />
         <link rel="preload" href="/icon-512.png" as="image" />
+
+        {/* Optional: Service Worker registration script */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker failed:', err));
+                });
+              }
+            `,
+          }}
+        />
       </head>
       <body className="antialiased">{children}</body>
     </html>
