@@ -16,34 +16,23 @@ const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 const liveChannels = [
   { 
     id: 1, 
-    name: 'France 24 English (Stable & Open)', 
+    name: 'France 24 English (Proxied)', 
     category: 'News', 
-    url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' 
+    url: 'https://corsproxy.io/?' + encodeURIComponent('https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8')
   },
   { 
     id: 2, 
-    name: 'Arirang TV (Korea - English/Korean News)', 
+    name: 'Al Jazeera English (Proxied)', 
     category: 'News', 
-    url: 'https://amdlive-ch1-arirang.akamaized.net/arirang/ch_01/playlist.m3u8' 
+    url: 'https://corsproxy.io/?' + encodeURIComponent('https://live-hls-web-aja.getaj.net/AJA/playlist.m3u8')
   },
   { 
     id: 3, 
-    name: 'NHK World Japan (English News)', 
-    category: 'News', 
-    url: 'https://nhkworld.webcdn.stream.ne.jp/www11/nhkworld-tv/global/263941/live_tv.m3u8' 
-  },
-  { 
-    id: 4, 
-    name: 'Big Buck Bunny HLS Demo (Always Works)', 
+    name: 'Big Buck Bunny (No Proxy Needed)', 
     category: 'Test', 
-    url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8' 
+    url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8'
   },
-  { 
-    id: 5, 
-    name: 'Rai News 24 (Italy - Italian News)', 
-    category: 'News', 
-    url: 'https://rainews1-live.akamaized.net/hls/live/201702/master.m3u8' 
-  },
+  // Add more proxied if needed
 ];
 
 // Genres (Watchmode IDs)
