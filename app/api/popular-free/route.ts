@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { WatchmodeClient } from '@watchmode/api-client';
 
 const client = new WatchmodeClient({
-  apiKey: process.env.WATCHMODE_API_KEY || '',  // ← Uses env var
+  apiKey: process.env.WATCHMODE_API_KEY || '',
 });
 
 export async function GET(request: Request) {
@@ -25,12 +25,13 @@ export async function GET(request: Request) {
       success: true,
       region,
       page,
-      titles: listResult.data.titles || [],
-      totalPages: listResult.data.total_pages || 1,
-      totalResults: listResult.data.total_results || (listResult.data.titles?.length || 0),
-      message: `Found ${listResult.data.titles?.length || 0} popular free titles (${contentType}) in ${region}`
+      titles: listResult.data?.titles || [],
+      totalPages: listResult.data?.total_pages || 1,
+      totalResults: listResult.data?.total_results || (listResult.data?.titles?.length || 0),
+      message: `Found ${listResult.data?.titles?.length || 0} popular free titles (${contentType}) in ${region}`
     });
   } catch (error: any) {
+    console.error('Popular-free error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
