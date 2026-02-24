@@ -98,7 +98,9 @@ export default function Home() {
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -124,7 +126,7 @@ export default function Home() {
         if (json.success) {
           setData(json);
         } else {
-          setError(json.error || 'Failed to load');
+          setError(json.error || 'Failed to load titles');
           setData(null);
         }
       } catch (err: any) {
@@ -195,7 +197,7 @@ export default function Home() {
     fetchSources();
   }, [selectedTitle, region, tab]);
 
-  // Video.js player
+  // Video.js player (now works for My Links too)
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
 
@@ -229,6 +231,9 @@ export default function Home() {
       console.error('[VideoJS Error]', err);
       setError(`Playback failed: ${err?.message || 'Unknown error'}`);
     });
+
+    playerRef.current.on('loadedmetadata', () => console.log('[VideoJS] Metadata loaded'));
+    playerRef.current.on('canplay', () => console.log('[VideoJS] Ready to play'));
 
     return () => {
       if (playerRef.current) {
@@ -291,7 +296,6 @@ export default function Home() {
 
         {tab === 'discover' && (
           <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
-            {/* Search, region, content, genre selectors - unchanged */}
             <div className="flex items-center gap-3 flex-1 min-w-[220px]">
               <Search size={20} className="text-gray-400" />
               <div className="relative flex-1">
@@ -450,7 +454,7 @@ export default function Home() {
         </>
       )}
 
-      {/* Live TV - Official Links Only */}
+      {/* Live TV - Official Links */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -555,7 +559,7 @@ export default function Home() {
                     <div className="flex-grow"></div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setSelectedChannel({ ...link, officialUrl: link.url })}
+                        onClick={() => setSelectedChannel(link)}  // ← This now triggers the modal
                         className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors"
                       >
                         Play
@@ -579,6 +583,33 @@ export default function Home() {
             </div>
           )}
         </section>
+      )}
+
+      {/* Player Modal – now works on ALL tabs when selectedChannel is set */}
+      {selectedChannel && (
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+          <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b border-gray-800">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <Radio size={24} className="text-purple-400" />
+                {selectedChannel.name}
+              </h2>
+              <button
+                onClick={() => setSelectedChannel(null)}
+                className="text-gray-400 hover:text-white text-4xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div data-vjs-player className="aspect-video bg-black">
+              <video
+                ref={videoRef}
+                className="video-js vjs-big-play-centered vjs-fluid"
+                playsInline
+              />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Sources Modal */}
@@ -631,33 +662,6 @@ export default function Home() {
                   Availability changes frequently — try again later!
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Live Player Modal */}
-      {tab === 'live' && selectedChannel && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-          <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
-            <div className="flex justify-between items-center p-5 border-b border-gray-800">
-              <h2 className="text-2xl font-bold flex items-center gap-3">
-                <Radio size={24} className="text-purple-400" />
-                {selectedChannel.name}
-              </h2>
-              <button
-                onClick={() => setSelectedChannel(null)}
-                className="text-gray-400 hover:text-white text-4xl leading-none"
-              >
-                ×
-              </button>
-            </div>
-            <div data-vjs-player className="aspect-video bg-black">
-              <video
-                ref={videoRef}
-                className="video-js vjs-big-play-centered vjs-fluid"
-                playsInline
-              />
             </div>
           </div>
         </div>
