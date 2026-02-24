@@ -11,36 +11,37 @@ const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
 // Live channels – public, legal streams
 // Reliable public live channels (tested to work on Vercel/Render)
+// Reliable public live channels (CORS/DNS friendly on Vercel/Render)
 const liveChannels = [
   { 
     id: 1, 
-    name: 'France 24 English (Reliable News)', 
+    name: 'TRT World English (Reliable News)', 
     category: 'News', 
-    url: 'https://live.france24.com/hls/live/2020111/F24_EN_HLS/master.m3u8' 
+    url: 'https://trtcanlitv-lb.cdn.trt.net.tr/master_720.m3u8' 
   },
   { 
     id: 2, 
+    name: 'Euronews English Live', 
+    category: 'News', 
+    url: 'https://live-k8s-prod-euw-1.secure.footprint.net/euronews/euronews.smil/playlist.m3u8' 
+  },
+  { 
+    id: 3, 
     name: 'Al Jazeera English Live', 
     category: 'News', 
     url: 'https://live-hls-web-aja.getaj.net/AJA/playlist.m3u8' 
   },
   { 
-    id: 3, 
-    name: 'TRT World English', 
-    category: 'News', 
-    url: 'https://trtcanlitv-lb.cdn.trt.net.tr/master_720.m3u8' 
-  },
-  { 
     id: 4, 
-    name: 'Euronews English', 
-    category: 'News', 
-    url: 'https://live-k8s-prod-euw-1.secure.footprint.net/euronews/euronews.smil/playlist.m3u8' 
-  },
-  { 
-    id: 5, 
     name: 'Big Buck Bunny HLS Demo (Always Works - Test)', 
     category: 'Test', 
     url: 'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_ts/master.m3u8' 
+  },
+  { 
+    id: 5, 
+    name: 'RT Documentary English', 
+    category: 'Documentary', 
+    url: 'https://rt-doc.secure.footprint.net/doc_eng_hls/master.m3u8' 
   },
 ];
 
