@@ -64,21 +64,9 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Client-only mounted flag to avoid hydration mismatch
+  // Client-only mount flag + favorites
   const [isMounted, setIsMounted] = useState(false);
-
-  // Favorites
   const [favorites, setFavorites] = useState<any[]>([]);
-
-  const toggleFavorite = (title: any) => {
-    if (!isMounted) return;
-    const isFav = favorites.some(fav => fav.id === title.id);
-    if (isFav) {
-      setFavorites(favorites.filter(fav => fav.id !== title.id));
-    } else {
-      setFavorites([...favorites, title]);
-    }
-  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -92,10 +80,18 @@ export default function Home() {
     }
   }, [favorites, isMounted]);
 
-  // Custom links
+  const toggleFavorite = (title: any) => {
+    if (!isMounted) return;
+    const isFav = favorites.some(fav => fav.id === title.id);
+    if (isFav) {
+      setFavorites(favorites.filter(fav => fav.id !== title.id));
+    } else {
+      setFavorites([...favorites, title]);
+    }
+  };
+
+  // Custom links (same pattern)
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
-  const [newLinkName, setNewLinkName] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('customLinks');
@@ -121,6 +117,9 @@ export default function Home() {
     if (!isMounted) return;
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
+
+  const [newLinkName, setNewLinkName] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -306,7 +305,7 @@ export default function Home() {
     setSelectedGenre('');
   };
 
-  // Prevent render until mounted (avoids hydration mismatch for localStorage state)
+  // Prevent render until client mount (fixes hydration for localStorage state)
   if (!isMounted) {
     return <div className="min-h-screen bg-black"></div>;
   }
@@ -460,18 +459,20 @@ export default function Home() {
                                 <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
                               </div>
                             )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(title);
-                              }}
-                              className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                            >
-                              <Heart
-                                size={20}
-                                className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'}
-                              />
-                            </button>
+                            {isMounted && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(title);
+                                }}
+                                className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
+                              >
+                                <Heart
+                                  size={20}
+                                  className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'}
+                                />
+                              </button>
+                            )}
                           </div>
                           <div className="p-4">
                             <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
@@ -480,12 +481,14 @@ export default function Home() {
                             <p className="text-gray-400 text-sm">
                               {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
                             </p>
-                            <button
-                              className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                              onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                            >
-                              View Free Sources
-                            </button>
+                            {isMounted && (
+                              <button
+                                className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                                onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                              >
+                                View Free Sources
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
