@@ -64,9 +64,24 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Favorites - load only after mount to avoid hydration mismatch
   const [favorites, setFavorites] = useState<any[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem('favorites');
+    if (saved) setFavorites(JSON.parse(saved));
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem('favorites', JSON.stringify(favorites));
+    }
+  }, [favorites, isMounted]);
 
   const toggleFavorite = (title: any) => {
+    if (!isMounted) return;
     const isFav = favorites.some(fav => fav.id === title.id);
     if (isFav) {
       setFavorites(favorites.filter(fav => fav.id !== title.id));
@@ -75,19 +90,8 @@ export default function Home() {
     }
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem('favorites');
-    if (saved) setFavorites(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-  }, [favorites]);
-
-  // Custom links
+  // Custom links - same client-only pattern
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
-  const [newLinkName, setNewLinkName] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('customLinks');
@@ -95,10 +99,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('customLinks', JSON.stringify(customLinks));
-  }, [customLinks]);
+    if (isMounted) {
+      localStorage.setItem('customLinks', JSON.stringify(customLinks));
+    }
+  }, [customLinks, isMounted]);
 
   const addCustomLink = () => {
+    if (!isMounted) return;
     if (newLinkName.trim() && newLinkUrl.trim().startsWith('http')) {
       setCustomLinks([...customLinks, { id: Date.now(), name: newLinkName.trim(), url: newLinkUrl.trim() }]);
       setNewLinkName('');
@@ -107,8 +114,12 @@ export default function Home() {
   };
 
   const deleteCustomLink = (id: number) => {
+    if (!isMounted) return;
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
+
+  const [newLinkName, setNewLinkName] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -119,7 +130,6 @@ export default function Home() {
 
   const [isPending, startTransition] = useTransition();
 
-  // Fetch titles / search
   useEffect(() => {
     if (tab !== 'discover') {
       startTransition(() => {
@@ -168,7 +178,7 @@ export default function Home() {
     });
   }, [region, contentType, debouncedSearch, selectedGenre]);
 
-  // TMDB posters with caching + lazy load support
+  // TMDB posters with caching
   useEffect(() => {
     if (!data?.titles?.length || !TMDB_READ_TOKEN) return;
 
@@ -179,7 +189,6 @@ export default function Home() {
         data.titles.map(async (title: any) => {
           if (!title.tmdb_id || !title.tmdb_type) return title;
 
-          // Check cache first
           if (cachedPosters[title.id]) {
             return { ...title, poster_path: cachedPosters[title.id] };
           }
@@ -296,6 +305,11 @@ export default function Home() {
     setSelectedGenre('');
   };
 
+  // Prevent render until mounted (avoids hydration mismatch for localStorage state)
+  if (!isMounted) {
+    return <div className="min-h-screen bg-black"></div>;
+  }
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
@@ -410,7 +424,7 @@ export default function Home() {
             <section className="max-w-7xl mx-auto">
               <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
                 <MonitorPlay className="text-green-400" size={32} />
-                {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {data.region}
+                {debouncedSearch ? `Free Results for "{debouncedSearch}"` : 'Popular Free Titles'} in {data.region}
               </h2>
 
               <p className="text-gray-400 mb-8 text-lg">
@@ -803,7 +817,7 @@ export default function Home() {
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners.</p>
         <p className="mt-2">
-          <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> |
+          <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> | 
           <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> | 
           <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
         </p>
