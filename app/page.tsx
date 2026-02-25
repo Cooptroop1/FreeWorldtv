@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
