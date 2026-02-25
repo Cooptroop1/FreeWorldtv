@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -23,7 +24,7 @@ const liveChannels = [
   { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
 
-// Genres
+// Genres (for Discover tab)
 const genres = [
   { id: 28, name: 'Action' },
   { id: 12, name: 'Adventure' },
@@ -46,7 +47,7 @@ const genres = [
 ];
 
 export default function Home() {
-  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks'>('discover');
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState('US');
@@ -99,20 +100,25 @@ export default function Home() {
 
   // Fetch titles / search
   useEffect(() => {
-    if (tab !== 'discover') return;
+    if (tab !== 'discover' && tab !== 'top10') return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      setData(null); // Clear old data to prevent flicker
+      setData(null);
 
       try {
-        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
+        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=1&limit=20`;
 
-        if (debouncedSearch) {
-          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
-        } else if (selectedGenre) {
-          url += `&genres=${selectedGenre}`;
+        if (tab === 'discover') {
+          if (debouncedSearch) {
+            url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+          } else if (selectedGenre) {
+            url += `&genres=${selectedGenre}`;
+          }
+        } else if (tab === 'top10') {
+          // Top 10 is just popular-free, page 1, limit 20
+          url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=1&limit=20`;
         }
 
         const res = await fetch(url);
@@ -133,8 +139,10 @@ export default function Home() {
   }, [region, contentType, currentPage, debouncedSearch, selectedGenre, tab]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [region, contentType, debouncedSearch, selectedGenre]);
+    if (tab === 'discover') {
+      setCurrentPage(1);
+    }
+  }, [region, contentType, debouncedSearch, selectedGenre, tab]);
 
   // TMDB posters with caching
   useEffect(() => {
@@ -294,6 +302,14 @@ export default function Home() {
             }`}
           >
             <Plus size={20} /> My Links
+          </button>
+          <button
+            onClick={() => setTab('top10')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Star size={20} /> Top 10
           </button>
         </div>
 
@@ -457,6 +473,75 @@ export default function Home() {
             </section>
           )}
         </>
+      )}
+
+      {/* Top 10 Tab */}
+      {tab === 'top10' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
+            <Star className="text-yellow-400" size={32} />
+            Top 10 Free Titles Right Now
+          </h2>
+          <p className="text-gray-400 mb-10 text-lg">
+            The most popular free movies and shows available in your region (updated regularly).
+          </p>
+
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
+              <p className="text-xl">Loading top 10...</p>
+            </div>
+          )}
+
+          {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
+
+          {!loading && data && (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+                {data.titles.map((title: any) => (
+                  <div
+                    key={title.id}
+                    onClick={() => setSelectedTitle(title)}
+                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                  >
+                    <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+                      {title.poster_path ? (
+                        <img
+                          src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                          alt={title.title}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                        {title.title}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                      </p>
+                      <button
+                        className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                        onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                      >
+                        View Free Sources
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
       )}
 
       {/* Live TV Tab */}
