@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Star } from 'lucide-react';
+import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2 } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
@@ -23,7 +23,7 @@ const liveChannels = [
   { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
 
-// Genres (same list for Discover and Top 10 filters)
+// Genres
 const genres = [
   { id: 28, name: 'Action' },
   { id: 12, name: 'Adventure' },
@@ -46,15 +46,14 @@ const genres = [
 ];
 
 export default function Home() {
-  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'top10'>('discover');
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks'>('discover');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState(''); // for Discover
-  const [topGenre, setTopGenre] = useState(''); // separate for Top 10 tab
+  const [selectedGenre, setSelectedGenre] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const [selectedTitle, setSelectedTitle] = useState<any>(null);
@@ -98,29 +97,22 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch data for Discover or Top 10
+  // Fetch titles / search
   useEffect(() => {
-    if (tab !== 'discover' && tab !== 'top10') return;
+    if (tab !== 'discover') return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      setData(null);
+      setData(null); // Clear old data to prevent flicker
 
       try {
-        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=1&limit=20`;
+        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
 
-        if (tab === 'discover') {
-          if (debouncedSearch) {
-            url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
-          } else if (selectedGenre) {
-            url += `&genres=${selectedGenre}`;
-          }
-        } else if (tab === 'top10') {
-          // Top 10 uses popular-free, with optional genre filter
-          if (topGenre) {
-            url += `&genres=${topGenre}`;
-          }
+        if (debouncedSearch) {
+          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+        } else if (selectedGenre) {
+          url += `&genres=${selectedGenre}`;
         }
 
         const res = await fetch(url);
@@ -138,13 +130,11 @@ export default function Home() {
     };
 
     fetchData();
-  }, [region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre, tab]);
+  }, [region, contentType, currentPage, debouncedSearch, selectedGenre, tab]);
 
   useEffect(() => {
-    if (tab === 'discover') {
-      setCurrentPage(1);
-    }
-  }, [region, contentType, debouncedSearch, selectedGenre, tab]);
+    setCurrentPage(1);
+  }, [region, contentType, debouncedSearch, selectedGenre]);
 
   // TMDB posters with caching
   useEffect(() => {
@@ -305,14 +295,6 @@ export default function Home() {
           >
             <Plus size={20} /> My Links
           </button>
-          <button
-            onClick={() => setTab('top10')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
-              tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <Star size={20} /> Top 10
-          </button>
         </div>
 
         {tab === 'discover' && (
@@ -358,39 +340,6 @@ export default function Home() {
               <label className="text-lg font-medium hidden md:block">Genre:</label>
               <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">All Genres</option>
-                {genres.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {tab === 'top10' && (
-          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
-            <div className="flex items-center gap-3">
-              <Globe size={20} />
-              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="US">United States</option>
-                <option value="GB">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="AU">Australia</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Tv size={20} />
-              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="movie,tv_series">All</option>
-                <option value="movie">Movies</option>
-                <option value="tv_series">TV Shows</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              <label className="text-lg font-medium hidden md:block">Genre:</label>
-              <select value={topGenre} onChange={(e) => setTopGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="">All Genres (Overall Top 10)</option>
                 {genres.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -508,75 +457,6 @@ export default function Home() {
             </section>
           )}
         </>
-      )}
-
-      {/* Top 10 Tab */}
-      {tab === 'top10' && (
-        <section className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
-            <Star className="text-yellow-400" size={32} />
-            Top 10 Free Titles Right Now
-          </h2>
-          <p className="text-gray-400 mb-10 text-lg">
-            The most popular free movies and shows available in your region (updated regularly).
-          </p>
-
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-              <p className="text-xl">Loading top 10...</p>
-            </div>
-          )}
-
-          {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-
-          {!loading && data && (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                {data.titles.map((title: any) => (
-                  <div
-                    key={title.id}
-                    onClick={() => setSelectedTitle(title)}
-                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                  >
-                    <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
-                      {title.poster_path ? (
-                        <img
-                          src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                          alt={title.title}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                        {title.title}
-                      </h3>
-                      <p className="text-gray-400 text-sm">
-                        {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                      </p>
-                      <button
-                        className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                        onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                      >
-                        View Free Sources
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
       )}
 
       {/* Live TV Tab */}
