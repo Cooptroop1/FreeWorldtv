@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useTransition } from 'react';
-import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2 } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
@@ -46,7 +46,7 @@ const genres = [
 ];
 
 export default function Home() {
-  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites'>('discover');
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks'>('discover');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState('US');
@@ -64,34 +64,10 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Client-only mount flag + favorites
-  const [isMounted, setIsMounted] = useState(false);
-  const [favorites, setFavorites] = useState<any[]>([]);
-
-  useEffect(() => {
-    setIsMounted(true);
-    const saved = localStorage.getItem('favorites');
-    if (saved) setFavorites(JSON.parse(saved));
-  }, []);
-
-  useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem('favorites', JSON.stringify(favorites));
-    }
-  }, [favorites, isMounted]);
-
-  const toggleFavorite = (title: any) => {
-    if (!isMounted) return;
-    const isFav = favorites.some(fav => fav.id === title.id);
-    if (isFav) {
-      setFavorites(favorites.filter(fav => fav.id !== title.id));
-    } else {
-      setFavorites([...favorites, title]);
-    }
-  };
-
-  // Custom links (same pattern)
+  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
+  const [newLinkName, setNewLinkName] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('customLinks');
@@ -99,13 +75,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (isMounted) {
-      localStorage.setItem('customLinks', JSON.stringify(customLinks));
-    }
-  }, [customLinks, isMounted]);
+    localStorage.setItem('customLinks', JSON.stringify(customLinks));
+  }, [customLinks]);
 
   const addCustomLink = () => {
-    if (!isMounted) return;
     if (newLinkName.trim() && newLinkUrl.trim().startsWith('http')) {
       setCustomLinks([...customLinks, { id: Date.now(), name: newLinkName.trim(), url: newLinkUrl.trim() }]);
       setNewLinkName('');
@@ -114,12 +87,8 @@ export default function Home() {
   };
 
   const deleteCustomLink = (id: number) => {
-    if (!isMounted) return;
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
-
-  const [newLinkName, setNewLinkName] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -128,54 +97,43 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const [isPending, startTransition] = useTransition();
-
+  // Fetch titles / search
   useEffect(() => {
-    if (tab !== 'discover') {
-      startTransition(() => {
-        setData(null);
-        setLoading(false);
-      });
-      return;
-    }
+    if (tab !== 'discover') return;
 
-    startTransition(() => {
-      const fetchData = async () => {
-        setLoading(true);
-        setError(null);
-        setData(null);
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      setData(null); // Clear old data to prevent flicker
 
-        try {
-          let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
+      try {
+        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
 
-          if (debouncedSearch) {
-            url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
-          } else if (selectedGenre) {
-            url += `&genres=${selectedGenre}`;
-          }
-
-          const res = await fetch(url);
-          const json = await res.json();
-
-          if (json.success) {
-            setData(json);
-          } else {
-            setError(json.error || 'Failed to load');
-          }
-        } catch (err: any) {
-          setError(err.message || 'Network error');
+        if (debouncedSearch) {
+          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+        } else if (selectedGenre) {
+          url += `&genres=${selectedGenre}`;
         }
-        setLoading(false);
-      };
 
-      fetchData();
-    });
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.success) {
+          setData(json);
+        } else {
+          setError(json.error || 'Failed to load');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Network error');
+      }
+      setLoading(false);
+    };
+
+    fetchData();
   }, [region, contentType, currentPage, debouncedSearch, selectedGenre, tab]);
 
   useEffect(() => {
-    startTransition(() => {
-      setCurrentPage(1);
-    });
+    setCurrentPage(1);
   }, [region, contentType, debouncedSearch, selectedGenre]);
 
   // TMDB posters with caching
@@ -203,7 +161,7 @@ export default function Home() {
             });
             if (!res.ok) throw new Error('TMDB error');
             const json = await res.json();
-            
+
             const posterPath = json.poster_path;
             if (posterPath) {
               cachedPosters[title.id] = posterPath;
@@ -289,26 +247,17 @@ export default function Home() {
   }, [selectedChannel]);
 
   const goToNextPage = () => {
-    if (data && currentPage < data.totalPages) {
-      setCurrentPage(prev => prev + 1);
-    }
+    if (data && currentPage < data.totalPages) setCurrentPage(prev => prev + 1);
   };
 
   const goToPrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
-    }
+    if (currentPage > 1) setCurrentPage(prev => prev - 1);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
     setSelectedGenre('');
   };
-
-  // Prevent render until client mount (fixes hydration for localStorage state)
-  if (!isMounted) {
-    return <div className="min-h-screen bg-black"></div>;
-  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
@@ -345,14 +294,6 @@ export default function Home() {
             }`}
           >
             <Plus size={20} /> My Links
-          </button>
-          <button
-            onClick={() => setTab('favorites')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
-              tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <Heart size={20} /> Favorites ({favorites.length})
           </button>
         </div>
 
@@ -411,20 +352,22 @@ export default function Home() {
       {/* Discover Tab */}
       {tab === 'discover' && (
         <>
-          {(loading || isPending) && (
+          {loading && (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-              <p className="text-xl">Loading...</p>
+              <p className="text-xl">
+                {debouncedSearch ? 'Searching free titles...' : 'Loading page...'}
+              </p>
             </div>
           )}
 
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
 
-          {!loading && !isPending && data && (
+          {!loading && data && (
             <section className="max-w-7xl mx-auto">
               <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
                 <MonitorPlay className="text-green-400" size={32} />
-                {debouncedSearch ? `Free Results for "{debouncedSearch}"` : 'Popular Free Titles'} in {data.region}
+                {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {data.region}
               </h2>
 
               <p className="text-gray-400 mb-8 text-lg">
@@ -434,71 +377,52 @@ export default function Home() {
               {Array.isArray(data.titles) && data.titles.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                    {data.titles.map((title: any) => {
-                      const isFavorite = favorites.some(fav => fav.id === title.id);
-                      return (
-                        <div
-                          key={title.id}
-                          onClick={() => setSelectedTitle(title)}
-                          className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                        >
-                          <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
-                            {title.poster_path ? (
-                              <img
-                                src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                                alt={title.title}
-                                loading="lazy"
-                                decoding="async"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                              </div>
-                            )}
-                            {isMounted && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(title);
-                                }}
-                                className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                              >
-                                <Heart
-                                  size={20}
-                                  className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'}
-                                />
-                              </button>
-                            )}
-                          </div>
-                          <div className="p-4">
-                            <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                              {title.title}
-                            </h3>
-                            <p className="text-gray-400 text-sm">
-                              {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                            </p>
-                            {isMounted && (
-                              <button
-                                className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                                onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                              >
-                                View Free Sources
-                              </button>
-                            )}
-                          </div>
+                    {data.titles.map((title: any) => (
+                      <div
+                        key={title.id}
+                        onClick={() => setSelectedTitle(title)}
+                        className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                      >
+                        <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+                          {title.poster_path ? (
+                            <img
+                              src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                              alt={title.title}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                            </div>
+                          )}
                         </div>
-                      );
-                    })}
+                        <div className="p-4">
+                          <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                            {title.title}
+                          </h3>
+                          <p className="text-gray-400 text-sm">
+                            {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                          </p>
+                          <button
+                            className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                            onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                          >
+                            View Free Sources
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   <div className="flex justify-center items-center gap-6 mt-12">
                     <button
                       onClick={goToPrevPage}
-                      disabled={currentPage === 1 || loading || isPending}
+                      disabled={currentPage === 1 || loading}
                       className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft size={20} />
@@ -511,7 +435,7 @@ export default function Home() {
 
                     <button
                       onClick={goToNextPage}
-                      disabled={currentPage >= data.totalPages || loading || isPending}
+                      disabled={currentPage >= data.totalPages || loading}
                       className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
@@ -520,7 +444,7 @@ export default function Home() {
                   </div>
                 </>
               ) : (
-                !loading && !isPending && (
+                !loading && (
                   <div className="text-center py-20 text-xl text-gray-300">
                     {debouncedSearch ? (
                       <>No free matches found for "{debouncedSearch}".<br />Try another term like "Matrix" or "John Wick".</>
@@ -659,78 +583,6 @@ export default function Home() {
             <div className="text-center py-20 text-xl text-gray-300">
               No custom links added yet.<br />
               Paste a public HLS/m3u8 URL above to start.
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Favorites Tab */}
-      {tab === 'favorites' && (
-        <section className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-            <Heart className="text-red-400" size={32} />
-            My Favorites ({favorites.length})
-          </h2>
-          <p className="text-gray-400 mb-10 text-lg">
-            Titles you've saved. Click to view free sources.
-          </p>
-
-          {favorites.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {favorites.map((title: any) => (
-                <div
-                  key={title.id}
-                  onClick={() => setSelectedTitle(title)}
-                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                >
-                  <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
-                    {title.poster_path ? (
-                      <img
-                        src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                        alt={title.title}
-                        loading="lazy"
-                        decoding="async"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                      </div>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(title);
-                      }}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                    >
-                      <Heart size={20} className="fill-red-500 text-red-500" />
-                    </button>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                      {title.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                    </p>
-                    <button
-                      className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                    >
-                      View Free Sources
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 text-xl text-gray-300">
-              No favorites saved yet.<br />
-              Go to Discover tab and click the heart on any title to add it here.
             </div>
           )}
         </section>
