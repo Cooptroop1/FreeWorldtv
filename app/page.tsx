@@ -64,9 +64,21 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Favorites - load only after mount to avoid hydration mismatch
-  const [favorites, setFavorites] = useState<any[]>([]);
+  // Client-only mounted flag to avoid hydration mismatch
   const [isMounted, setIsMounted] = useState(false);
+
+  // Favorites
+  const [favorites, setFavorites] = useState<any[]>([]);
+
+  const toggleFavorite = (title: any) => {
+    if (!isMounted) return;
+    const isFav = favorites.some(fav => fav.id === title.id);
+    if (isFav) {
+      setFavorites(favorites.filter(fav => fav.id !== title.id));
+    } else {
+      setFavorites([...favorites, title]);
+    }
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -80,18 +92,10 @@ export default function Home() {
     }
   }, [favorites, isMounted]);
 
-  const toggleFavorite = (title: any) => {
-    if (!isMounted) return;
-    const isFav = favorites.some(fav => fav.id === title.id);
-    if (isFav) {
-      setFavorites(favorites.filter(fav => fav.id !== title.id));
-    } else {
-      setFavorites([...favorites, title]);
-    }
-  };
-
-  // Custom links - same client-only pattern
+  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
+  const [newLinkName, setNewLinkName] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('customLinks');
@@ -117,9 +121,6 @@ export default function Home() {
     if (!isMounted) return;
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
-
-  const [newLinkName, setNewLinkName] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
