@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     shortcut: '/icon-192.png',
     apple: '/icon-192.png',
   },
-  themeColor: '#111827', // Matches your dark background
+  themeColor: '#111827',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -44,6 +45,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* AdSense global script - paste your code here */}
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
+          crossOrigin="anonymous"
+        ></script>
+
         {/* PWA Manifest */}
         <link rel="manifest" href="/manifest.json" />
 
@@ -51,22 +59,22 @@ export default function RootLayout({
         <meta name="theme-color" content="#111827" />
         <meta name="msapplication-TileColor" content="#111827" />
 
-        {/* Apple / iOS home screen */}
+        {/* Apple / iOS */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="FreeStream World" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
 
-        {/* Android / General Icons */}
+        {/* General icons */}
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
 
-        {/* Preload icons for faster load */}
+        {/* Preload icons */}
         <link rel="preload" href="/icon-192.png" as="image" />
         <link rel="preload" href="/icon-512.png" as="image" />
 
-        {/* Optional: Service Worker registration script */}
+        {/* Service Worker */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -84,6 +92,7 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
