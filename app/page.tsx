@@ -23,7 +23,7 @@ const liveChannels = [
   { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
 
-// Genres (for Discover tab)
+// Genres (same list for Discover and Top 10 filters)
 const genres = [
   { id: 28, name: 'Action' },
   { id: 12, name: 'Adventure' },
@@ -53,7 +53,8 @@ export default function Home() {
   const [contentType, setContentType] = useState('movie,tv_series');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState(''); // for Discover
+  const [topGenre, setTopGenre] = useState(''); // separate for Top 10 tab
   const [error, setError] = useState<string | null>(null);
 
   const [selectedTitle, setSelectedTitle] = useState<any>(null);
@@ -97,7 +98,7 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search
+  // Fetch data for Discover or Top 10
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
 
@@ -116,8 +117,10 @@ export default function Home() {
             url += `&genres=${selectedGenre}`;
           }
         } else if (tab === 'top10') {
-          // Top 10 is just popular-free, page 1, limit 20
-          url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=1&limit=20`;
+          // Top 10 uses popular-free, with optional genre filter
+          if (topGenre) {
+            url += `&genres=${topGenre}`;
+          }
         }
 
         const res = await fetch(url);
@@ -135,7 +138,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, [region, contentType, currentPage, debouncedSearch, selectedGenre, tab]);
+  }, [region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre, tab]);
 
   useEffect(() => {
     if (tab === 'discover') {
@@ -355,6 +358,39 @@ export default function Home() {
               <label className="text-lg font-medium hidden md:block">Genre:</label>
               <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">All Genres</option>
+                {genres.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {tab === 'top10' && (
+          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
+            <div className="flex items-center gap-3">
+              <Globe size={20} />
+              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="US">United States</option>
+                <option value="GB">United Kingdom</option>
+                <option value="CA">Canada</option>
+                <option value="AU">Australia</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Tv size={20} />
+              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="movie,tv_series">All</option>
+                <option value="movie">Movies</option>
+                <option value="tv_series">TV Shows</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="text-lg font-medium hidden md:block">Genre:</label>
+              <select value={topGenre} onChange={(e) => setTopGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="">All Genres (Overall Top 10)</option>
                 {genres.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
