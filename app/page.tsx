@@ -1,9 +1,7 @@
-
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart } from 'lucide-react';
+import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
@@ -48,7 +46,7 @@ const genres = [
 ];
 
 export default function Home() {
-  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites'>('discover');
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [region, setRegion] = useState('US');
@@ -56,6 +54,7 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
+  const [topGenre, setTopGenre] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const [selectedTitle, setSelectedTitle] = useState<any>(null);
@@ -68,7 +67,6 @@ export default function Home() {
 
   // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
-
   const toggleFavorite = (title: any) => {
     const isFav = favorites.some(fav => fav.id === title.id);
     if (isFav) {
@@ -124,7 +122,7 @@ export default function Home() {
 
   // Fetch titles / search
   useEffect(() => {
-    if (tab !== 'discover') return;
+    if (tab !== 'discover' && tab !== 'top10') return;
 
     const fetchData = async () => {
       setLoading(true);
@@ -132,12 +130,18 @@ export default function Home() {
       setData(null); // Clear old data to stop flicker
 
       try {
-        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
+        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=1&limit=20`;
 
-        if (debouncedSearch) {
-          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
-        } else if (selectedGenre) {
-          url += `&genres=${selectedGenre}`;
+        if (tab === 'discover') {
+          if (debouncedSearch) {
+            url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+          } else if (selectedGenre) {
+            url += `&genres=${selectedGenre}`;
+          }
+        } else if (tab === 'top10') {
+          if (topGenre) {
+            url += `&genres=${topGenre}`;
+          }
         }
 
         const res = await fetch(url);
@@ -155,11 +159,11 @@ export default function Home() {
     };
 
     fetchData();
-  }, [region, contentType, currentPage, debouncedSearch, selectedGenre, tab]);
+  }, [region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre, tab]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [region, contentType, debouncedSearch, selectedGenre]);
+  }, [region, contentType, debouncedSearch, selectedGenre, tab]);
 
   // TMDB posters
   useEffect(() => {
@@ -274,6 +278,10 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
+        <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
+          <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
+        </div>
+
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4 flex items-center gap-4">
           <MonitorPlay className="w-12 h-12 text-blue-500" />
           FreeStream World
@@ -314,6 +322,14 @@ export default function Home() {
             }`}
           >
             <Heart size={20} /> Favorites ({favorites.length})
+          </button>
+          <button
+            onClick={() => setTab('top10')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Star size={20} /> Top 10
           </button>
         </div>
 
@@ -367,6 +383,39 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {tab === 'top10' && (
+          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
+            <div className="flex items-center gap-3">
+              <Globe size={20} />
+              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="US">United States</option>
+                <option value="GB">United Kingdom</option>
+                <option value="CA">Canada</option>
+                <option value="AU">Australia</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Tv size={20} />
+              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="movie,tv_series">All</option>
+                <option value="movie">Movies</option>
+                <option value="tv_series">TV Shows</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="text-lg font-medium hidden md:block">Genre:</label>
+              <select value={topGenre} onChange={(e) => setTopGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="">All Genres (Overall Top 10)</option>
+                {genres.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Discover Tab */}
@@ -389,6 +438,10 @@ export default function Home() {
                 <MonitorPlay className="text-green-400" size={32} />
                 {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {data.region}
               </h2>
+
+              <p className="text-yellow-400 mb-4 text-center text-sm">
+                Links only — we do not host videos. All content from official sources.
+              </p>
 
               <p className="text-gray-400 mb-8 text-lg">
                 {data.message || `Found ${Array.isArray(data.titles) ? data.titles.length : 0} titles`} • Page {currentPage} of {data.totalPages || 1}
@@ -492,6 +545,107 @@ export default function Home() {
         </>
       )}
 
+      {/* Top 10 Tab */}
+      {tab === 'top10' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
+            <Star className="text-yellow-400" size={32} />
+            Top 10 Free Titles
+          </h2>
+
+          <p className="text-yellow-400 mb-4 text-center text-sm">
+            Links only — we do not host videos. All content from official sources.
+          </p>
+
+          <p className="text-gray-400 mb-8 text-lg">
+            The most popular free movies and shows available in your region right now.
+          </p>
+
+          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
+            <div className="flex items-center gap-3">
+              <Globe size={20} />
+              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="US">United States</option>
+                <option value="GB">United Kingdom</option>
+                <option value="CA">Canada</option>
+                <option value="AU">Australia</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Tv size={20} />
+              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="movie,tv_series">All</option>
+                <option value="movie">Movies</option>
+                <option value="tv_series">TV Shows</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="text-lg font-medium hidden md:block">Genre:</label>
+              <select value={topGenre} onChange={(e) => setTopGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                <option value="">All Genres (Overall Top 10)</option>
+                {genres.map(g => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
+              <p className="text-xl">Loading top 10...</p>
+            </div>
+          )}
+
+          {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
+
+          {!loading && data && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+              {data.titles.map((title: any) => (
+                <div
+                  key={title.id}
+                  onClick={() => setSelectedTitle(title)}
+                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                >
+                  <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+                    {title.poster_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                        alt={title.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                      {title.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                    </p>
+                    <button
+                      className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                    >
+                      View Free Sources
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
@@ -499,6 +653,11 @@ export default function Home() {
             <Radio className="text-purple-400" size={32} />
             Live & Free UK TV Services
           </h2>
+
+          <p className="text-yellow-400 mb-4 text-center text-sm">
+            Links only — we do not host videos. All content from official sources.
+          </p>
+
           <p className="text-gray-400 mb-10 text-lg">
             Click any service to open the official live or catch-up player in a new tab.<br />
             Some require a UK TV licence or VPN if you're outside the UK.
@@ -541,6 +700,11 @@ export default function Home() {
             <Plus className="text-purple-400" size={32} />
             My Custom Streams
           </h2>
+
+          <div className="bg-red-900/50 border border-red-600 text-red-200 p-4 mb-6 rounded-lg">
+            <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams (e.g. official FAST channels, personal cameras, free public feeds). Do NOT add pirated, copyrighted, or illegal links. You are solely responsible for the legality of any URL you add. We do not review or endorse user links.
+          </div>
+
           <p className="text-gray-400 mb-6 text-lg">
             Add your own HLS/m3u8 or direct video links (public streams only).<br />
             Links are saved in your browser only — private & local.
@@ -628,6 +792,11 @@ export default function Home() {
             <Heart className="text-red-400" size={32} />
             My Favorites ({favorites.length})
           </h2>
+
+          <p className="text-yellow-400 mb-4 text-center text-sm">
+            Links only — we do not host videos. All content from official sources.
+          </p>
+
           <p className="text-gray-400 mb-10 text-lg">
             Titles you've saved. Click to view free sources.
           </p>
@@ -774,8 +943,9 @@ export default function Home() {
       )}
 
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
-        <p>Only public & official free streams. All content belongs to its original owners.</p>
+        <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
+          <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> | 
           <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> | 
           <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
         </p>
