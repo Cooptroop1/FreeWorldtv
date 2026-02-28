@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
+import { Redis } from '@upstash/redis';
 
 // Use env vars (set in Vercel/Render)
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
@@ -65,6 +66,9 @@ export default function Home() {
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Redis client (Vercel KV)
+  const redis = Redis.fromEnv();
+
   // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
   const toggleFavorite = (title: any) => {
@@ -76,18 +80,16 @@ export default function Home() {
     }
   };
 
-  // Load favorites on mount
   useEffect(() => {
     const saved = localStorage.getItem('favorites');
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
-  // Save favorites when changed
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  // Custom links (unchanged)
+  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -120,14 +122,28 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search
+  // Fetch titles / search with KV caching
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-      setData(null); // Clear old data to stop flicker
+
+      // Unique cache key
+      const cacheKey = `wm-cache:${tab}:${region}:${contentType}:${currentPage}:${debouncedSearch || 'no-search'}:${selectedGenre || topGenre || 'no-genre'}`;
+
+      // Check cache first
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          setData(cached);
+          setLoading(false);
+          return;
+        }
+      } catch (cacheErr) {
+        console.warn('Redis get failed:', cacheErr);
+      }
 
       try {
         let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=1&limit=20`;
@@ -149,6 +165,12 @@ export default function Home() {
 
         if (json.success) {
           setData(json);
+          // Cache for 1 hour
+          try {
+            await redis.set(cacheKey, json, { ex: 3600 });
+          } catch (cacheErr) {
+            console.warn('Redis set failed:', cacheErr);
+          }
         } else {
           setError(json.error || 'Failed to load titles');
         }
@@ -159,7 +181,7 @@ export default function Home() {
     };
 
     fetchData();
-  }, [region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre, tab]);
+  }, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -653,16 +675,13 @@ export default function Home() {
             <Radio className="text-purple-400" size={32} />
             Live & Free UK TV Services
           </h2>
-
           <p className="text-yellow-400 mb-4 text-center text-sm">
             Links only — we do not host videos. All content from official sources.
           </p>
-
           <p className="text-gray-400 mb-10 text-lg">
             Click any service to open the official live or catch-up player in a new tab.<br />
             Some require a UK TV licence or VPN if you're outside the UK.
           </p>
-
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
             {liveChannels.map((channel) => (
               <div
@@ -700,16 +719,13 @@ export default function Home() {
             <Plus className="text-purple-400" size={32} />
             My Custom Streams
           </h2>
-
           <div className="bg-red-900/50 border border-red-600 text-red-200 p-4 mb-6 rounded-lg">
             <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams (e.g. official FAST channels, personal cameras, free public feeds). Do NOT add pirated, copyrighted, or illegal links. You are solely responsible for the legality of any URL you add. We do not review or endorse user links.
           </div>
-
           <p className="text-gray-400 mb-6 text-lg">
             Add your own HLS/m3u8 or direct video links (public streams only).<br />
             Links are saved in your browser only — private & local.
           </p>
-
           <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
