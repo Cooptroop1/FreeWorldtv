@@ -397,7 +397,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* Discover Tab – INFINITE SCROLL + MOVIE STRUCTURED DATA */}
+      {/* Discover Tab – INFINITE SCROLL + PUBLISHER CONTENT (fixes AdSense "Needs attention") */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -411,6 +411,19 @@ export default function Home() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
+              {/* PUBLISHER CONTENT – This is what Google Ads requires to clear the warning */}
+              <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
+                <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  We help you discover completely legal free movies, TV shows and live TV channels from official providers like Tubi, Pluto TV, BBC iPlayer, ITVX and more. 
+                  No sign-up, no hidden fees — just direct links to the best free content available in your region right now.
+                </p>
+                <p className="text-gray-300 leading-relaxed">
+                  All titles shown are 100% free to watch on the original services. We never host or stream any video ourselves. 
+                  Availability changes daily, so bookmark us and check back often!
+                </p>
+              </div>
+
               <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
                 <MonitorPlay className="text-green-400" size={32} />
                 {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {region}
@@ -477,7 +490,7 @@ export default function Home() {
                 })}
               </div>
 
-              {/* MOVIE STRUCTURED DATA (JSON-LD) - helps Google show rich results */}
+              {/* MOVIE STRUCTURED DATA (JSON-LD) */}
               <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
