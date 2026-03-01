@@ -334,14 +334,14 @@ export default function ClientTabs() {
     return diff === 0 ? 'just now' : `${diff} hour${diff > 1 ? 's' : ''} ago`;
   };
 
-  // NEW: Global Search + Advanced Filters + Surprise Me
+  // Filters state
   const [showFilters, setShowFilters] = useState(false);
   const [selectedGenresFilter, setSelectedGenresFilter] = useState<number[]>([]);
   const [minYearFilter, setMinYearFilter] = useState('');
   const [maxYearFilter, setMaxYearFilter] = useState('');
   const [minRatingFilter, setMinRatingFilter] = useState(0);
 
-  // FIXED: filteredTitles now respects contentType (Movies / TV Shows / All)
+  // Filtered titles (respects contentType)
   const filteredTitles = allTitles.filter((title: any) => {
     const matchesSearch = !searchQuery || title.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
@@ -367,7 +367,7 @@ export default function ClientTabs() {
     }
   };
 
-  // Netflix-style rows (use filteredTitles)
+  // Netflix-style rows
   const trending = filteredTitles.slice(0, 12);
   const newReleases = filteredTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
@@ -388,7 +388,7 @@ export default function ClientTabs() {
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
 
-        {/* Global Search + Surprise Me + Filters */}
+        {/* SINGLE CLEAN GLOBAL SEARCH BAR */}
         <div className="flex flex-wrap gap-3 mb-8">
           <div className="flex-1 relative min-w-[280px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -414,7 +414,7 @@ export default function ClientTabs() {
           </button>
         </div>
 
-        {/* Tab navigation */}
+        {/* Tab navigation ONLY */}
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
           <button
             onClick={() => setTab('discover')}
@@ -457,58 +457,6 @@ export default function ClientTabs() {
             <Star size={20} /> Top 10
           </button>
         </div>
-
-        {/* Content Type selector (Movies / TV Shows / All) — RESTORED */}
-        {(tab === 'discover' || tab === 'top10') && (
-          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
-            <div className="flex items-center gap-3 flex-1 min-w-[220px]">
-              <Search size={20} className="text-gray-400" />
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="Search free movies & shows..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
-                />
-                {searchQuery && (
-                  <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
-                    <X size={18} />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Globe size={20} />
-              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="US">United States</option>
-                <option value="GB">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="AU">Australia</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <Tv size={20} />
-              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="movie,tv_series">All</option>
-                <option value="movie">Movies</option>
-                <option value="tv_series">TV Shows</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="text-lg font-medium hidden md:block">Genre:</label>
-              <select value={selectedGenre || topGenre} onChange={(e) => {
-                setSelectedGenre(e.target.value);
-                setTopGenre(e.target.value);
-              }} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">All Genres</option>
-                {genres.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Discover Tab — FULL NETFLIX CAROUSELS + PUBLISHER BOX + SEO */}
@@ -1135,12 +1083,20 @@ export default function ClientTabs() {
         </button>
       )}
 
-      {/* Filters Modal */}
+      {/* Filters Modal — with X close button and Movies/TV selector */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
-          <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-8">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-8 relative">
+            {/* X CLOSE BUTTON */}
+            <button
+              onClick={() => setShowFilters(false)}
+              className="absolute top-6 right-6 text-4xl text-gray-400 hover:text-white transition-colors"
+            >
+              ×
+            </button>
+
             <h2 className="text-2xl font-bold mb-6">Advanced Filters</h2>
-            
+
             <div className="mb-6">
               <h3 className="font-medium mb-3">Genres</h3>
               <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
@@ -1195,6 +1151,20 @@ export default function ClientTabs() {
               </select>
             </div>
 
+            {/* MOVIES / TV SHOWS SELECTOR INSIDE FILTERS */}
+            <div className="mb-8">
+              <label className="block text-sm font-medium mb-2">Content Type</label>
+              <select
+                value={contentType}
+                onChange={(e) => setContentType(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3"
+              >
+                <option value="movie,tv_series">All (Movies &amp; TV Shows)</option>
+                <option value="movie">Movies Only</option>
+                <option value="tv_series">TV Shows Only</option>
+              </select>
+            </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => {
@@ -1202,6 +1172,7 @@ export default function ClientTabs() {
                   setMinYearFilter('');
                   setMaxYearFilter('');
                   setMinRatingFilter(0);
+                  setContentType('movie,tv_series');
                 }}
                 className="flex-1 py-3 bg-gray-700 rounded-xl"
               >
