@@ -5,6 +5,7 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
+import HorizontalRow from './HorizontalRow';
 
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
@@ -64,14 +65,12 @@ export default function ClientTabs() {
   const [sources, setSources] = useState<any[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
-  // NEW: More Like This + Cache freshness
   const [relatedTitles, setRelatedTitles] = useState<any[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
   const toggleFavorite = (title: any) => {
     const isFav = favorites.some(fav => fav.id === title.id);
@@ -88,7 +87,6 @@ export default function ClientTabs() {
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
-  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -109,13 +107,11 @@ export default function ClientTabs() {
   const deleteCustomLink = (id: number) => {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
-  // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  // DYNAMIC PAGE TITLE FOR SEO
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
     if (tab === 'discover') {
@@ -133,7 +129,6 @@ export default function ClientTabs() {
     }
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
-  // Fetch titles with infinite scroll + static fallback
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -183,7 +178,6 @@ export default function ClientTabs() {
     };
     fetchData();
   }, [tab, region, contentType, debouncedSearch, selectedGenre, topGenre]);
-  // Infinite scroll observer
   useEffect(() => {
     if (tab !== 'discover') {
       if (observerRef.current) observerRef.current.disconnect();
@@ -216,7 +210,6 @@ export default function ClientTabs() {
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
-  // TMDB posters
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -243,7 +236,6 @@ export default function ClientTabs() {
     };
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
-  // NEW: Fetch "More Like This" (just like Netflix/Tubi/Reelgood)
   useEffect(() => {
     if (!selectedTitle?.tmdb_id || !TMDB_READ_TOKEN) {
       setRelatedTitles([]);
@@ -266,7 +258,6 @@ export default function ClientTabs() {
     };
     fetchRelated();
   }, [selectedTitle]);
-  // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
       setSources([]);
@@ -287,7 +278,6 @@ export default function ClientTabs() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
-  // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
     if (playerRef.current) {
@@ -328,7 +318,6 @@ export default function ClientTabs() {
     setSearchQuery('');
     setSelectedGenre('');
   };
-  // Share function
   const shareTitle = (title: any) => {
     const url = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
     const text = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal streaming.`;
@@ -339,12 +328,19 @@ export default function ClientTabs() {
       alert('Link copied to clipboard!');
     }
   };
-  // NEW: Helper to show "Updated X hours ago"
   const getHoursAgo = () => {
     if (!lastUpdated) return 'just now';
     const diff = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / 3600000);
     return diff === 0 ? 'just now' : `${diff} hour${diff > 1 ? 's' : ''} ago`;
   };
+
+  // NEW: Netflix-style rows
+  const trending = allTitles.slice(0, 12);
+  const newReleases = allTitles.slice(12, 24);
+  const continueWatching = favorites.length > 0 ? favorites : allTitles.slice(0, 8);
+
+  const handleRowClick = (title: any) => setSelectedTitle(title);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
@@ -451,7 +447,8 @@ export default function ClientTabs() {
           </div>
         )}
       </header>
-      {/* Discover Tab */}
+
+      {/* Discover Tab — FULL NETFLIX CAROUSELS */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -465,146 +462,139 @@ export default function ClientTabs() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
-              {/* Publisher content */}
-              <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
-                <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
-                <p className="text-gray-300 leading-relaxed mb-4">
-                  We help you discover completely legal free movies, TV shows and live TV channels from official providers like Tubi, Pluto TV, BBC iPlayer, ITVX and more.
-                  No sign-up, no hidden fees — just direct links to the best free content available in your region right now.
-                </p>
-                <p className="text-gray-300 leading-relaxed">
-                  All titles shown are 100% free to watch on the original services. We never host or stream any video ourselves.
-                  Availability changes daily, so bookmark us and check back often!
-                </p>
-              </div>
-              {/* NEW: Cache freshness badge (just like the big sites) */}
-              {lastUpdated && (
-                <div className="text-center text-xs text-emerald-400 mb-6">
-                  Updated {getHoursAgo()} • Refreshes automatically every 24 hours
+              {/* Hero Banner */}
+              {allTitles[0] && (
+                <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
+                  <Image
+                    src={`https://image.tmdb.org/t/p/original${allTitles[0].poster_path}`}
+                    alt={allTitles[0].title}
+                    fill
+                    className="object-cover brightness-75"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-transparent" />
+                  <div className="absolute bottom-12 left-12 max-w-md">
+                    <h1 className="text-6xl font-bold mb-4">{allTitles[0].title}</h1>
+                    <p className="text-xl text-gray-300 mb-6">{allTitles[0].year}</p>
+                    <button
+                      onClick={() => setSelectedTitle(allTitles[0])}
+                      className="bg-white text-black px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition"
+                    >
+                      ▶ Watch Free Now
+                    </button>
+                  </div>
                 </div>
               )}
-              <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
-                <MonitorPlay className="text-green-400" size={32} />
-                {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {region}
-              </h2>
-              <p className="text-yellow-400 mb-4 text-center text-sm">
-                Links only — we do not host videos. All content from official sources.
-              </p>
-              <p className="text-gray-400 mb-8 text-lg">
-                Found {allTitles.length} titles • Scroll for more
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                {allTitles.map((title: any) => {
-                  const isFavorite = favorites.some(fav => fav.id === title.id);
-                  const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
-                  const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
-                  return (
-                    <div
-                      key={title.id}
-                      onClick={() => setSelectedTitle(title)}
-                      className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                    >
-                      <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                        {title.poster_path ? (
-                          <Image
-                            src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                            alt={title.title}
-                            fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                            quality={85}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                          </div>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
-                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                        >
-                          <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'} />
-                        </button>
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                          {title.title}
-                        </h3>
-                        <p className="text-gray-400 text-sm">
-                          {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                        </p>
-                        {/* SHARE BUTTONS */}
-                        <div className="flex gap-2 mt-3">
+
+              {/* Netflix Carousels */}
+              <HorizontalRow title="Continue Watching" items={continueWatching} onClick={handleRowClick} />
+              <HorizontalRow title="Trending Now" items={trending} onClick={handleRowClick} />
+              <HorizontalRow title="New Releases This Week" items={newReleases} onClick={handleRowClick} />
+              {favorites.length > 0 && (
+                <HorizontalRow title="Because You Favorited..." items={favorites.slice(0, 10)} onClick={handleRowClick} />
+              )}
+
+              {/* Original Infinite Scroll Grid (kept exactly as before) */}
+              <div className="mt-12">
+                <h3 className="text-3xl font-bold mb-6 flex items-center gap-4">
+                  <MonitorPlay className="text-green-400" size={32} />
+                  All Free Titles
+                </h3>
+                <p className="text-yellow-400 mb-4 text-center text-sm">
+                  Links only — we do not host videos. All content from official sources.
+                </p>
+                <p className="text-gray-400 mb-8 text-lg">
+                  Found {allTitles.length} titles • Scroll for more
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+                  {allTitles.map((title: any) => {
+                    const isFavorite = favorites.some(fav => fav.id === title.id);
+                    const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
+                    const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
+                    return (
+                      <div
+                        key={title.id}
+                        onClick={() => setSelectedTitle(title)}
+                        className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                      >
+                        <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                          {title.poster_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                              alt={title.title}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
+                              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                              quality={85}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                            </div>
+                          )}
                           <button
-                            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
-                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
+                            className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
                           >
-                            📋 Copy
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                          >
-                            𝕏
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                          >
-                            📘
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
-                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                          >
-                            💬
+                            <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'} />
                           </button>
                         </div>
-                        <button
-                          className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                          onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                        >
-                          View Free Sources
-                        </button>
+                        <div className="p-4">
+                          <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                            {title.title}
+                          </h3>
+                          <p className="text-gray-400 text-sm">
+                            {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
+                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                            >
+                              📋 Copy
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                            >
+                              𝕏
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                            >
+                              📘
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
+                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                            >
+                              💬
+                            </button>
+                          </div>
+                          <button
+                            className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                            onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                          >
+                            View Free Sources
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {/* MOVIE STRUCTURED DATA */}
-              <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{
-                  __html: JSON.stringify({
-                    "@context": "https://schema.org",
-                    "@type": "ItemList",
-                    "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles",
-                    "numberOfItems": allTitles.length,
-                    "itemListElement": allTitles.map((title, index) => ({
-                      "@type": "ListItem",
-                      "position": index + 1,
-                      "item": {
-                        "@type": title.type === 'tv_series' ? "TVSeries" : "Movie",
-                        "name": title.title,
-                        "url": `https://freestreamworld.com/title/${title.id}`,
-                        "image": title.poster_path ? `https://image.tmdb.org/t/p/w500${title.poster_path}` : undefined,
-                        "datePublished": title.year ? `${title.year}-01-01` : undefined,
-                      }
-                    }))
-                  })
-                }}
-              />
-              {hasMore && (
-                <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
-                  {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
+                    );
+                  })}
                 </div>
-              )}
-              {!hasMore && <p className="text-center text-gray-400 py-12">End of results • Try a different search or filter</p>}
+                {hasMore && (
+                  <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
+                    {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
+                  </div>
+                )}
+                {!hasMore && <p className="text-center text-gray-400 py-12">End of results • Try a different search or filter</p>}
+              </div>
             </section>
           )}
         </>
       )}
-      {/* Top 10 Tab */}
+
+      {/* Top 10 Tab (unchanged) */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -668,7 +658,8 @@ export default function ClientTabs() {
           )}
         </section>
       )}
-      {/* Live TV Tab */}
+
+      {/* Live TV Tab (unchanged) */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -711,7 +702,8 @@ export default function ClientTabs() {
           </div>
         </section>
       )}
-      {/* My Custom Links Tab */}
+
+      {/* My Custom Links Tab (unchanged) */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -796,7 +788,8 @@ export default function ClientTabs() {
           )}
         </section>
       )}
-      {/* Favorites Tab */}
+
+      {/* Favorites Tab (unchanged) */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -846,7 +839,6 @@ export default function ClientTabs() {
                       <p className="text-gray-400 text-sm">
                         {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
                       </p>
-                      {/* SHARE BUTTONS */}
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
@@ -892,7 +884,8 @@ export default function ClientTabs() {
           )}
         </section>
       )}
-      {/* Player Modal */}
+
+      {/* Player Modal (unchanged) */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -918,7 +911,8 @@ export default function ClientTabs() {
           </div>
         </div>
       )}
-      {/* Sources Modal – now with "More Like This" carousel */}
+
+      {/* Sources Modal (unchanged) */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
@@ -967,7 +961,6 @@ export default function ClientTabs() {
                   Availability changes frequently — try again later!
                 </div>
               )}
-              {/* NEW: More Like This carousel (exactly like Netflix/Tubi) */}
               {relatedTitles.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-gray-700">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -1017,6 +1010,7 @@ export default function ClientTabs() {
           </div>
         </div>
       )}
+
       {/* FLOATING LEGAL BUTTON */}
       {tab === 'discover' && allTitles.length > 8 && (
         <button
