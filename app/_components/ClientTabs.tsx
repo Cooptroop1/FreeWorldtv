@@ -115,6 +115,19 @@ export default function ClientTabs() {
   // FIXED: postersFetched Set (prevents duplicates + clears on filter changes)
   const postersFetched = useRef(new Set<number>());
 
+  // NEW: Providers with logos (for the Sources Modal)
+  const [allProviders, setAllProviders] = useState<any[]>([]);
+
+  // Load provider logos once (cached from the daily snapshot)
+  useEffect(() => {
+    fetch('/api/providers')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setAllProviders(data.providers);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -202,16 +215,13 @@ export default function ClientTabs() {
   // FIXED + IMPROVED: poster fetching (retries missing posters + only new ones)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
-
     const fetchPosters = async () => {
       const titlesNeedingPoster = allTitles.filter((title: any) =>
         title.tmdb_id &&
         title.tmdb_type &&
         (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
       );
-
       if (titlesNeedingPoster.length === 0) return;
-
       const updates = await Promise.all(
         titlesNeedingPoster.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
@@ -231,7 +241,6 @@ export default function ClientTabs() {
           }
         })
       );
-
       setAllTitles(prev =>
         prev.map(title => {
           const update = updates.find((u: any) => u.id === title.id);
@@ -239,7 +248,6 @@ export default function ClientTabs() {
         })
       );
     };
-
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
 
@@ -450,8 +458,6 @@ export default function ClientTabs() {
   const newReleases = filteredTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
 
-  const handleRowClick = (title: any) => setSelectedTitle(title);
-
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
     if (tab === 'discover') {
@@ -476,7 +482,7 @@ export default function ClientTabs() {
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-        
+       
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
@@ -579,7 +585,7 @@ export default function ClientTabs() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-          
+         
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               {/* Publisher content */}
@@ -1080,7 +1086,7 @@ export default function ClientTabs() {
         </div>
       )}
 
-      {/* Sources Modal */}
+      {/* Sources Modal — UPDATED WITH PROVIDER LOGOS */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
@@ -1096,6 +1102,7 @@ export default function ClientTabs() {
                   ×
                 </button>
               </div>
+
               {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : sources.length > 0 ? (
@@ -1103,25 +1110,46 @@ export default function ClientTabs() {
                   <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                     <MonitorPlay size={22} /> Free Streaming Options
                   </h3>
-                  {sources.map((source: any, idx: number) => (
-                    <a
-                      key={idx}
-                      href={source.web_url || '#'}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500"
-                    >
-                      <div className="font-semibold text-lg mb-1">{source.name}</div>
-                      <div className="text-gray-400 text-sm">
-                        Free with Ads {source.format && `• ${source.format}`}
-                      </div>
-                      {source.web_url && (
-                        <div className="mt-3 text-blue-400 text-sm font-medium">
+                  {sources.map((source: any, idx: number) => {
+                    const provider = allProviders.find(p => 
+                      p.name?.toLowerCase() === source.name?.toLowerCase() ||
+                      p.display_name?.toLowerCase() === source.name?.toLowerCase()
+                    );
+                    const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
+
+                    return (
+                      <a
+                        key={idx}
+                        href={source.web_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
+                      >
+                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+                          {logoUrl ? (
+                            <Image
+                              src={logoUrl}
+                              alt={source.name}
+                              width={48}
+                              height={48}
+                              className="object-contain"
+                            />
+                          ) : (
+                            <MonitorPlay size={24} className="text-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
+                          <div className="text-gray-400 text-sm">
+                            Free with Ads {source.format && `• ${source.format}`}
+                          </div>
+                        </div>
+                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
                           Watch now →
                         </div>
-                      )}
-                    </a>
-                  ))}
+                      </a>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-16 text-gray-300 text-lg">
@@ -1129,6 +1157,7 @@ export default function ClientTabs() {
                   Availability changes frequently — try again later!
                 </div>
               )}
+
               {relatedTitles.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-gray-700">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
