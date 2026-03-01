@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
+import { staticFallbackTitles } from '../lib/static-fallback-titles';
 
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
@@ -44,10 +45,13 @@ const genres = [
 export default function Home() {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
+  const [allTitles, setAllTitles] = useState<any[]>([]);           // ← NEW: accumulates for infinite scroll
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);           // ← NEW
+  const [hasMore, setHasMore] = useState(true);                    // ← NEW
   const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);                             // ← NEW (replaces currentPage for infinite)
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
   const [topGenre, setTopGenre] = useState('');
@@ -58,6 +62,9 @@ export default function Home() {
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
   // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
   const toggleFavorite = (title: any) => {
@@ -75,6 +82,7 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
+
   // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
@@ -96,48 +104,116 @@ export default function Home() {
   const deleteCustomLink = (id: number) => {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
+
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  // Fetch titles / search – NOW USING CACHED ROUTE
+
+  // Fetch titles with infinite scroll + static fallback (replaces old fetch)
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+
+    const fetchData = async (isLoadMore = false) => {
+      if (!isLoadMore) {
+        setLoading(true);
+        setAllTitles([]);
+        setPage(1);
+        setHasMore(true);
+        setError(null);
+      } else {
+        setLoadingMore(true);
+      }
+
       try {
-        let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${currentPage}`;
+        let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${isLoadMore ? page + 1 : 1}`;
         if (debouncedSearch) {
-          url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+          url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${isLoadMore ? page + 1 : 1}`;
         } else if (selectedGenre) {
           url += `&genres=${selectedGenre}`;
         }
+
         const res = await fetch(url);
         const json = await res.json();
-        if (json.success) {
-          setData(json);
+
+        let newTitles: any[] = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
+
+        if (newTitles === staticFallbackTitles) {
+          setError('Using cached fallback titles (Watchmode temporarily unavailable)');
+        }
+
+        if (isLoadMore) {
+          setAllTitles(prev => [...prev, ...newTitles]);
+          setPage(prev => prev + 1);
+          setHasMore(newTitles.length >= 48);
         } else {
-          setError(json.error || 'Failed to load titles');
+          setAllTitles(newTitles);
+          setData(json);
+          setPage(1);
+          setHasMore(newTitles.length >= 48);
         }
       } catch (err: any) {
-        setError(err.message || 'Network error');
+        console.error(err);
+        if (!isLoadMore) {
+          setAllTitles(staticFallbackTitles);
+          setError('Using cached fallback titles (network issue)');
+        }
+        setHasMore(false);
       }
       setLoading(false);
+      setLoadingMore(false);
     };
+
     fetchData();
-  }, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
+  }, [tab, region, contentType, debouncedSearch, selectedGenre, topGenre]);
+
+  // Infinite scroll observer
   useEffect(() => {
-    setCurrentPage(1);
-  }, [region, contentType, debouncedSearch, selectedGenre, tab]);
-  // TMDB posters
+    if (tab !== 'discover') {
+      if (observerRef.current) observerRef.current.disconnect();
+      return;
+    }
+
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+        setLoadingMore(true);
+        const loadMore = async () => {
+          try {
+            let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${page + 1}`;
+            if (debouncedSearch) url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${page + 1}`;
+            else if (selectedGenre) url += `&genres=${selectedGenre}`;
+
+            const res = await fetch(url);
+            const json = await res.json();
+            const newTitles = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
+
+            setAllTitles(prev => [...prev, ...newTitles]);
+            setPage(prev => prev + 1);
+            setHasMore(newTitles.length >= 48);
+          } catch {
+            setHasMore(false);
+          }
+          setLoadingMore(false);
+        };
+        loadMore();
+      }
+    });
+
+    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab]);
+
+  // TMDB posters (updated for allTitles)
   useEffect(() => {
-    if (!data?.titles?.length || !TMDB_READ_TOKEN) return;
+    if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
       const updatedTitles = await Promise.all(
-        data.titles.map(async (title: any) => {
+        allTitles.map(async (title: any) => {
           if (!title.tmdb_id || !title.tmdb_type) return title;
           const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
           try {
@@ -155,10 +231,11 @@ export default function Home() {
           }
         })
       );
-      setData({ ...data, titles: updatedTitles });
+      setAllTitles(updatedTitles);
     };
     fetchPosters();
-  }, [data, TMDB_READ_TOKEN]);
+  }, [allTitles, TMDB_READ_TOKEN]);
+
   // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
@@ -180,6 +257,7 @@ export default function Home() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
+
   // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
@@ -217,16 +295,12 @@ export default function Home() {
       }
     };
   }, [selectedChannel]);
-  const goToNextPage = () => {
-    if (data && currentPage < (data.totalPages || 1)) setCurrentPage(prev => prev + 1);
-  };
-  const goToPrevPage = () => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
-  };
+
   const clearSearch = () => {
     setSearchQuery('');
     setSelectedGenre('');
   };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
@@ -333,7 +407,8 @@ export default function Home() {
           </div>
         )}
       </header>
-      {/* Discover Tab */}
+
+      {/* Discover Tab – INFINITE SCROLL */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -345,113 +420,87 @@ export default function Home() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-          {!loading && data && (
+          {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
                 <MonitorPlay className="text-green-400" size={32} />
-                {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {data.region}
+                {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {region}
               </h2>
               <p className="text-yellow-400 mb-4 text-center text-sm">
                 Links only — we do not host videos. All content from official sources.
               </p>
               <p className="text-gray-400 mb-8 text-lg">
-                {data.message || `Found ${Array.isArray(data.titles) ? data.titles.length : 0} titles`} • Page {currentPage} of {data.totalPages || 1}
+                Found {allTitles.length} titles • Scroll for more
               </p>
-              {Array.isArray(data.titles) && data.titles.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                    {data.titles.map((title: any) => {
-                      const isFavorite = favorites.some(fav => fav.id === title.id);
-                      return (
-                        <div
-                          key={title.id}
-                          onClick={() => setSelectedTitle(title)}
-                          className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+                {allTitles.map((title: any) => {
+                  const isFavorite = favorites.some(fav => fav.id === title.id);
+                  return (
+                    <div
+                      key={title.id}
+                      onClick={() => setSelectedTitle(title)}
+                      className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                    >
+                      <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+                        {title.poster_path ? (
+                          <img
+                            src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                            alt={title.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(title);
+                          }}
+                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
                         >
-                          <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
-                            {title.poster_path ? (
-                              <img
-                                src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                                alt={title.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                              </div>
-                            )}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(title);
-                              }}
-                              className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                            >
-                              <Heart
-                                size={20}
-                                className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'}
-                              />
-                            </button>
-                          </div>
-                          <div className="p-4">
-                            <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                              {title.title}
-                            </h3>
-                            <p className="text-gray-400 text-sm">
-                              {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                            </p>
-                            <button
-                              className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                              onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                            >
-                              View Free Sources
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-center items-center gap-6 mt-12">
-                    <button
-                      onClick={goToPrevPage}
-                      disabled={currentPage === 1 || loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronLeft size={20} />
-                      Previous
-                    </button>
-                    <span className="text-lg font-medium px-6 py-3 bg-gray-800 rounded-lg">
-                      Page {currentPage} of {data.totalPages}
-                    </span>
-                    <button
-                      onClick={goToNextPage}
-                      disabled={currentPage >= (data.totalPages || 1) || loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Next
-                      <ChevronRight size={20} />
-                    </button>
-                  </div>
-                </>
-              ) : (
-                !loading && (
-                  <div className="text-center py-20 text-xl text-gray-300">
-                    {debouncedSearch ? (
-                      <>No free matches found for "{debouncedSearch}".<br />Try another term like "Matrix" or "John Wick".</>
-                    ) : (
-                      'No titles match your current filters. Try changing region, content type or genre.'
-                    )}
-                  </div>
-                )
+                          <Heart
+                            size={20}
+                            className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'}
+                          />
+                        </button>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                          {title.title}
+                        </h3>
+                        <p className="text-gray-400 text-sm">
+                          {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                        </p>
+                        <button
+                          className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                          onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                        >
+                          View Free Sources
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Infinite Scroll Sentinel */}
+              {hasMore && (
+                <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
+                  {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
+                </div>
               )}
+              {!hasMore && <p className="text-center text-gray-400 py-12">End of results • Try a different search or filter</p>}
             </section>
           )}
         </>
       )}
-      {/* Top 10 Tab */}
+
+      {/* Top 10 Tab (single page – uses first 10 titles) */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -471,9 +520,9 @@ export default function Home() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-          {!loading && data && (
+          {!loading && allTitles.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {data.titles?.map((title: any) => (
+              {allTitles.slice(0, 10).map((title: any) => (
                 <div
                   key={title.id}
                   onClick={() => setSelectedTitle(title)}
@@ -515,6 +564,7 @@ export default function Home() {
           )}
         </section>
       )}
+
       {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
@@ -558,6 +608,7 @@ export default function Home() {
           </div>
         </section>
       )}
+
       {/* My Custom Links Tab */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
@@ -643,6 +694,7 @@ export default function Home() {
           )}
         </section>
       )}
+
       {/* Favorites Tab */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
@@ -711,6 +763,7 @@ export default function Home() {
           )}
         </section>
       )}
+
       {/* Player Modal */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
@@ -737,6 +790,7 @@ export default function Home() {
           </div>
         </div>
       )}
+
       {/* Sources Modal */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -790,6 +844,7 @@ export default function Home() {
           </div>
         </div>
       )}
+
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
