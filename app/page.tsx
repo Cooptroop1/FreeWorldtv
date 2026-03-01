@@ -6,13 +6,15 @@ import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { Redis } from '@upstash/redis';
 
-// Use env vars (set in Vercel/Render)
-const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
-const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
+// Redis client (Vercel KV)
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
   token: process.env.KV_REST_API_TOKEN!,
 });
+
+// Use env vars (set in Vercel/Render)
+const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
+const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
 // Public live channels (official links)
 const liveChannels = [
@@ -69,9 +71,6 @@ export default function Home() {
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Redis client (Vercel KV)
-  const redis = Redis.fromEnv();
 
   // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
