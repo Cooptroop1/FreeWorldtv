@@ -12,10 +12,10 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
 
-  // FIRST: Check full catalog cache (your new daily preload)
+  // FIRST: Check full catalog cache (your daily preload)
   try {
     const fullCatalog = await kv.get('full_free_catalog');
-    if (fullCatalog && !query && !genres) {
+    if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres) {
       // For popular lists (no search, no genre) → use full cache
       const start = (page - 1) * 48;
       const pagedTitles = fullCatalog.slice(start, start + 48);
@@ -32,17 +32,17 @@ export async function GET(request: NextRequest) {
     console.error('Full catalog read failed (continuing):', e);
   }
 
-  // Fallback to your existing per-page caching (unchanged from before)
+  // Fallback to per-page caching (your original logic)
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}`;
   const cacheTTL = query ? 1800 : 86400;
 
   try {
     const cached = await kv.get(cacheKey);
     if (cached) return NextResponse.json({ success: true, ...cached, fromCache: true });
-  } catch (e) {}
+  } catch (e) {
+    console.error('KV read failed (continuing):', e);
+  }
 
-  // ... rest of your existing fetch code (kept exactly the same) ...
-  // (I kept your full logic here so you can just replace the file)
   let apiUrl = '';
   if (query) {
     apiUrl = `${BASE_URL}/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
