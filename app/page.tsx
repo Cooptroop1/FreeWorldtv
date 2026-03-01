@@ -118,41 +118,39 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search WITH KV CACHING (server-side)
-useEffect(() => {
-  if (tab !== 'discover' && tab !== 'top10') return;
+  // Fetch titles / search (stable direct call - no cached-fetch)
+  useEffect(() => {
+    if (tab !== 'discover' && tab !== 'top10') return;
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
 
-    let url = `/api/cached-fetch?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}&tab=${tab}`;
+      try {
+        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
 
-    if (debouncedSearch) {
-      url += `&query=${encodeURIComponent(debouncedSearch)}`;
-    } else if (selectedGenre) {
-      url += `&genres=${selectedGenre}`;
-    } else if (topGenre) {
-      url += `&genres=${topGenre}`;
-    }
+        if (debouncedSearch) {
+          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+        } else if (selectedGenre) {
+          url += `&genres=${selectedGenre}`;
+        }
 
-    try {
-      const res = await fetch(url);
-      const json = await res.json();
+        const res = await fetch(url);
+        const json = await res.json();
 
-      if (json.success) {
-        setData(json);
-      } else {
-        setError(json.error || 'Failed to load titles');
+        if (json.success) {
+          setData(json);
+        } else {
+          setError(json.error || 'Failed to load titles');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Network error');
       }
-    } catch (err: any) {
-      setError(err.message || 'Network error');
-    }
-    setLoading(false);
-  };
+      setLoading(false);
+    };
 
-  fetchData();
-}, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
+    fetchData();
+  }, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -178,7 +176,7 @@ useEffect(() => {
             if (!res.ok) throw new Error('TMDB error');
             const json = await res.json();
             return { ...title, poster_path: json.poster_path };
-          } catch (err) {
+          } catch {
             return title;
           }
         })
@@ -256,7 +254,7 @@ useEffect(() => {
   }, [selectedChannel]);
 
   const goToNextPage = () => {
-    if (data && currentPage < data.totalPages) setCurrentPage(prev => prev + 1);
+    if (data && currentPage < (data.totalPages || 1)) setCurrentPage(prev => prev + 1);
   };
 
   const goToPrevPage = () => {
@@ -326,7 +324,7 @@ useEffect(() => {
           </button>
         </div>
 
-        {tab === 'discover' && (
+        {(tab === 'discover' || tab === 'top10') && (
           <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
             <div className="flex items-center gap-3 flex-1 min-w-[220px]">
               <Search size={20} className="text-gray-400" />
@@ -367,41 +365,11 @@ useEffect(() => {
 
             <div className="flex items-center gap-3">
               <label className="text-lg font-medium hidden md:block">Genre:</label>
-              <select value={selectedGenre} onChange={(e) => setSelectedGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select value={selectedGenre || topGenre} onChange={(e) => {
+                setSelectedGenre(e.target.value);
+                setTopGenre(e.target.value);
+              }} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">All Genres</option>
-                {genres.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {tab === 'top10' && (
-          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
-            <div className="flex items-center gap-3">
-              <Globe size={20} />
-              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="US">United States</option>
-                <option value="GB">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="AU">Australia</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Tv size={20} />
-              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="movie,tv_series">All</option>
-                <option value="movie">Movies</option>
-                <option value="tv_series">TV Shows</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              <label className="text-lg font-medium hidden md:block">Genre:</label>
-              <select value={topGenre} onChange={(e) => setTopGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="">All Genres (Overall Top 10)</option>
                 {genres.map(g => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
@@ -512,7 +480,7 @@ useEffect(() => {
                     </span>
                     <button
                       onClick={goToNextPage}
-                      disabled={currentPage >= data.totalPages || loading}
+                      disabled={currentPage >= (data.totalPages || 1) || loading}
                       className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       Next
@@ -552,37 +520,6 @@ useEffect(() => {
             The most popular free movies and shows available in your region right now.
           </p>
 
-          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
-            <div className="flex items-center gap-3">
-              <Globe size={20} />
-              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="US">United States</option>
-                <option value="GB">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="AU">Australia</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Tv size={20} />
-              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="movie,tv_series">All</option>
-                <option value="movie">Movies</option>
-                <option value="tv_series">TV Shows</option>
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
-              <label className="text-lg font-medium hidden md:block">Genre:</label>
-              <select value={topGenre} onChange={(e) => setTopGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                <option value="">All Genres (Overall Top 10)</option>
-                {genres.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
@@ -594,7 +531,7 @@ useEffect(() => {
 
           {!loading && data && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {data.titles.map((title: any) => (
+              {data.titles?.map((title: any) => (
                 <div
                   key={title.id}
                   onClick={() => setSelectedTitle(title)}
@@ -689,11 +626,10 @@ useEffect(() => {
             My Custom Streams
           </h2>
           <div className="bg-red-900/50 border border-red-600 text-red-200 p-4 mb-6 rounded-lg">
-            <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams (e.g. official FAST channels, personal cameras, free public feeds). Do NOT add pirated, copyrighted, or illegal links. You are solely responsible for the legality of any URL you add. We do not review or endorse user links.
+            <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams. Do NOT add pirated or illegal links. You are solely responsible.
           </div>
           <p className="text-gray-400 mb-6 text-lg">
-            Add your own HLS/m3u8 or direct video links (public streams only).<br />
-            Links are saved in your browser only — private & local.
+            Add your own HLS/m3u8 links. Saved in your browser only.
           </p>
           <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -752,7 +688,6 @@ useEffect(() => {
                       <button
                         onClick={() => deleteCustomLink(link.id)}
                         className="bg-red-600/70 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
-                        title="Delete link"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -778,10 +713,7 @@ useEffect(() => {
             My Favorites ({favorites.length})
           </h2>
           <p className="text-yellow-400 mb-4 text-center text-sm">
-            Links only — we do not host videos. All content from official sources.
-          </p>
-          <p className="text-gray-400 mb-10 text-lg">
-            Titles you've saved. Click to view free sources.
+            Links only — we do not host videos.
           </p>
           {favorites.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
@@ -836,7 +768,7 @@ useEffect(() => {
           ) : (
             <div className="text-center py-20 text-xl text-gray-300">
               No favorites saved yet.<br />
-              Go to Discover tab and click the heart on any title to add it here.
+              Go to Discover tab and click the heart.
             </div>
           )}
         </section>
