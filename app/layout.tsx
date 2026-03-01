@@ -4,8 +4,8 @@ import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'FreeStream World',
-  description: 'Free movies, TV shows & live channels worldwide - no sign-up needed',
+  title: 'FreeStream World - Free Movies, TV Shows & Live TV (Legal)',
+  description: 'Discover 100% legal free streaming movies, TV shows and live UK TV channels. No sign-up needed. Powered by Watchmode & TMDB.',
   manifest: '/manifest.json',
   icons: {
     icon: '/icon-192.png',
@@ -20,8 +20,8 @@ export const metadata: Metadata = {
   },
   viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
   openGraph: {
-    title: 'FreeStream World',
-    description: 'Discover free movies, TV shows and live channels from around the world',
+    title: 'FreeStream World - Free Legal Streaming',
+    description: 'Watch free movies, TV shows & live TV legally from Tubi, Pluto TV, BBC iPlayer and more.',
     url: 'https://freestreamworld.com',
     siteName: 'FreeStream World',
     images: [
@@ -35,6 +35,11 @@ export const metadata: Metadata = {
     locale: 'en_US',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FreeStream World - Free Movies & Live TV',
+    description: '100% legal free streaming. No sign-up required.',
+  },
 };
 
 export default function RootLayout({
@@ -45,7 +50,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* AdSense global script - paste your code here */}
+        {/* AdSense global script */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
