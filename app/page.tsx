@@ -4,8 +4,10 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../lib/static-fallback-titles';
+
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
+
 // Public live channels (official links)
 const liveChannels = [
   { id: 1, name: 'BBC iPlayer (Live & On-Demand)', category: 'BBC Channels', officialUrl: 'https://www.bbc.co.uk/iplayer' },
@@ -395,7 +397,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* Discover Tab – INFINITE SCROLL */}
+      {/* Discover Tab – INFINITE SCROLL + MOVIE STRUCTURED DATA */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -474,6 +476,32 @@ export default function Home() {
                   );
                 })}
               </div>
+
+              {/* MOVIE STRUCTURED DATA (JSON-LD) - helps Google show rich results */}
+              <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                  __html: JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "ItemList",
+                    "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles",
+                    "numberOfItems": allTitles.length,
+                    "itemListElement": allTitles.map((title, index) => ({
+                      "@type": "ListItem",
+                      "position": index + 1,
+                      "item": {
+                        "@type": title.type === 'tv_series' ? "TVSeries" : "Movie",
+                        "name": title.title,
+                        "url": `https://freestreamworld.com/title/${title.id}`,
+                        "image": title.poster_path ? `https://image.tmdb.org/t/p/w500${title.poster_path}` : undefined,
+                        "datePublished": title.year ? `${title.year}-01-01` : undefined,
+                      }
+                    }))
+                  })
+                }}
+              />
+
+              {/* Infinite Scroll Sentinel */}
               {hasMore && (
                 <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
                   {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
