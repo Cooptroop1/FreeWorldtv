@@ -47,6 +47,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false); // ← NEW
   const [hasMore, setHasMore] = useState(true); // ← NEW
+  const [pauseInfinite, setPauseInfinite] = useState(false); // ← NEW: stops loading when footer button clicked
   const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
   const [page, setPage] = useState(1); // ← NEW (replaces currentPage for infinite)
@@ -162,7 +163,7 @@ export default function Home() {
       return;
     }
     observerRef.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfinite) {
         setLoadingMore(true);
         const loadMore = async () => {
           try {
@@ -187,7 +188,7 @@ export default function Home() {
     return () => {
       if (observerRef.current) observerRef.current.disconnect();
     };
-  }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab]);
+  }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
   // TMDB posters (updated for allTitles)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
@@ -813,12 +814,14 @@ export default function Home() {
         </div>
       )}
 
-      {/* FLOATING LEGAL BUTTON – appears on Discover only (so AdSense + footer links are easy to reach) */}
+      {/* FLOATING LEGAL BUTTON – now with pause so footer stays visible */}
       {tab === 'discover' && allTitles.length > 8 && (
         <button
           onClick={() => {
             const footer = document.querySelector('footer');
             footer?.scrollIntoView({ behavior: 'smooth' });
+            setPauseInfinite(true);
+            setTimeout(() => setPauseInfinite(false), 10000); // 10-second pause – footer stays in view
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transition-all hover:scale-105"
         >
