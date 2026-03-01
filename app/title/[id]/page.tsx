@@ -1,14 +1,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MonitorPlay, Star, Clock, Calendar, Users, ArrowLeft } from 'lucide-react';
+import { MonitorPlay, Star, Clock, Users, ArrowLeft } from 'lucide-react';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
 async function getTitleDetails(id: string) {
   try {
-    // Get Watchmode data (cached)
     const wmRes = await fetch(`https://freestreamworld.com/api/title-sources?id=${id}&region=US`, {
       cache: 'no-store'
     });
@@ -19,7 +18,6 @@ async function getTitleDetails(id: string) {
 
     const type = watchmodeTitle.tmdb_type === 'movie' ? 'movie' : 'tv';
 
-    // Get full TMDB details (plot, trailer, cast, backdrop)
     const tmdbRes = await fetch(
       `https://api.themoviedb.org/3/${type}/${watchmodeTitle.tmdb_id}?language=en-US&append_to_response=credits,videos`,
       {
@@ -94,7 +92,6 @@ export default async function TitlePage({ params }: { params: { id: string } }) 
 
         <div className="absolute bottom-0 left-0 right-0 p-8 md:p-16 max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row gap-8 items-end">
-            {/* Poster */}
             <div className="flex-shrink-0 -mb-12 md:mb-0 relative z-10">
               <Image
                 src={`${TMDB_IMAGE_BASE}/w500${title.poster_path}`}
@@ -106,7 +103,6 @@ export default async function TitlePage({ params }: { params: { id: string } }) 
               />
             </div>
 
-            {/* Title Info */}
             <div className="max-w-2xl">
               <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tight">
                 {title.title || title.name}
@@ -125,14 +121,12 @@ export default async function TitlePage({ params }: { params: { id: string } }) 
 
       <div className="max-w-6xl mx-auto px-6 md:px-8 pt-16">
         <div className="grid md:grid-cols-12 gap-12">
-          {/* Main Content */}
           <div className="md:col-span-8">
             <h2 className="text-3xl font-bold mb-6">Story</h2>
             <p className="text-lg text-gray-300 leading-relaxed">
               {title.overview || "No plot summary available yet."}
             </p>
 
-            {/* Trailer */}
             {trailerUrl && (
               <div className="mt-16">
                 <h3 className="text-2xl font-bold mb-6">Official Trailer</h3>
@@ -150,7 +144,6 @@ export default async function TitlePage({ params }: { params: { id: string } }) 
             )}
           </div>
 
-          {/* Sidebar */}
           <div className="md:col-span-4 space-y-10">
             <div>
               <h4 className="uppercase text-xs tracking-widest text-gray-500 mb-3">Genres</h4>
@@ -192,7 +185,6 @@ export default async function TitlePage({ params }: { params: { id: string } }) 
           </div>
         </div>
 
-        {/* Free Sources Section with Logos */}
         <div className="mt-20">
           <h3 className="text-3xl font-bold mb-8">Watch Free Now</h3>
           <div className="grid gap-4">
