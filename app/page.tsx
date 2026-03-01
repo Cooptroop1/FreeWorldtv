@@ -4,6 +4,9 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
+// Use env vars (set in Vercel/Render)
+const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
+
 // Public live channels (official links)
 const liveChannels = [
   { id: 1, name: 'BBC iPlayer (Live & On-Demand)', category: 'BBC Channels', officialUrl: 'https://www.bbc.co.uk/iplayer' },
