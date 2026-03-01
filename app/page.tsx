@@ -1,13 +1,8 @@
 'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
-
-// Use env vars (set in Vercel/Render)
-const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
-const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
 // Public live channels (official links)
 const liveChannels = [
@@ -22,7 +17,6 @@ const liveChannels = [
   { id: 9, name: 'Pluto TV UK (FAST Channels)', category: 'Free Ad-Supported TV', officialUrl: 'https://pluto.tv/en/live-tv' },
   { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
-
 // Genres
 const genres = [
   { id: 28, name: 'Action' },
@@ -44,7 +38,6 @@ const genres = [
   { id: 10752, name: 'War' },
   { id: 37, name: 'Western' },
 ];
-
 export default function Home() {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
@@ -56,15 +49,12 @@ export default function Home() {
   const [selectedGenre, setSelectedGenre] = useState('');
   const [topGenre, setTopGenre] = useState('');
   const [error, setError] = useState<string | null>(null);
-
   const [selectedTitle, setSelectedTitle] = useState<any>(null);
   const [sources, setSources] = useState<any[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
-
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
   // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
   const toggleFavorite = (title: any) => {
@@ -75,30 +65,24 @@ export default function Home() {
       setFavorites([...favorites, title]);
     }
   };
-
   useEffect(() => {
     const saved = localStorage.getItem('favorites');
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
-
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
-
   // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
-
   useEffect(() => {
     const saved = localStorage.getItem('customLinks');
     if (saved) setCustomLinks(JSON.parse(saved));
   }, []);
-
   useEffect(() => {
     localStorage.setItem('customLinks', JSON.stringify(customLinks));
   }, [customLinks]);
-
   const addCustomLink = () => {
     if (newLinkName.trim() && newLinkUrl.trim().startsWith('http')) {
       setCustomLinks([...customLinks, { id: Date.now(), name: newLinkName.trim(), url: newLinkUrl.trim() }]);
@@ -106,38 +90,30 @@ export default function Home() {
       setNewLinkUrl('');
     }
   };
-
   const deleteCustomLink = (id: number) => {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
-
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
-  // Fetch titles / search (stable direct call - no cached-fetch)
+  // Fetch titles / search – NOW USING CACHED ROUTE
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
-
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
-
+        let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${currentPage}`;
         if (debouncedSearch) {
-          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+          url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
         } else if (selectedGenre) {
           url += `&genres=${selectedGenre}`;
         }
-
         const res = await fetch(url);
         const json = await res.json();
-
         if (json.success) {
           setData(json);
         } else {
@@ -148,23 +124,18 @@ export default function Home() {
       }
       setLoading(false);
     };
-
     fetchData();
   }, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [region, contentType, debouncedSearch, selectedGenre, tab]);
-
   // TMDB posters
   useEffect(() => {
     if (!data?.titles?.length || !TMDB_READ_TOKEN) return;
-
     const fetchPosters = async () => {
       const updatedTitles = await Promise.all(
         data.titles.map(async (title: any) => {
           if (!title.tmdb_id || !title.tmdb_type) return title;
-
           const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
           try {
             const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
@@ -183,10 +154,8 @@ export default function Home() {
       );
       setData({ ...data, titles: updatedTitles });
     };
-
     fetchPosters();
   }, [data, TMDB_READ_TOKEN]);
-
   // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
@@ -194,7 +163,6 @@ export default function Home() {
       setSourcesLoading(false);
       return;
     }
-
     const fetchSources = async () => {
       setSourcesLoading(true);
       try {
@@ -209,18 +177,14 @@ export default function Home() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
-
   // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
-
     if (playerRef.current) {
       playerRef.current.dispose();
       playerRef.current = null;
     }
-
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
     playerRef.current = videojs(videoRef.current, {
       autoplay: 'muted',
       muted: true,
@@ -238,13 +202,11 @@ export default function Home() {
       },
       sources: [{ src: selectedChannel.url, type: 'application/x-mpegURL' }],
     });
-
     playerRef.current.on('error', () => {
       const err = playerRef.current.error();
       console.error('[VideoJS Error]', err);
       setError(`Playback failed: ${err?.message || 'Unknown error'}`);
     });
-
     return () => {
       if (playerRef.current) {
         playerRef.current.dispose();
@@ -252,27 +214,22 @@ export default function Home() {
       }
     };
   }, [selectedChannel]);
-
   const goToNextPage = () => {
     if (data && currentPage < (data.totalPages || 1)) setCurrentPage(prev => prev + 1);
   };
-
   const goToPrevPage = () => {
     if (currentPage > 1) setCurrentPage(prev => prev - 1);
   };
-
   const clearSearch = () => {
     setSearchQuery('');
     setSelectedGenre('');
   };
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4 flex items-center gap-4">
           <MonitorPlay className="w-12 h-12 text-blue-500" />
           FreeStream World
@@ -280,7 +237,6 @@ export default function Home() {
         <p className="text-lg md:text-xl text-gray-300 mb-8">
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
-
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
           <button
             onClick={() => setTab('discover')}
@@ -323,7 +279,6 @@ export default function Home() {
             <Star size={20} /> Top 10
           </button>
         </div>
-
         {(tab === 'discover' || tab === 'top10') && (
           <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
             <div className="flex items-center gap-3 flex-1 min-w-[220px]">
@@ -343,7 +298,6 @@ export default function Home() {
                 )}
               </div>
             </div>
-
             <div className="flex items-center gap-3">
               <Globe size={20} />
               <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -353,7 +307,6 @@ export default function Home() {
                 <option value="AU">Australia</option>
               </select>
             </div>
-
             <div className="flex items-center gap-3">
               <Tv size={20} />
               <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -362,7 +315,6 @@ export default function Home() {
                 <option value="tv_series">TV Shows</option>
               </select>
             </div>
-
             <div className="flex items-center gap-3">
               <label className="text-lg font-medium hidden md:block">Genre:</label>
               <select value={selectedGenre || topGenre} onChange={(e) => {
@@ -378,7 +330,6 @@ export default function Home() {
           </div>
         )}
       </header>
-
       {/* Discover Tab */}
       {tab === 'discover' && (
         <>
@@ -390,24 +341,19 @@ export default function Home() {
               </p>
             </div>
           )}
-
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-
           {!loading && data && (
             <section className="max-w-7xl mx-auto">
               <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
                 <MonitorPlay className="text-green-400" size={32} />
                 {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {data.region}
               </h2>
-
               <p className="text-yellow-400 mb-4 text-center text-sm">
                 Links only — we do not host videos. All content from official sources.
               </p>
-
               <p className="text-gray-400 mb-8 text-lg">
                 {data.message || `Found ${Array.isArray(data.titles) ? data.titles.length : 0} titles`} • Page {currentPage} of {data.totalPages || 1}
               </p>
-
               {Array.isArray(data.titles) && data.titles.length > 0 ? (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
@@ -465,7 +411,6 @@ export default function Home() {
                       );
                     })}
                   </div>
-
                   <div className="flex justify-center items-center gap-6 mt-12">
                     <button
                       onClick={goToPrevPage}
@@ -503,7 +448,6 @@ export default function Home() {
           )}
         </>
       )}
-
       {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
@@ -511,24 +455,19 @@ export default function Home() {
             <Star className="text-yellow-400" size={32} />
             Top 10 Free Titles
           </h2>
-
           <p className="text-yellow-400 mb-4 text-center text-sm">
             Links only — we do not host videos. All content from official sources.
           </p>
-
           <p className="text-gray-400 mb-8 text-lg">
             The most popular free movies and shows available in your region right now.
           </p>
-
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
               <p className="text-xl">Loading top 10...</p>
             </div>
           )}
-
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-
           {!loading && data && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {data.titles?.map((title: any) => (
@@ -573,7 +512,6 @@ export default function Home() {
           )}
         </section>
       )}
-
       {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
@@ -617,7 +555,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
       {/* My Custom Links Tab */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
@@ -662,7 +599,6 @@ export default function Home() {
               Add Link
             </button>
           </div>
-
           {customLinks.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {customLinks.map((link) => (
@@ -704,7 +640,6 @@ export default function Home() {
           )}
         </section>
       )}
-
       {/* Favorites Tab */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
@@ -773,7 +708,6 @@ export default function Home() {
           )}
         </section>
       )}
-
       {/* Player Modal */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
@@ -800,7 +734,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
       {/* Sources Modal */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -817,7 +750,6 @@ export default function Home() {
                   ×
                 </button>
               </div>
-
               {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : sources.length > 0 ? (
@@ -855,12 +787,11 @@ export default function Home() {
           </div>
         </div>
       )}
-
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
-          <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> | 
-          <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> | 
+          <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> |
+          <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> |
           <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
         </p>
         <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
