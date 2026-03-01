@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image'; // ← NEW: Next.js Image optimization
+import Image from 'next/image';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
@@ -113,6 +113,25 @@ export default function Home() {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // DYNAMIC PAGE TITLE FOR SEO
+  useEffect(() => {
+    let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
+    if (tab === 'discover') {
+      newTitle = debouncedSearch 
+        ? `Free Results for "${debouncedSearch}" - FreeStream World` 
+        : 'Popular Free Titles - FreeStream World';
+    } else if (tab === 'top10') {
+      newTitle = 'Top 10 Free Titles - FreeStream World';
+    } else if (tab === 'live') {
+      newTitle = 'Live & Free UK TV - FreeStream World';
+    } else if (tab === 'mylinks') {
+      newTitle = 'My Custom Streams - FreeStream World';
+    } else if (tab === 'favorites') {
+      newTitle = `My Favorites (${favorites.length}) - FreeStream World`;
+    }
+    document.title = newTitle;
+  }, [tab, debouncedSearch, favorites.length]);
 
   // Fetch titles with infinite scroll + static fallback
   useEffect(() => {
@@ -291,6 +310,19 @@ export default function Home() {
     setSelectedGenre('');
   };
 
+  // Share function
+  const shareTitle = (title: any) => {
+    const url = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
+    const text = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal streaming.`;
+
+    if (navigator.share) {
+      navigator.share({ title: title.title, text, url });
+    } else {
+      navigator.clipboard.writeText(url);
+      alert('Link copied to clipboard!');
+    }
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
@@ -398,7 +430,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* Discover Tab – INFINITE SCROLL + NEXT.JS IMAGE OPTIMIZATION */}
+      {/* Discover Tab */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -412,7 +444,7 @@ export default function Home() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
-              {/* PUBLISHER CONTENT – already here */}
+              {/* Publisher content */}
               <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
                 <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
                 <p className="text-gray-300 leading-relaxed mb-4">
@@ -436,15 +468,18 @@ export default function Home() {
                 Found {allTitles.length} titles • Scroll for more
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                {allTitles.map((title: any, index: number) => {
+                {allTitles.map((title: any) => {
                   const isFavorite = favorites.some(fav => fav.id === title.id);
+                  const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
+                  const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
+
                   return (
                     <div
                       key={title.id}
                       onClick={() => setSelectedTitle(title)}
                       className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                     >
-                      <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+                      <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                         {title.poster_path ? (
                           <Image
                             src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
@@ -453,7 +488,6 @@ export default function Home() {
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                             quality={85}
-                            priority={index < 6} // only preload first few for better LCP
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -461,16 +495,10 @@ export default function Home() {
                           </div>
                         )}
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(title);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
                           className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
                         >
-                          <Heart
-                            size={20}
-                            className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'}
-                          />
+                          <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'} />
                         </button>
                       </div>
                       <div className="p-4">
@@ -480,8 +508,37 @@ export default function Home() {
                         <p className="text-gray-400 text-sm">
                           {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
                         </p>
+
+                        {/* SHARE BUTTONS */}
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            📋 Copy
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            𝕏
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            📘
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            💬
+                          </button>
+                        </div>
+
                         <button
-                          className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                          className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
                           onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
                         >
                           View Free Sources
@@ -527,7 +584,7 @@ export default function Home() {
         </>
       )}
 
-      {/* Top 10 Tab – also uses optimized Image */}
+      {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -549,13 +606,13 @@ export default function Home() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {allTitles.slice(0, 10).map((title: any, index: number) => (
+              {allTitles.slice(0, 10).map((title: any) => (
                 <div
                   key={title.id}
                   onClick={() => setSelectedTitle(title)}
                   className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                 >
-                  <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+                  <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                     {title.poster_path ? (
                       <Image
                         src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
@@ -564,7 +621,6 @@ export default function Home() {
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                         quality={85}
-                        priority={index < 4}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -735,53 +791,84 @@ export default function Home() {
           </p>
           {favorites.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {favorites.map((title: any) => (
-                <div
-                  key={title.id}
-                  onClick={() => setSelectedTitle(title)}
-                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                >
-                  <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
-                    {title.poster_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                        alt={title.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                        quality={85}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+              {favorites.map((title: any) => {
+                const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
+                const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
+
+                return (
+                  <div
+                    key={title.id}
+                    onClick={() => setSelectedTitle(title)}
+                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                  >
+                    <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                      {title.poster_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                          alt={title.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                          quality={85}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
+                        className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
+                      >
+                        <Heart size={20} className="fill-red-500 text-red-500" />
+                      </button>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                        {title.title}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                      </p>
+
+                      {/* SHARE BUTTONS */}
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
+                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                        >
+                          📋 Copy
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                        >
+                          𝕏
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                        >
+                          📘
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
+                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                        >
+                          💬
+                        </button>
                       </div>
-                    )}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(title);
-                      }}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                    >
-                      <Heart size={20} className="fill-red-500 text-red-500" />
-                    </button>
+
+                      <button
+                        className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                        onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                      >
+                        View Free Sources
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                      {title.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                    </p>
-                    <button
-                      className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                    >
-                      View Free Sources
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-20 text-xl text-gray-300">
