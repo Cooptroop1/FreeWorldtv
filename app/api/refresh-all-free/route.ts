@@ -1,0 +1,49 @@
+import { kv } from '@vercel/kv';
+import { NextResponse } from 'next/server';
+
+const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
+
+export async function GET() {
+  if (!WATCHMODE_API_KEY) {
+    return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
+  }
+
+  console.log('🚀 Starting FULL Watchmode free catalog sync...');
+
+  let allTitles: any[] = [];
+  let page = 1;
+  let totalCalls = 0;
+
+  try {
+    while (true) {
+      const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US,GB,CA,AU&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
+
+      const res = await fetch(url, { cache: 'no-store' });
+      totalCalls++;
+      const data = await res.json();
+
+      if (!data.titles || data.titles.length === 0) break;
+
+      allTitles = [...allTitles, ...data.titles];
+      console.log(`Page ${page}: +${data.titles.length} titles (Total now: ${allTitles.length})`);
+
+      page++;
+      await new Promise(r => setTimeout(r, 400)); // Be nice to their servers
+    }
+
+    await kv.set('full_free_catalog', allTitles, { ex: 86400 }); // 24 hours
+    await kv.set('full_free_catalog_timestamp', Date.now(), { ex: 86400 });
+
+    console.log(`✅ FULL SYNC COMPLETE! ${allTitles.length} titles saved using ${totalCalls} calls.`);
+
+    return NextResponse.json({
+      success: true,
+      totalTitles: allTitles.length,
+      callsUsed: totalCalls,
+      message: 'Full catalog saved for 24 hours'
+    });
+  } catch (error) {
+    console.error('Sync failed:', error);
+    return NextResponse.json({ error: 'Sync failed' }, { status: 500 });
+  }
+}
