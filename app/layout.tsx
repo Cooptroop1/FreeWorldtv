@@ -8,9 +8,15 @@ export const metadata: Metadata = {
   description: 'Discover 100% legal free streaming movies, TV shows and live UK TV channels. No sign-up needed. Powered by Watchmode & TMDB.',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon-192.png',
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
     shortcut: '/icon-192.png',
-    apple: '/icon-192.png',
+    apple: [
+      { url: '/icon-192.png', sizes: '192x192' },
+      { url: '/icon-512.png', sizes: '512x512' },
+    ],
   },
   themeColor: '#111827',
   appleWebApp: {
@@ -73,9 +79,8 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
 
-        {/* Preload icons */}
-        <link rel="preload" href="/icon-192.png" as="image" />
-        <link rel="preload" href="/icon-512.png" as="image" />
+        {/* Preload ONLY the logo (used immediately in header + cached by SW) */}
+        <link rel="preload" href="/logo.png" as="image" />
 
         {/* Structured Data for Google (Organization + WebSite) */}
         <script
