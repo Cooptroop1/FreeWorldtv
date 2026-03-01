@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
-import { staticFallbackTitles } from '../lib/static-fallback-titles';
+import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
@@ -477,7 +477,7 @@ export default function ClientTabs() {
                   Availability changes daily, so bookmark us and check back often!
                 </p>
               </div>
-              {/* NEW: Cache freshness badge */}
+              {/* NEW: Cache freshness badge (just like the big sites) */}
               {lastUpdated && (
                 <div className="text-center text-xs text-emerald-400 mb-6">
                   Updated {getHoursAgo()} • Refreshes automatically every 24 hours
@@ -967,7 +967,7 @@ export default function ClientTabs() {
                   Availability changes frequently — try again later!
                 </div>
               )}
-              {/* NEW: More Like This carousel */}
+              {/* NEW: More Like This carousel (exactly like Netflix/Tubi) */}
               {relatedTitles.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-gray-700">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
