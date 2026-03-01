@@ -43,14 +43,14 @@ const genres = [
 export default function Home() {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
-  const [allTitles, setAllTitles] = useState<any[]>([]); // ← NEW: accumulates for infinite scroll
+  const [allTitles, setAllTitles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false); // ← NEW
-  const [hasMore, setHasMore] = useState(true); // ← NEW
-  const [pauseInfinite, setPauseInfinite] = useState(false); // ← NEW: stops loading when footer button clicked
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [pauseInfinite, setPauseInfinite] = useState(false);
   const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
-  const [page, setPage] = useState(1); // ← NEW (replaces currentPage for infinite)
+  const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
   const [topGenre, setTopGenre] = useState('');
@@ -63,6 +63,7 @@ export default function Home() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+
   // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
   const toggleFavorite = (title: any) => {
@@ -80,6 +81,7 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
+
   // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
@@ -101,13 +103,15 @@ export default function Home() {
   const deleteCustomLink = (id: number) => {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
+
   // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  // Fetch titles with infinite scroll + static fallback (replaces old fetch)
+
+  // Fetch titles with infinite scroll + static fallback
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -156,6 +160,7 @@ export default function Home() {
     };
     fetchData();
   }, [tab, region, contentType, debouncedSearch, selectedGenre, topGenre]);
+
   // Infinite scroll observer
   useEffect(() => {
     if (tab !== 'discover') {
@@ -189,7 +194,8 @@ export default function Home() {
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
-  // TMDB posters (updated for allTitles)
+
+  // TMDB posters
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -216,6 +222,7 @@ export default function Home() {
     };
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
+
   // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
@@ -237,6 +244,7 @@ export default function Home() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
+
   // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
@@ -274,10 +282,12 @@ export default function Home() {
       }
     };
   }, [selectedChannel]);
+
   const clearSearch = () => {
     setSearchQuery('');
     setSelectedGenre('');
   };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
@@ -384,6 +394,7 @@ export default function Home() {
           </div>
         )}
       </header>
+
       {/* Discover Tab – INFINITE SCROLL */}
       {tab === 'discover' && (
         <>
@@ -463,7 +474,6 @@ export default function Home() {
                   );
                 })}
               </div>
-              {/* Infinite Scroll Sentinel */}
               {hasMore && (
                 <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
                   {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
@@ -474,7 +484,8 @@ export default function Home() {
           )}
         </>
       )}
-      {/* Top 10 Tab (single page – uses first 10 titles) */}
+
+      {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -538,6 +549,7 @@ export default function Home() {
           )}
         </section>
       )}
+
       {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
@@ -581,6 +593,7 @@ export default function Home() {
           </div>
         </section>
       )}
+
       {/* My Custom Links Tab */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
@@ -666,6 +679,7 @@ export default function Home() {
           )}
         </section>
       )}
+
       {/* Favorites Tab */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
@@ -734,6 +748,7 @@ export default function Home() {
           )}
         </section>
       )}
+
       {/* Player Modal */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
@@ -760,6 +775,7 @@ export default function Home() {
           </div>
         </div>
       )}
+
       {/* Sources Modal */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -813,14 +829,15 @@ export default function Home() {
           </div>
         </div>
       )}
-      {/* FLOATING LEGAL BUTTON – now with 10-second pause so footer stays visible */}
+
+      {/* FLOATING LEGAL BUTTON – pauses infinite scroll for 10 seconds so footer stays visible */}
       {tab === 'discover' && allTitles.length > 8 && (
         <button
           onClick={() => {
             const footer = document.querySelector('footer');
             footer?.scrollIntoView({ behavior: 'smooth' });
             setPauseInfinite(true);
-            setTimeout(() => setPauseInfinite(false), 10000); // 10-second pause – footer stays in view
+            setTimeout(() => setPauseInfinite(false), 10000);
           }}
           className="fixed bottom-8 right-8 z-50 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transition-all hover:scale-105"
         >
@@ -828,6 +845,7 @@ export default function Home() {
           <ChevronRight size={20} />
         </button>
       )}
+
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
