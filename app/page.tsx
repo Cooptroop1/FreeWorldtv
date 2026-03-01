@@ -4,6 +4,18 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../lib/static-fallback-titles';
+
+// SEO Metadata for Google (this is what search engines see)
+export const metadata = {
+  title: 'FreeStream World - Free Movies, TV Shows & Live TV (Legal)',
+  description: 'Discover 100% legal free streaming movies, TV shows and live UK TV channels. No sign-up needed. Powered by Watchmode & TMDB.',
+  openGraph: {
+    title: 'FreeStream World - Free Legal Streaming',
+    description: 'Watch free movies, TV shows & live TV legally. Tubi, Pluto TV, BBC iPlayer and more.',
+    images: [{ url: 'https://freestreamworld.com/og-image.jpg' }],
+  },
+};
+
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 // Public live channels (official links)
@@ -813,8 +825,7 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      {/* FLOATING LEGAL BUTTON – now with pause so footer stays visible */}
+      {/* FLOATING LEGAL BUTTON – now with 10-second pause so footer stays visible */}
       {tab === 'discover' && allTitles.length > 8 && (
         <button
           onClick={() => {
@@ -829,7 +840,6 @@ export default function Home() {
           <ChevronRight size={20} />
         </button>
       )}
-
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
