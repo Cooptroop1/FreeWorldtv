@@ -4,13 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
-import { Redis } from '@upstash/redis';
-
-// Redis client (Vercel KV)
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL || '',
-  token: process.env.KV_REST_API_TOKEN || '',
-});
 
 // Use env vars (set in Vercel/Render)
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
@@ -523,7 +516,6 @@ export default function Home() {
                       );
                     })}
                   </div>
-
                   <div className="flex justify-center items-center gap-6 mt-12">
                     <button
                       onClick={goToPrevPage}
@@ -533,11 +525,9 @@ export default function Home() {
                       <ChevronLeft size={20} />
                       Previous
                     </button>
-
                     <span className="text-lg font-medium px-6 py-3 bg-gray-800 rounded-lg">
                       Page {currentPage} of {data.totalPages}
                     </span>
-
                     <button
                       onClick={goToNextPage}
                       disabled={currentPage >= data.totalPages || loading}
@@ -571,12 +561,15 @@ export default function Home() {
             <Star className="text-yellow-400" size={32} />
             Top 10 Free Titles
           </h2>
+
           <p className="text-yellow-400 mb-4 text-center text-sm">
             Links only — we do not host videos. All content from official sources.
           </p>
+
           <p className="text-gray-400 mb-8 text-lg">
             The most popular free movies and shows available in your region right now.
           </p>
+
           <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
             <div className="flex items-center gap-3">
               <Globe size={20} />
@@ -662,138 +655,138 @@ export default function Home() {
         </section>
       )}
 
-      {/* Live TV Tab */}
-      {tab === 'live' && (
-        <section className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-            <Radio className="text-purple-400" size={32} />
-            Live & Free UK TV Services
-          </h2>
-          <p className="text-yellow-400 mb-4 text-center text-sm">
-            Links only — we do not host videos. All content from official sources.
-          </p>
-          <p className="text-gray-400 mb-10 text-lg">
-            Click any service to open the official live or catch-up player in a new tab.<br />
-            Some require a UK TV licence or VPN if you're outside the UK.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-            {liveChannels.map((channel) => (
-              <div
-                key={channel.id}
-                className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
+  // Live TV Tab
+  {tab === 'live' && (
+    <section className="max-w-7xl mx-auto">
+      <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+        <Radio className="text-purple-400" size={32} />
+        Live & Free UK TV Services
+      </h2>
+      <p className="text-yellow-400 mb-4 text-center text-sm">
+        Links only — we do not host videos. All content from official sources.
+      </p>
+      <p className="text-gray-400 mb-10 text-lg">
+        Click any service to open the official live or catch-up player in a new tab.<br />
+        Some require a UK TV licence or VPN if you're outside the UK.
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+        {liveChannels.map((channel) => (
+          <div
+            key={channel.id}
+            className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
+          >
+            <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+              <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
+            </div>
+            <div className="p-5 flex flex-col flex-grow">
+              <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+                {channel.name}
+              </h3>
+              <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
+              <div className="flex-grow"></div>
+              <a
+                href={channel.officialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
               >
-                <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
-                  <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
-                </div>
-                <div className="p-5 flex flex-col flex-grow">
-                  <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
-                    {channel.name}
-                  </h3>
-                  <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
-                  <div className="flex-grow"></div>
-                  <a
-                    href={channel.officialUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
-                  >
-                    Watch Live / Catch-up →
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* My Custom Links Tab */}
-      {tab === 'mylinks' && (
-        <section className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-            <Plus className="text-purple-400" size={32} />
-            My Custom Streams
-          </h2>
-          <div className="bg-red-900/50 border border-red-600 text-red-200 p-4 mb-6 rounded-lg">
-            <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams (e.g. official FAST channels, personal cameras, free public feeds). Do NOT add pirated, copyrighted, or illegal links. You are solely responsible for the legality of any URL you add. We do not review or endorse user links.
-          </div>
-          <p className="text-gray-400 mb-6 text-lg">
-            Add your own HLS/m3u8 or direct video links (public streams only).<br />
-            Links are saved in your browser only — private & local.
-          </p>
-          <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
-                <input
-                  type="text"
-                  value={newLinkName}
-                  onChange={(e) => setNewLinkName(e.target.value)}
-                  placeholder="e.g. My Sports Channel"
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Stream URL</label>
-                <input
-                  type="url"
-                  value={newLinkUrl}
-                  onChange={(e) => setNewLinkUrl(e.target.value)}
-                  placeholder="https://example.com/stream.m3u8"
-                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
+                Watch Live / Catch-up →
+              </a>
             </div>
-            <button
-              onClick={addCustomLink}
-              disabled={!newLinkName.trim() || !newLinkUrl.trim().startsWith('http')}
-              className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  // My Custom Links Tab
+  {tab === 'mylinks' && (
+    <section className="max-w-7xl mx-auto">
+      <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+        <Plus className="text-purple-400" size={32} />
+        My Custom Streams
+      </h2>
+      <div className="bg-red-900/50 border border-red-600 text-red-200 p-4 mb-6 rounded-lg">
+        <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams (e.g. official FAST channels, personal cameras, free public feeds). Do NOT add pirated, copyrighted, or illegal links. You are solely responsible for the legality of any URL you add. We do not review or endorse user links.
+      </div>
+      <p className="text-gray-400 mb-6 text-lg">
+        Add your own HLS/m3u8 or direct video links (public streams only).<br />
+        Links are saved in your browser only — private & local.
+      </p>
+      <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+            <input
+              type="text"
+              value={newLinkName}
+              onChange={(e) => setNewLinkName(e.target.value)}
+              placeholder="e.g. My Sports Channel"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-300 mb-2">Stream URL</label>
+            <input
+              type="url"
+              value={newLinkUrl}
+              onChange={(e) => setNewLinkUrl(e.target.value)}
+              placeholder="https://example.com/stream.m3u8"
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+        </div>
+        <button
+          onClick={addCustomLink}
+          disabled={!newLinkName.trim() || !newLinkUrl.trim().startsWith('http')}
+          className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Add Link
+        </button>
+      </div>
+
+      {customLinks.length > 0 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+          {customLinks.map((link) => (
+            <div
+              key={link.id}
+              className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
             >
-              Add Link
-            </button>
-          </div>
-
-          {customLinks.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {customLinks.map((link) => (
-                <div
-                  key={link.id}
-                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
-                >
-                  <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
-                    <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
-                  </div>
-                  <div className="p-5 flex flex-col flex-grow">
-                    <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
-                      {link.name}
-                    </h3>
-                    <div className="flex-grow"></div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setSelectedChannel(link)}
-                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors"
-                      >
-                        Play
-                      </button>
-                      <button
-                        onClick={() => deleteCustomLink(link.id)}
-                        className="bg-red-600/70 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
-                        title="Delete link"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </div>
+              <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+                <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
+              </div>
+              <div className="p-5 flex flex-col flex-grow">
+                <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+                  {link.name}
+                </h3>
+                <div className="flex-grow"></div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSelectedChannel(link)}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Play
+                  </button>
+                  <button
+                    onClick={() => deleteCustomLink(link.id)}
+                    className="bg-red-600/70 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
+                    title="Delete link"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
-              ))}
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-20 text-xl text-gray-300">
-              No custom links added yet.<br />
-              Paste a public HLS/m3u8 URL above to start.
-            </div>
-          )}
-        </section>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20 text-xl text-gray-300">
+          No custom links added yet.<br />
+          Paste a public HLS/m3u8 URL above to start.
+        </div>
       )}
+    </section>
+  )}
 
   // Favorites Tab
   {tab === 'favorites' && (
