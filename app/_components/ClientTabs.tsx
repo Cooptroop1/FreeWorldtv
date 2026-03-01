@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
+import { Tv, Film, Radio, MonitorPlay, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
@@ -112,7 +112,7 @@ export default function ClientTabs() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // RESTORED: postersFetched Set (prevents duplicate TMDB calls & re-renders)
+  // FIXED: postersFetched Set (prevents duplicates + clears on filter changes)
   const postersFetched = useRef(new Set<number>());
 
   useEffect(() => {
@@ -124,6 +124,7 @@ export default function ClientTabs() {
         setPage(1);
         setHasMore(true);
         setError(null);
+        postersFetched.current.clear(); // ← CRITICAL FIX: clears old poster cache when switching Movies/TV/All or search
       } else {
         setLoadingMore(true);
       }
@@ -198,7 +199,7 @@ export default function ClientTabs() {
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
 
-  // RESTORED + IMPROVED: postersFetched Set (only fetch new titles, no duplicates, no flicker)
+  // FIXED + IMPROVED: poster fetching (retries missing posters + only new ones)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
 
@@ -206,7 +207,7 @@ export default function ClientTabs() {
       const titlesNeedingPoster = allTitles.filter((title: any) =>
         title.tmdb_id &&
         title.tmdb_type &&
-        !postersFetched.current.has(title.tmdb_id)
+        (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
       );
 
       if (titlesNeedingPoster.length === 0) return;
@@ -378,19 +379,18 @@ export default function ClientTabs() {
     }
   };
 
-  // === SKELETON LOADER (restored - no more flicker) ===
+  // === SKELETON LOADER (no flicker) ===
   const SkeletonPoster = () => (
     <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" />
   );
 
-  // Netflix-style carousel with built-in skeletons (replaces HorizontalRow for discover tab)
-  const HorizontalCarousel = ({ title, items, loadingKey }: { 
-    title: string; 
-    items: any[]; 
-    loadingKey: 'initial' | 'more' 
+  // Netflix-style carousel with skeletons
+  const HorizontalCarousel = ({ title, items, loadingKey }: {
+    title: string;
+    items: any[];
+    loadingKey: 'initial' | 'more'
   }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
-
     return (
       <div className="mb-10">
         <h2 className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
@@ -402,15 +402,10 @@ export default function ClientTabs() {
             Array.from({ length: 8 }).map((_, i) => <SkeletonPoster key={i} />)
           ) : items.length > 0 ? (
             items.map((item) => {
-              const posterUrl = item.poster_path 
-                ? `https://image.tmdb.org/t/p/w300${item.poster_path}`
-                : '/placeholder.jpg';
-
               const isFavorite = favorites.some(fav => fav.id === item.id);
-
               return (
-                <div 
-                  key={item.id} 
+                <div
+                  key={item.id}
                   onClick={() => setSelectedTitle(item)}
                   className="flex-shrink-0 w-40 snap-start cursor-pointer group"
                 >
@@ -451,7 +446,6 @@ export default function ClientTabs() {
     );
   };
 
-  // Netflix-style rows (using restored skeleton carousels)
   const trending = filteredTitles.slice(0, 12);
   const newReleases = filteredTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
@@ -489,7 +483,7 @@ export default function ClientTabs() {
             <MonitorPlay className="w-12 h-12 text-blue-500" />
             FreeStream World
           </h1>
-          
+         
           {/* YOUR PWA LOGO — placed exactly where you asked */}
           <Image
             src="/logo.png"
@@ -503,7 +497,6 @@ export default function ClientTabs() {
         <p className="text-lg md:text-xl text-gray-300 mb-8">
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
-
         {/* SINGLE CLEAN GLOBAL SEARCH BAR */}
         <div className="flex flex-wrap gap-3 mb-8">
           <div className="flex-1 relative min-w-[280px]">
@@ -529,7 +522,6 @@ export default function ClientTabs() {
             <Filter size={20} /> Filters
           </button>
         </div>
-
         {/* Tab navigation ONLY */}
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
           <button
@@ -602,23 +594,30 @@ export default function ClientTabs() {
                   Availability changes daily, so bookmark us and check back often!
                 </p>
               </div>
-
               {/* Cache freshness badge */}
               {lastUpdated && (
                 <div className="text-center text-xs text-emerald-400 mb-6">
                   Updated {getHoursAgo()} • Refreshes automatically every 24 hours
                 </div>
               )}
-
-              {/* Hero Banner */}
+              {/* Hero Banner — NOW FIXED with safe fallback (no broken image) */}
               {filteredTitles[0] && (
                 <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
-                  <Image
-                    src={`https://image.tmdb.org/t/p/original${filteredTitles[0].poster_path}`}
-                    alt={filteredTitles[0].title}
-                    fill
-                    className="object-cover brightness-75"
-                  />
+                  {filteredTitles[0].poster_path ? (
+                    <Image
+                      src={`https://image.tmdb.org/t/p/original${filteredTitles[0].poster_path}`}
+                      alt={filteredTitles[0].title}
+                      fill
+                      className="object-cover brightness-75"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
+                      <div className="text-center">
+                        <Film className="w-24 h-24 text-gray-600 mx-auto mb-6" />
+                        <p className="text-4xl font-bold text-white">{filteredTitles[0].title}</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-transparent" />
                   <div className="absolute bottom-12 left-12 max-w-md">
                     <h1 className="text-6xl font-bold mb-4">{filteredTitles[0].title}</h1>
@@ -632,7 +631,6 @@ export default function ClientTabs() {
                   </div>
                 </div>
               )}
-
               {/* RESTORED NETFLIX CAROUSELS WITH SKELETONS (no flicker) */}
               <HorizontalCarousel title="Continue Watching" items={continueWatching} loadingKey="initial" />
               <HorizontalCarousel title="Trending Now" items={trending} loadingKey="initial" />
@@ -640,7 +638,6 @@ export default function ClientTabs() {
               {favorites.length > 0 && (
                 <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />
               )}
-
               {/* Original Grid + FULL SEO JSON-LD */}
               <div className="mt-12">
                 <h3 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -730,7 +727,6 @@ export default function ClientTabs() {
                     );
                   })}
                 </div>
-
                 {/* FULL SEO JSON-LD */}
                 <script
                   type="application/ld+json"
@@ -754,7 +750,6 @@ export default function ClientTabs() {
                     })
                   }}
                 />
-
                 {hasMore && (
                   <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
                     {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
@@ -767,7 +762,7 @@ export default function ClientTabs() {
         </>
       )}
 
-      {/* Top 10 Tab (kept unchanged) */}
+      {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -832,7 +827,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Live TV Tab (unchanged) */}
+      {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -876,7 +871,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* My Custom Links Tab (unchanged) */}
+      {/* My Custom Links Tab */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -962,7 +957,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Favorites Tab (unchanged) */}
+      {/* Favorites Tab */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -1058,7 +1053,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Player Modal (unchanged) */}
+      {/* Player Modal */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -1085,7 +1080,7 @@ export default function ClientTabs() {
         </div>
       )}
 
-      {/* Sources Modal (unchanged) */}
+      {/* Sources Modal */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
@@ -1200,11 +1195,10 @@ export default function ClientTabs() {
         </button>
       )}
 
-      {/* Filters Modal — with X close button and Movies/TV selector (unchanged) */}
+      {/* Filters Modal */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
           <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-8 relative">
-            {/* X CLOSE BUTTON */}
             <button
               onClick={() => setShowFilters(false)}
               className="absolute top-6 right-6 text-4xl text-gray-400 hover:text-white transition-colors"
@@ -1263,7 +1257,6 @@ export default function ClientTabs() {
                 <option value={8}>8+</option>
               </select>
             </div>
-            {/* MOVIES / TV SHOWS SELECTOR INSIDE FILTERS */}
             <div className="mb-8">
               <label className="block text-sm font-medium mb-2">Content Type</label>
               <select
