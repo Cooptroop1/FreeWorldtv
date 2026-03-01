@@ -523,6 +523,7 @@ export default function Home() {
                       );
                     })}
                   </div>
+
                   <div className="flex justify-center items-center gap-6 mt-12">
                     <button
                       onClick={goToPrevPage}
@@ -532,9 +533,11 @@ export default function Home() {
                       <ChevronLeft size={20} />
                       Previous
                     </button>
+
                     <span className="text-lg font-medium px-6 py-3 bg-gray-800 rounded-lg">
                       Page {currentPage} of {data.totalPages}
                     </span>
+
                     <button
                       onClick={goToNextPage}
                       disabled={currentPage >= data.totalPages || loading}
@@ -560,6 +563,7 @@ export default function Home() {
           )}
         </>
       )}
+
       {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
@@ -583,6 +587,7 @@ export default function Home() {
                 <option value="AU">Australia</option>
               </select>
             </div>
+
             <div className="flex items-center gap-3">
               <Tv size={20} />
               <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
@@ -591,6 +596,7 @@ export default function Home() {
                 <option value="tv_series">TV Shows</option>
               </select>
             </div>
+
             <div className="flex items-center gap-3 flex-wrap">
               <label className="text-lg font-medium hidden md:block">Genre:</label>
               <select value={topGenre} onChange={(e) => setTopGenre(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-yellow-500">
@@ -601,13 +607,16 @@ export default function Home() {
               </select>
             </div>
           </div>
+
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
               <p className="text-xl">Loading top 10...</p>
             </div>
           )}
+
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
+
           {!loading && data && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {data.titles.map((title: any) => (
@@ -640,7 +649,10 @@ export default function Home() {
                       {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
                     </p>
                     <button
-                      className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-7... (truncated, but the rest is the same as your pasted code)
+                      className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                    >
+                      View Free Sources
                     </button>
                   </div>
                 </div>
