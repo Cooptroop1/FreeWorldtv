@@ -118,41 +118,39 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search with KV caching (server-side)
-useEffect(() => {
-  if (tab !== 'discover' && tab !== 'top10') return;
+  // Fetch titles / search (direct, no client Redis)
+  useEffect(() => {
+    if (tab !== 'discover' && tab !== 'top10') return;
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
 
-    let url = `/api/cached-fetch?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}&tab=${tab}`;
+      try {
+        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
 
-    if (debouncedSearch) {
-      url += `&query=${encodeURIComponent(debouncedSearch)}`;
-    } else if (selectedGenre) {
-      url += `&genres=${selectedGenre}`;
-    } else if (topGenre) {
-      url += `&genres=${topGenre}`;
-    }
+        if (debouncedSearch) {
+          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
+        } else if (selectedGenre) {
+          url += `&genres=${selectedGenre}`;
+        }
 
-    try {
-      const res = await fetch(url);
-      const json = await res.json();
+        const res = await fetch(url);
+        const json = await res.json();
 
-      if (json.success) {
-        setData(json);
-      } else {
-        setError(json.error || 'Failed to load titles');
+        if (json.success) {
+          setData(json);
+        } else {
+          setError(json.error || 'Failed to load titles');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Network error');
       }
-    } catch (err: any) {
-      setError(err.message || 'Network error');
-    }
-    setLoading(false);
-  };
+      setLoading(false);
+    };
 
-  fetchData();
-}, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
+    fetchData();
+  }, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -284,19 +282,44 @@ useEffect(() => {
         </p>
 
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
-          <button onClick={() => setTab('discover')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}>
+          <button
+            onClick={() => setTab('discover')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
             <Tv size={20} /> Discover
           </button>
-          <button onClick={() => setTab('live')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'}`}>
+          <button
+            onClick={() => setTab('live')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
             <Radio size={20} /> Live TV
           </button>
-          <button onClick={() => setTab('mylinks')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}>
+          <button
+            onClick={() => setTab('mylinks')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
             <Plus size={20} /> My Links
           </button>
-          <button onClick={() => setTab('favorites')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}>
+          <button
+            onClick={() => setTab('favorites')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
             <Heart size={20} /> Favorites ({favorites.length})
           </button>
-          <button onClick={() => setTab('top10')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'}`}>
+          <button
+            onClick={() => setTab('top10')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
             <Star size={20} /> Top 10
           </button>
         </div>
