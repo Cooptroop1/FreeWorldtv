@@ -1,10 +1,4 @@
-import { Redis } from '@upstash/redis';
 import { NextResponse } from 'next/server';
-
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL || '',
-  token: process.env.KV_REST_API_TOKEN || '',
-});
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -16,23 +10,17 @@ export async function GET(request: Request) {
   const genres = searchParams.get('genres') || '';
   const tab = searchParams.get('tab') || 'discover';
 
-  const cacheKey = `wm:${tab}:${region}:${type}:${page}:${query || 'noq'}:${genres || 'nog'}`;
-
-  // Check cache first
-  const cached = await redis.get(cacheKey);
-  if (cached) return NextResponse.json(cached);
-
   // Build the real API URL
   let url = `/api/popular-free?region=${region}&type=${type}&page=${page}`;
   if (query) url = `/api/search?query=${encodeURIComponent(query)}&region=${region}&page=${page}`;
   else if (genres) url += `&genres=${genres}`;
 
-  const res = await fetch(url, { cache: 'no-store' });
-  const json = await res.json();
-
-  if (json.success) {
-    await redis.set(cacheKey, json, { ex: 3600 }); // cache 1 hour
+  try {
+    const res = await fetch(url, { cache: 'no-store' });
+    const json = await res.json();
+    return NextResponse.json(json);
+  } catch (err) {
+    console.error('Cached fetch failed:', err);
+    return NextResponse.json({ success: false, error: 'Failed to load data' }, { status: 500 });
   }
-
-  return NextResponse.json(json);
 }
