@@ -5,7 +5,6 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
-import HorizontalRow from './HorizontalRow';
 
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
@@ -112,23 +111,10 @@ export default function ClientTabs() {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  useEffect(() => {
-    let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
-    if (tab === 'discover') {
-      newTitle = debouncedSearch
-        ? `Free Results for "${debouncedSearch}" - FreeStream World`
-        : 'Popular Free Titles - FreeStream World';
-    } else if (tab === 'top10') {
-      newTitle = 'Top 10 Free Titles - FreeStream World';
-    } else if (tab === 'live') {
-      newTitle = 'Live & Free UK TV - FreeStream World';
-    } else if (tab === 'mylinks') {
-      newTitle = 'My Custom Streams - FreeStream World';
-    } else if (tab === 'favorites') {
-      newTitle = `My Favorites (${favorites.length}) - FreeStream World`;
-    }
-    document.title = newTitle;
-  }, [tab, debouncedSearch, favorites.length]);
+
+  // RESTORED: postersFetched Set (prevents duplicate TMDB calls & re-renders)
+  const postersFetched = useRef(new Set<number>());
+
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -178,6 +164,7 @@ export default function ClientTabs() {
     };
     fetchData();
   }, [tab, region, contentType, debouncedSearch, selectedGenre, topGenre]);
+
   useEffect(() => {
     if (tab !== 'discover') {
       if (observerRef.current) observerRef.current.disconnect();
@@ -210,12 +197,23 @@ export default function ClientTabs() {
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
+
+  // RESTORED + IMPROVED: postersFetched Set (only fetch new titles, no duplicates, no flicker)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
+
     const fetchPosters = async () => {
-      const updatedTitles = await Promise.all(
-        allTitles.map(async (title: any) => {
-          if (!title.tmdb_id || !title.tmdb_type) return title;
+      const titlesNeedingPoster = allTitles.filter((title: any) =>
+        title.tmdb_id &&
+        title.tmdb_type &&
+        !postersFetched.current.has(title.tmdb_id)
+      );
+
+      if (titlesNeedingPoster.length === 0) return;
+
+      const updates = await Promise.all(
+        titlesNeedingPoster.map(async (title: any) => {
+          postersFetched.current.add(title.tmdb_id);
           const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
           try {
             const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
@@ -232,10 +230,18 @@ export default function ClientTabs() {
           }
         })
       );
-      setAllTitles(updatedTitles);
+
+      setAllTitles(prev =>
+        prev.map(title => {
+          const update = updates.find((u: any) => u.id === title.id);
+          return update || title;
+        })
+      );
     };
+
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
+
   useEffect(() => {
     if (!selectedTitle?.tmdb_id || !TMDB_READ_TOKEN) {
       setRelatedTitles([]);
@@ -258,6 +264,7 @@ export default function ClientTabs() {
     };
     fetchRelated();
   }, [selectedTitle]);
+
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
       setSources([]);
@@ -278,6 +285,7 @@ export default function ClientTabs() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
+
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
     if (playerRef.current) {
@@ -314,10 +322,12 @@ export default function ClientTabs() {
       }
     };
   }, [selectedChannel]);
+
   const clearSearch = () => {
     setSearchQuery('');
     setSelectedGenre('');
   };
+
   const shareTitle = (title: any) => {
     const url = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
     const text = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal streaming.`;
@@ -328,6 +338,7 @@ export default function ClientTabs() {
       alert('Link copied to clipboard!');
     }
   };
+
   const getHoursAgo = () => {
     if (!lastUpdated) return 'just now';
     const diff = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / 3600000);
@@ -367,12 +378,103 @@ export default function ClientTabs() {
     }
   };
 
-  // Netflix-style rows
+  // === SKELETON LOADER (restored - no more flicker) ===
+  const SkeletonPoster = () => (
+    <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" />
+  );
+
+  // Netflix-style carousel with built-in skeletons (replaces HorizontalRow for discover tab)
+  const HorizontalCarousel = ({ title, items, loadingKey }: { 
+    title: string; 
+    items: any[]; 
+    loadingKey: 'initial' | 'more' 
+  }) => {
+    const isLoading = loadingKey === 'initial' ? loading : loadingMore;
+
+    return (
+      <div className="mb-10">
+        <h2 className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
+          {title}
+          {isLoading && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
+        </h2>
+        <div className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory scrollbar-hide">
+          {isLoading ? (
+            Array.from({ length: 8 }).map((_, i) => <SkeletonPoster key={i} />)
+          ) : items.length > 0 ? (
+            items.map((item) => {
+              const posterUrl = item.poster_path 
+                ? `https://image.tmdb.org/t/p/w300${item.poster_path}`
+                : '/placeholder.jpg';
+
+              const isFavorite = favorites.some(fav => fav.id === item.id);
+
+              return (
+                <div 
+                  key={item.id} 
+                  onClick={() => setSelectedTitle(item)}
+                  className="flex-shrink-0 w-40 snap-start cursor-pointer group"
+                >
+                  <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
+                    {item.poster_path ? (
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 50vw, 20vw"
+                        quality={85}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Film className="w-12 h-12 text-gray-600" />
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 transition-colors"
+                    >
+                      <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
+                    </button>
+                  </div>
+                  <p className="text-sm mt-2 line-clamp-2 text-center text-gray-200 group-hover:text-white">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-center text-gray-400">{item.year}</p>
+                </div>
+              );
+            })
+          ) : (
+            <div className="text-gray-500 italic">No titles in this section yet</div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Netflix-style rows (using restored skeleton carousels)
   const trending = filteredTitles.slice(0, 12);
   const newReleases = filteredTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
 
   const handleRowClick = (title: any) => setSelectedTitle(title);
+
+  useEffect(() => {
+    let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
+    if (tab === 'discover') {
+      newTitle = debouncedSearch
+        ? `Free Results for "${debouncedSearch}" - FreeStream World`
+        : 'Popular Free Titles - FreeStream World';
+    } else if (tab === 'top10') {
+      newTitle = 'Top 10 Free Titles - FreeStream World';
+    } else if (tab === 'live') {
+      newTitle = 'Live & Free UK TV - FreeStream World';
+    } else if (tab === 'mylinks') {
+      newTitle = 'My Custom Streams - FreeStream World';
+    } else if (tab === 'favorites') {
+      newTitle = `My Favorites (${favorites.length}) - FreeStream World`;
+    }
+    document.title = newTitle;
+  }, [tab, debouncedSearch, favorites.length]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
@@ -380,7 +482,7 @@ export default function ClientTabs() {
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-
+        
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
@@ -398,7 +500,6 @@ export default function ClientTabs() {
             priority
           />
         </div>
-
         <p className="text-lg md:text-xl text-gray-300 mb-8">
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
@@ -474,7 +575,7 @@ export default function ClientTabs() {
         </div>
       </header>
 
-      {/* Discover Tab — FULL NETFLIX CAROUSELS + PUBLISHER BOX + SEO */}
+      {/* Discover Tab — FULL NETFLIX CAROUSELS + SKELETONS + PUBLISHER BOX + SEO */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -486,6 +587,7 @@ export default function ClientTabs() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
+          
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               {/* Publisher content */}
@@ -531,12 +633,12 @@ export default function ClientTabs() {
                 </div>
               )}
 
-              {/* Netflix Carousels */}
-              <HorizontalRow title="Continue Watching" items={continueWatching} onClick={handleRowClick} />
-              <HorizontalRow title="Trending Now" items={trending} onClick={handleRowClick} />
-              <HorizontalRow title="New Releases This Week" items={newReleases} onClick={handleRowClick} />
+              {/* RESTORED NETFLIX CAROUSELS WITH SKELETONS (no flicker) */}
+              <HorizontalCarousel title="Continue Watching" items={continueWatching} loadingKey="initial" />
+              <HorizontalCarousel title="Trending Now" items={trending} loadingKey="initial" />
+              <HorizontalCarousel title="New Releases This Week" items={newReleases} loadingKey="initial" />
               {favorites.length > 0 && (
-                <HorizontalRow title="Because You Favorited..." items={favorites.slice(0, 10)} onClick={handleRowClick} />
+                <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />
               )}
 
               {/* Original Grid + FULL SEO JSON-LD */}
@@ -665,7 +767,7 @@ export default function ClientTabs() {
         </>
       )}
 
-      {/* Top 10 Tab */}
+      {/* Top 10 Tab (kept unchanged) */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -730,7 +832,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Live TV Tab */}
+      {/* Live TV Tab (unchanged) */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -774,7 +876,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* My Custom Links Tab */}
+      {/* My Custom Links Tab (unchanged) */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -860,7 +962,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Favorites Tab */}
+      {/* Favorites Tab (unchanged) */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -956,7 +1058,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Player Modal */}
+      {/* Player Modal (unchanged) */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -983,7 +1085,7 @@ export default function ClientTabs() {
         </div>
       )}
 
-      {/* Sources Modal */}
+      {/* Sources Modal (unchanged) */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
@@ -1098,7 +1200,7 @@ export default function ClientTabs() {
         </button>
       )}
 
-      {/* Filters Modal — with X close button and Movies/TV selector */}
+      {/* Filters Modal — with X close button and Movies/TV selector (unchanged) */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
           <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-8 relative">
@@ -1109,9 +1211,7 @@ export default function ClientTabs() {
             >
               ×
             </button>
-
             <h2 className="text-2xl font-bold mb-6">Advanced Filters</h2>
-
             <div className="mb-6">
               <h3 className="font-medium mb-3">Genres</h3>
               <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
@@ -1128,7 +1228,6 @@ export default function ClientTabs() {
                 ))}
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm mb-1">From Year</label>
@@ -1151,7 +1250,6 @@ export default function ClientTabs() {
                 />
               </div>
             </div>
-
             <div className="mb-8">
               <label className="block text-sm mb-2">Minimum Rating</label>
               <select
@@ -1165,7 +1263,6 @@ export default function ClientTabs() {
                 <option value={8}>8+</option>
               </select>
             </div>
-
             {/* MOVIES / TV SHOWS SELECTOR INSIDE FILTERS */}
             <div className="mb-8">
               <label className="block text-sm font-medium mb-2">Content Type</label>
@@ -1179,7 +1276,6 @@ export default function ClientTabs() {
                 <option value="tv_series">TV Shows Only</option>
               </select>
             </div>
-
             <div className="flex gap-3">
               <button
                 onClick={() => {
