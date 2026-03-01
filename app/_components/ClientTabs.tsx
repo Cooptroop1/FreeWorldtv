@@ -65,14 +65,12 @@ export default function ClientTabs() {
   const [sources, setSources] = useState<any[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
-  // NEW: More Like This + Cache freshness
   const [relatedTitles, setRelatedTitles] = useState<any[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
   const toggleFavorite = (title: any) => {
     const isFav = favorites.some(fav => fav.id === title.id);
@@ -89,7 +87,6 @@ export default function ClientTabs() {
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
-  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -110,13 +107,11 @@ export default function ClientTabs() {
   const deleteCustomLink = (id: number) => {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
-  // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-  // DYNAMIC PAGE TITLE FOR SEO
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
     if (tab === 'discover') {
@@ -134,7 +129,6 @@ export default function ClientTabs() {
     }
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
-  // Fetch titles with infinite scroll + static fallback
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -184,7 +178,6 @@ export default function ClientTabs() {
     };
     fetchData();
   }, [tab, region, contentType, debouncedSearch, selectedGenre, topGenre]);
-  // Infinite scroll observer
   useEffect(() => {
     if (tab !== 'discover') {
       if (observerRef.current) observerRef.current.disconnect();
@@ -217,7 +210,6 @@ export default function ClientTabs() {
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
-  // TMDB posters
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -244,7 +236,6 @@ export default function ClientTabs() {
     };
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
-  // NEW: Fetch "More Like This" (just like Netflix/Tubi/Reelgood)
   useEffect(() => {
     if (!selectedTitle?.tmdb_id || !TMDB_READ_TOKEN) {
       setRelatedTitles([]);
@@ -267,7 +258,6 @@ export default function ClientTabs() {
     };
     fetchRelated();
   }, [selectedTitle]);
-  // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
       setSources([]);
@@ -288,7 +278,6 @@ export default function ClientTabs() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
-  // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
     if (playerRef.current) {
@@ -329,7 +318,6 @@ export default function ClientTabs() {
     setSearchQuery('');
     setSelectedGenre('');
   };
-  // Share function
   const shareTitle = (title: any) => {
     const url = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
     const text = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal streaming.`;
@@ -340,7 +328,6 @@ export default function ClientTabs() {
       alert('Link copied to clipboard!');
     }
   };
-  // NEW: Helper to show "Updated X hours ago"
   const getHoursAgo = () => {
     if (!lastUpdated) return 'just now';
     const diff = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / 3600000);
@@ -460,7 +447,7 @@ export default function ClientTabs() {
         )}
       </header>
 
-      {/* Discover Tab — FULL NETFLIX CAROUSELS + SEO JSON-LD */}
+      {/* Discover Tab — FULL NETFLIX CAROUSELS + PUBLISHER BOX + SEO */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -474,6 +461,26 @@ export default function ClientTabs() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
+              {/* Publisher content — RESTORED EXACTLY AS YOU WANTED */}
+              <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
+                <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
+                <p className="text-gray-300 leading-relaxed mb-4">
+                  We help you discover completely legal free movies, TV shows and live TV channels from official providers like Tubi, Pluto TV, BBC iPlayer, ITVX and more.
+                  No sign-up, no hidden fees — just direct links to the best free content available in your region right now.
+                </p>
+                <p className="text-gray-300 leading-relaxed">
+                  All titles shown are 100% free to watch on the original services. We never host or stream any video ourselves.
+                  Availability changes daily, so bookmark us and check back often!
+                </p>
+              </div>
+
+              {/* Cache freshness badge */}
+              {lastUpdated && (
+                <div className="text-center text-xs text-emerald-400 mb-6">
+                  Updated {getHoursAgo()} • Refreshes automatically every 24 hours
+                </div>
+              )}
+
               {/* Hero Banner */}
               {allTitles[0] && (
                 <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
@@ -505,7 +512,7 @@ export default function ClientTabs() {
                 <HorizontalRow title="Because You Favorited..." items={favorites.slice(0, 10)} onClick={handleRowClick} />
               )}
 
-              {/* Original Infinite Scroll Grid + FULL SEO JSON-LD */}
+              {/* Original Grid + FULL SEO JSON-LD */}
               <div className="mt-12">
                 <h3 className="text-3xl font-bold mb-6 flex items-center gap-4">
                   <MonitorPlay className="text-green-400" size={32} />
@@ -595,7 +602,7 @@ export default function ClientTabs() {
                   })}
                 </div>
 
-                {/* FULL SEO JSON-LD STRUCTURED DATA (Google/AdSense) */}
+                {/* FULL SEO JSON-LD */}
                 <script
                   type="application/ld+json"
                   dangerouslySetInnerHTML={{
@@ -630,6 +637,9 @@ export default function ClientTabs() {
           )}
         </>
       )}
+
+      {/* All other tabs, modals, footer — unchanged from your original version */}
+      {/* (Live TV, My Links, Favorites, Player Modal, Sources Modal, Floating Button, Footer) */}
 
       {/* Top 10 Tab */}
       {tab === 'top10' && (
