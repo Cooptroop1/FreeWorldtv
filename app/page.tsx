@@ -22,6 +22,7 @@ const liveChannels = [
   { id: 9, name: 'Pluto TV UK (FAST Channels)', category: 'Free Ad-Supported TV', officialUrl: 'https://pluto.tv/en/live-tv' },
   { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
+
 // Genres
 const genres = [
   { id: 28, name: 'Action' },
@@ -43,6 +44,7 @@ const genres = [
   { id: 10752, name: 'War' },
   { id: 37, name: 'Western' },
 ];
+
 export default function Home() {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
@@ -62,6 +64,11 @@ export default function Home() {
   const [sources, setSources] = useState<any[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
+
+  // NEW: More Like This + Cache freshness
+  const [relatedTitles, setRelatedTitles] = useState<any[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -118,8 +125,8 @@ export default function Home() {
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
     if (tab === 'discover') {
-      newTitle = debouncedSearch 
-        ? `Free Results for "${debouncedSearch}" - FreeStream World` 
+      newTitle = debouncedSearch
+        ? `Free Results for "${debouncedSearch}" - FreeStream World`
         : 'Popular Free Titles - FreeStream World';
     } else if (tab === 'top10') {
       newTitle = 'Top 10 Free Titles - FreeStream World';
@@ -168,6 +175,7 @@ export default function Home() {
           setData(json);
           setPage(1);
           setHasMore(newTitles.length >= 48);
+          if (json.success) setLastUpdated(new Date().toISOString()); // ← NEW: record fresh cache time
         }
       } catch (err: any) {
         console.error(err);
@@ -245,6 +253,30 @@ export default function Home() {
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
 
+  // NEW: Fetch "More Like This" (just like Netflix/Tubi/Reelgood)
+  useEffect(() => {
+    if (!selectedTitle?.tmdb_id || !TMDB_READ_TOKEN) {
+      setRelatedTitles([]);
+      return;
+    }
+    const fetchRelated = async () => {
+      const type = selectedTitle.tmdb_type === 'movie' ? 'movie' : 'tv';
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/${type}/${selectedTitle.tmdb_id}/similar?language=en-US&page=1`,
+          {
+            headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` },
+          }
+        );
+        const json = await res.json();
+        setRelatedTitles(json.results?.slice(0, 8) || []);
+      } catch {
+        setRelatedTitles([]);
+      }
+    };
+    fetchRelated();
+  }, [selectedTitle]);
+
   // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
@@ -314,13 +346,19 @@ export default function Home() {
   const shareTitle = (title: any) => {
     const url = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
     const text = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal streaming.`;
-
     if (navigator.share) {
       navigator.share({ title: title.title, text, url });
     } else {
       navigator.clipboard.writeText(url);
       alert('Link copied to clipboard!');
     }
+  };
+
+  // NEW: Helper to show "Updated X hours ago"
+  const getHoursAgo = () => {
+    if (!lastUpdated) return 'just now';
+    const diff = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / 3600000);
+    return diff === 0 ? 'just now' : `${diff} hour${diff > 1 ? 's' : ''} ago`;
   };
 
   return (
@@ -457,6 +495,13 @@ export default function Home() {
                 </p>
               </div>
 
+              {/* NEW: Cache freshness badge (just like the big sites) */}
+              {lastUpdated && (
+                <div className="text-center text-xs text-emerald-400 mb-6">
+                  Updated {getHoursAgo()} • Refreshes automatically every 24 hours
+                </div>
+              )}
+
               <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
                 <MonitorPlay className="text-green-400" size={32} />
                 {debouncedSearch ? `Free Results for "${debouncedSearch}"` : 'Popular Free Titles'} in {region}
@@ -472,7 +517,6 @@ export default function Home() {
                   const isFavorite = favorites.some(fav => fav.id === title.id);
                   const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
-
                   return (
                     <div
                       key={title.id}
@@ -508,7 +552,6 @@ export default function Home() {
                         <p className="text-gray-400 text-sm">
                           {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
                         </p>
-
                         {/* SHARE BUTTONS */}
                         <div className="flex gap-2 mt-3">
                           <button
@@ -536,7 +579,6 @@ export default function Home() {
                             💬
                           </button>
                         </div>
-
                         <button
                           className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
                           onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
@@ -794,7 +836,6 @@ export default function Home() {
               {favorites.map((title: any) => {
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                 const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
-
                 return (
                   <div
                     key={title.id}
@@ -830,7 +871,6 @@ export default function Home() {
                       <p className="text-gray-400 text-sm">
                         {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
                       </p>
-
                       {/* SHARE BUTTONS */}
                       <div className="flex gap-2 mt-3">
                         <button
@@ -858,7 +898,6 @@ export default function Home() {
                           💬
                         </button>
                       </div>
-
                       <button
                         className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
                         onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
@@ -906,7 +945,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* Sources Modal */}
+      {/* Sources Modal – now with "More Like This" carousel */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
@@ -922,6 +961,7 @@ export default function Home() {
                   ×
                 </button>
               </div>
+
               {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : sources.length > 0 ? (
@@ -953,6 +993,53 @@ export default function Home() {
                 <div className="text-center py-16 text-gray-300 text-lg">
                   No free sources available right now in {region}.<br />
                   Availability changes frequently — try again later!
+                </div>
+              )}
+
+              {/* NEW: More Like This carousel (exactly like Netflix/Tubi) */}
+              {relatedTitles.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-700">
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Star className="text-yellow-400" size={20} /> More Like This
+                  </h3>
+                  <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
+                    {relatedTitles.map((rel: any) => (
+                      <div
+                        key={rel.id}
+                        onClick={() => {
+                          setSelectedTitle({
+                            id: rel.id,
+                            title: rel.title || rel.name,
+                            year: (rel.release_date || rel.first_air_date || '').slice(0, 4),
+                            tmdb_id: rel.id,
+                            tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
+                            poster_path: rel.poster_path
+                          });
+                        }}
+                        className="snap-start flex-shrink-0 w-28 cursor-pointer group"
+                      >
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
+                          {rel.poster_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w500${rel.poster_path}`}
+                              alt={rel.title || rel.name}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform"
+                              sizes="112px"
+                              quality={85}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                              <Film className="w-8 h-8 text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
+                          {rel.title || rel.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
