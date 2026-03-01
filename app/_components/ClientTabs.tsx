@@ -6,10 +6,8 @@ import { Tv, Film, Radio, MonitorPlay, ChevronRight, Search, Loader2, Plus, Tras
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
-
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
-
 // Public live channels (official links)
 const liveChannels = [
   { id: 1, name: 'BBC iPlayer (Live & On-Demand)', category: 'BBC Channels', officialUrl: 'https://www.bbc.co.uk/iplayer' },
@@ -23,7 +21,6 @@ const liveChannels = [
   { id: 9, name: 'Pluto TV UK (FAST Channels)', category: 'Free Ad-Supported TV', officialUrl: 'https://pluto.tv/en/live-tv' },
   { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
-
 // Genres
 const genres = [
   { id: 28, name: 'Action' },
@@ -45,7 +42,6 @@ const genres = [
   { id: 10752, name: 'War' },
   { id: 37, name: 'Western' },
 ];
-
 export default function ClientTabs() {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
@@ -112,10 +108,8 @@ export default function ClientTabs() {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
-
   // FIXED: postersFetched Set (prevents duplicates + clears on filter changes)
   const postersFetched = useRef(new Set<number>());
-
   // Providers with logos (kept for future use / consistency)
   const [allProviders, setAllProviders] = useState<any[]>([]);
   useEffect(() => {
@@ -126,7 +120,6 @@ export default function ClientTabs() {
       })
       .catch(() => {});
   }, []);
-
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -177,7 +170,6 @@ export default function ClientTabs() {
     };
     fetchData();
   }, [tab, region, contentType, debouncedSearch, selectedGenre, topGenre]);
-
   useEffect(() => {
     if (tab !== 'discover') {
       if (observerRef.current) observerRef.current.disconnect();
@@ -210,7 +202,6 @@ export default function ClientTabs() {
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
-
   // FIXED + IMPROVED: poster fetching (retries missing posters + only new ones)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
@@ -249,7 +240,6 @@ export default function ClientTabs() {
     };
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
-
   useEffect(() => {
     if (!selectedTitle?.tmdb_id || !TMDB_READ_TOKEN) {
       setRelatedTitles([]);
@@ -272,7 +262,6 @@ export default function ClientTabs() {
     };
     fetchRelated();
   }, [selectedTitle]);
-
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
       setSources([]);
@@ -293,7 +282,6 @@ export default function ClientTabs() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
-
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
     if (playerRef.current) {
@@ -330,12 +318,10 @@ export default function ClientTabs() {
       }
     };
   }, [selectedChannel]);
-
   const clearSearch = () => {
     setSearchQuery('');
     setSelectedGenre('');
   };
-
   const shareTitle = (title: any) => {
     const url = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
     const text = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal streaming.`;
@@ -346,20 +332,17 @@ export default function ClientTabs() {
       alert('Link copied to clipboard!');
     }
   };
-
   const getHoursAgo = () => {
     if (!lastUpdated) return 'just now';
     const diff = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / 3600000);
     return diff === 0 ? 'just now' : `${diff} hour${diff > 1 ? 's' : ''} ago`;
   };
-
   // Filters state
   const [showFilters, setShowFilters] = useState(false);
   const [selectedGenresFilter, setSelectedGenresFilter] = useState<number[]>([]);
   const [minYearFilter, setMinYearFilter] = useState('');
   const [maxYearFilter, setMaxYearFilter] = useState('');
   const [minRatingFilter, setMinRatingFilter] = useState(0);
-
   // Filtered titles (respects contentType)
   const filteredTitles = allTitles.filter((title: any) => {
     const matchesSearch = !searchQuery || title.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -371,13 +354,12 @@ export default function ClientTabs() {
     const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
     return matchesSearch && matchesGenres && matchesYear && matchesRating && matchesType;
   });
-
+  // FIXED: Surprise Me now navigates to the title page (no more old modal)
   const surpriseMe = () => {
     if (filteredTitles.length === 0) return;
     const randomIndex = Math.floor(Math.random() * filteredTitles.length);
-    setSelectedTitle(filteredTitles[randomIndex]);
+    window.location.href = `/title/${filteredTitles[randomIndex].id}`;
   };
-
   const toggleGenreFilter = (genreId: number) => {
     if (selectedGenresFilter.includes(genreId)) {
       setSelectedGenresFilter(selectedGenresFilter.filter(id => id !== genreId));
@@ -385,12 +367,10 @@ export default function ClientTabs() {
       setSelectedGenresFilter([...selectedGenresFilter, genreId]);
     }
   };
-
   // === SKELETON LOADER (no flicker) ===
   const SkeletonPoster = () => (
     <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" />
   );
-
   // Netflix-style carousel with skeletons
   const HorizontalCarousel = ({ title, items, loadingKey }: {
     title: string;
@@ -450,11 +430,9 @@ export default function ClientTabs() {
       </div>
     );
   };
-
   const trending = filteredTitles.slice(0, 12);
   const newReleases = filteredTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
-
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
     if (tab === 'discover') {
@@ -472,21 +450,20 @@ export default function ClientTabs() {
     }
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-       
+      
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
             <MonitorPlay className="w-12 h-12 text-blue-500" />
             FreeStream World
           </h1>
-        
+       
           {/* YOUR PWA LOGO — placed exactly where you asked */}
           <Image
             src="/logo.png"
@@ -569,7 +546,6 @@ export default function ClientTabs() {
           </button>
         </div>
       </header>
-
       {/* Discover Tab — FULL NETFLIX CAROUSELS + SKELETONS + PUBLISHER BOX + SEO */}
       {tab === 'discover' && (
         <>
@@ -582,7 +558,7 @@ export default function ClientTabs() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-         
+        
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               {/* Publisher content */}
@@ -760,7 +736,6 @@ export default function ClientTabs() {
           )}
         </>
       )}
-
       {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
@@ -822,7 +797,6 @@ export default function ClientTabs() {
           )}
         </section>
       )}
-
       {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
@@ -866,7 +840,6 @@ export default function ClientTabs() {
           </div>
         </section>
       )}
-
       {/* My Custom Links Tab */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
@@ -952,7 +925,6 @@ export default function ClientTabs() {
           )}
         </section>
       )}
-
       {/* Favorites Tab */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
@@ -1045,7 +1017,6 @@ export default function ClientTabs() {
           )}
         </section>
       )}
-
       {/* Player Modal (only for My Links) */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
@@ -1072,7 +1043,6 @@ export default function ClientTabs() {
           </div>
         </div>
       )}
-
       {/* FLOATING LEGAL BUTTON */}
       {tab === 'discover' && allTitles.length > 8 && (
         <button
@@ -1088,7 +1058,6 @@ export default function ClientTabs() {
           <ChevronRight size={20} />
         </button>
       )}
-
       {/* Filters Modal */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
@@ -1186,7 +1155,6 @@ export default function ClientTabs() {
           </div>
         </div>
       )}
-
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
