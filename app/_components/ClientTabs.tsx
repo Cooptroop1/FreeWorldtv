@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
+import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
@@ -334,10 +334,43 @@ export default function ClientTabs() {
     return diff === 0 ? 'just now' : `${diff} hour${diff > 1 ? 's' : ''} ago`;
   };
 
-  // NEW: Netflix-style rows
-  const trending = allTitles.slice(0, 12);
-  const newReleases = allTitles.slice(12, 24);
-  const continueWatching = favorites.length > 0 ? favorites : allTitles.slice(0, 8);
+  // NEW: Global Search + Advanced Filters + Surprise Me
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedGenresFilter, setSelectedGenresFilter] = useState<number[]>([]);
+  const [minYearFilter, setMinYearFilter] = useState('');
+  const [maxYearFilter, setMaxYearFilter] = useState('');
+  const [minRatingFilter, setMinRatingFilter] = useState(0);
+
+  // Filtered titles (used everywhere now)
+  const filteredTitles = allTitles.filter((title: any) => {
+    const matchesSearch = !searchQuery || title.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
+    const year = parseInt(title.year || '0');
+    const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
+    const rating = title.vote_average || 0;
+    const matchesRating = rating >= minRatingFilter;
+    return matchesSearch && matchesGenres && matchesYear && matchesRating;
+  });
+
+  const surpriseMe = () => {
+    if (filteredTitles.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * filteredTitles.length);
+    setSelectedTitle(filteredTitles[randomIndex]);
+  };
+
+  const toggleGenreFilter = (genreId: number) => {
+    if (selectedGenresFilter.includes(genreId)) {
+      setSelectedGenresFilter(selectedGenresFilter.filter(id => id !== genreId));
+    } else {
+      setSelectedGenresFilter([...selectedGenresFilter, genreId]);
+    }
+  };
+
+  // Netflix-style rows (now using filteredTitles)
+  const trending = filteredTitles.slice(0, 12);
+  const newReleases = filteredTitles.slice(12, 24);
+  const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
+
   const handleRowClick = (title: any) => setSelectedTitle(title);
 
   return (
@@ -353,6 +386,34 @@ export default function ClientTabs() {
         <p className="text-lg md:text-xl text-gray-300 mb-8">
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
+
+        {/* GLOBAL SEARCH + SURPRISE ME + FILTERS (Reelgood style) */}
+        <div className="flex flex-wrap gap-3 mb-8">
+          <div className="flex-1 relative min-w-[280px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search free movies & shows anywhere..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
+            />
+          </div>
+          <button
+            onClick={surpriseMe}
+            className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-xl font-medium transition-all"
+          >
+            <Shuffle size={20} /> Surprise Me
+          </button>
+          <button
+            onClick={() => setShowFilters(true)}
+            className="flex items-center gap-2 bg-gray-800 border border-gray-700 hover:bg-gray-700 px-6 py-3 rounded-xl font-medium transition-all"
+          >
+            <Filter size={20} /> Filters
+          </button>
+        </div>
+
+        {/* Original tab navigation */}
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
           <button
             onClick={() => setTab('discover')}
@@ -395,56 +456,6 @@ export default function ClientTabs() {
             <Star size={20} /> Top 10
           </button>
         </div>
-        {(tab === 'discover' || tab === 'top10') && (
-          <div className="flex flex-wrap gap-4 md:gap-6 mb-8">
-            <div className="flex items-center gap-3 flex-1 min-w-[220px]">
-              <Search size={20} className="text-gray-400" />
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  placeholder="Search free movies & shows..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-10 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
-                />
-                {searchQuery && (
-                  <button onClick={clearSearch} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
-                    <X size={18} />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Globe size={20} />
-              <select value={region} onChange={(e) => setRegion(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="US">United States</option>
-                <option value="GB">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="AU">Australia</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <Tv size={20} />
-              <select value={contentType} onChange={(e) => setContentType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="movie,tv_series">All</option>
-                <option value="movie">Movies</option>
-                <option value="tv_series">TV Shows</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="text-lg font-medium hidden md:block">Genre:</label>
-              <select value={selectedGenre || topGenre} onChange={(e) => {
-                setSelectedGenre(e.target.value);
-                setTopGenre(e.target.value);
-              }} className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">All Genres</option>
-                {genres.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Discover Tab — FULL NETFLIX CAROUSELS + PUBLISHER BOX + SEO */}
@@ -461,7 +472,7 @@ export default function ClientTabs() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
-              {/* Publisher content — RESTORED EXACTLY AS YOU WANTED */}
+              {/* Publisher content */}
               <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
                 <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
                 <p className="text-gray-300 leading-relaxed mb-4">
@@ -482,20 +493,20 @@ export default function ClientTabs() {
               )}
 
               {/* Hero Banner */}
-              {allTitles[0] && (
+              {filteredTitles[0] && (
                 <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
                   <Image
-                    src={`https://image.tmdb.org/t/p/original${allTitles[0].poster_path}`}
-                    alt={allTitles[0].title}
+                    src={`https://image.tmdb.org/t/p/original${filteredTitles[0].poster_path}`}
+                    alt={filteredTitles[0].title}
                     fill
                     className="object-cover brightness-75"
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-transparent" />
                   <div className="absolute bottom-12 left-12 max-w-md">
-                    <h1 className="text-6xl font-bold mb-4">{allTitles[0].title}</h1>
-                    <p className="text-xl text-gray-300 mb-6">{allTitles[0].year}</p>
+                    <h1 className="text-6xl font-bold mb-4">{filteredTitles[0].title}</h1>
+                    <p className="text-xl text-gray-300 mb-6">{filteredTitles[0].year}</p>
                     <button
-                      onClick={() => setSelectedTitle(allTitles[0])}
+                      onClick={() => setSelectedTitle(filteredTitles[0])}
                       className="bg-white text-black px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition"
                     >
                       ▶ Watch Free Now
@@ -522,10 +533,10 @@ export default function ClientTabs() {
                   Links only — we do not host videos. All content from official sources.
                 </p>
                 <p className="text-gray-400 mb-8 text-lg">
-                  Found {allTitles.length} titles • Scroll for more
+                  Found {filteredTitles.length} titles • Scroll for more
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                  {allTitles.map((title: any) => {
+                  {filteredTitles.map((title: any) => {
                     const isFavorite = favorites.some(fav => fav.id === title.id);
                     const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                     const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
@@ -610,8 +621,8 @@ export default function ClientTabs() {
                       "@context": "https://schema.org",
                       "@type": "ItemList",
                       "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles",
-                      "numberOfItems": allTitles.length,
-                      "itemListElement": allTitles.map((title, index) => ({
+                      "numberOfItems": filteredTitles.length,
+                      "itemListElement": filteredTitles.map((title, index) => ({
                         "@type": "ListItem",
                         "position": index + 1,
                         "item": {
@@ -637,9 +648,6 @@ export default function ClientTabs() {
           )}
         </>
       )}
-
-      {/* All other tabs, modals, footer — unchanged from your original version */}
-      {/* (Live TV, My Links, Favorites, Player Modal, Sources Modal, Floating Button, Footer) */}
 
       {/* Top 10 Tab */}
       {tab === 'top10' && (
@@ -930,6 +938,231 @@ export default function ClientTabs() {
             </div>
           )}
         </section>
+      )}
+
+      {/* Player Modal */}
+      {selectedChannel && (
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+          <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b border-gray-800">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <Radio size={24} className="text-purple-400" />
+                {selectedChannel.name}
+              </h2>
+              <button
+                onClick={() => setSelectedChannel(null)}
+                className="text-gray-400 hover:text-white text-4xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div data-vjs-player className="aspect-video bg-black">
+              <video
+                ref={videoRef}
+                className="video-js vjs-big-play-centered vjs-fluid"
+                playsInline
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sources Modal */}
+      {tab === 'discover' && selectedTitle && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
+            <div className="p-6 md:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold pr-10">
+                  {selectedTitle.title} ({selectedTitle.year})
+                </h2>
+                <button
+                  onClick={() => { setSelectedTitle(null); setSources([]); }}
+                  className="text-gray-400 hover:text-white text-4xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+              {sourcesLoading ? (
+                <div className="text-center py-16 text-xl">Loading sources...</div>
+              ) : sources.length > 0 ? (
+                <div className="space-y-5">
+                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <MonitorPlay size={22} /> Free Streaming Options
+                  </h3>
+                  {sources.map((source: any, idx: number) => (
+                    <a
+                      key={idx}
+                      href={source.web_url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500"
+                    >
+                      <div className="font-semibold text-lg mb-1">{source.name}</div>
+                      <div className="text-gray-400 text-sm">
+                        Free with Ads {source.format && `• ${source.format}`}
+                      </div>
+                      {source.web_url && (
+                        <div className="mt-3 text-blue-400 text-sm font-medium">
+                          Watch now →
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 text-gray-300 text-lg">
+                  No free sources available right now in {region}.<br />
+                  Availability changes frequently — try again later!
+                </div>
+              )}
+              {relatedTitles.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-700">
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Star className="text-yellow-400" size={20} /> More Like This
+                  </h3>
+                  <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
+                    {relatedTitles.map((rel: any) => (
+                      <div
+                        key={rel.id}
+                        onClick={() => {
+                          setSelectedTitle({
+                            id: rel.id,
+                            title: rel.title || rel.name,
+                            year: (rel.release_date || rel.first_air_date || '').slice(0, 4),
+                            tmdb_id: rel.id,
+                            tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
+                            poster_path: rel.poster_path
+                          });
+                        }}
+                        className="snap-start flex-shrink-0 w-28 cursor-pointer group"
+                      >
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
+                          {rel.poster_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w500${rel.poster_path}`}
+                              alt={rel.title || rel.name}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform"
+                              sizes="112px"
+                              quality={85}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                              <Film className="w-8 h-8 text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
+                          {rel.title || rel.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING LEGAL BUTTON */}
+      {tab === 'discover' && allTitles.length > 8 && (
+        <button
+          onClick={() => {
+            const footer = document.querySelector('footer');
+            footer?.scrollIntoView({ behavior: 'smooth' });
+            setPauseInfinite(true);
+            setTimeout(() => setPauseInfinite(false), 10000);
+          }}
+          className="fixed bottom-8 right-8 z-50 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 transition-all hover:scale-105"
+        >
+          Legal & Links
+          <ChevronRight size={20} />
+        </button>
+      )}
+
+      {/* Filters Modal */}
+      {showFilters && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
+          <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-8">
+            <h2 className="text-2xl font-bold mb-6">Advanced Filters</h2>
+            
+            <div className="mb-6">
+              <h3 className="font-medium mb-3">Genres</h3>
+              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
+                {genres.map(g => (
+                  <label key={g.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedGenresFilter.includes(g.id)}
+                      onChange={() => toggleGenreFilter(g.id)}
+                      className="accent-blue-500"
+                    />
+                    {g.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="block text-sm mb-1">From Year</label>
+                <input
+                  type="number"
+                  value={minYearFilter}
+                  onChange={(e) => setMinYearFilter(e.target.value)}
+                  placeholder="1900"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">To Year</label>
+                <input
+                  type="number"
+                  value={maxYearFilter}
+                  onChange={(e) => setMaxYearFilter(e.target.value)}
+                  placeholder="2026"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
+                />
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <label className="block text-sm mb-2">Minimum Rating</label>
+              <select
+                value={minRatingFilter}
+                onChange={(e) => setMinRatingFilter(Number(e.target.value))}
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
+              >
+                <option value={0}>Any Rating</option>
+                <option value={6}>6+</option>
+                <option value={7}>7+</option>
+                <option value={8}>8+</option>
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setSelectedGenresFilter([]);
+                  setMinYearFilter('');
+                  setMaxYearFilter('');
+                  setMinRatingFilter(0);
+                }}
+                className="flex-1 py-3 bg-gray-700 rounded-xl"
+              >
+                Reset
+              </button>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="flex-1 py-3 bg-blue-600 rounded-xl font-medium"
+              >
+                Apply Filters
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Player Modal */}
