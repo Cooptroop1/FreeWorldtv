@@ -411,11 +411,8 @@ export default function ClientTabs() {
             items.map((item) => {
               const isFavorite = favorites.some(fav => fav.id === item.id);
               return (
-                <div
-                  key={item.id}
-                  className="flex-shrink-0 w-40 snap-start cursor-pointer group"
-                >
-                  <Link href={`/title/${item.id}`}>
+                <Link href={`/title/${item.id}`} key={item.id}>
+                  <div className="flex-shrink-0 w-40 snap-start cursor-pointer group">
                     <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
                       {item.poster_path ? (
                         <Image
@@ -438,12 +435,12 @@ export default function ClientTabs() {
                         <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
                       </button>
                     </div>
-                  </Link>
-                  <p className="text-sm mt-2 line-clamp-2 text-center text-gray-200 group-hover:text-white">
-                    {item.title}
-                  </p>
-                  <p className="text-xs text-center text-gray-400">{item.year}</p>
-                </div>
+                    <p className="text-sm mt-2 line-clamp-2 text-center text-gray-200 group-hover:text-white">
+                      {item.title}
+                    </p>
+                    <p className="text-xs text-center text-gray-400">{item.year}</p>
+                  </div>
+                </Link>
               );
             })
           ) : (
@@ -482,14 +479,14 @@ export default function ClientTabs() {
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-        
+       
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
             <MonitorPlay className="w-12 h-12 text-blue-500" />
             FreeStream World
           </h1>
-         
+        
           {/* YOUR PWA LOGO — placed exactly where you asked */}
           <Image
             src="/logo.png"
