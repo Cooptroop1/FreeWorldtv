@@ -65,12 +65,14 @@ export default function ClientTabs() {
   const [sources, setSources] = useState<any[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
+  // NEW: More Like This + Cache freshness
   const [relatedTitles, setRelatedTitles] = useState<any[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  // Favorites (localStorage)
   const [favorites, setFavorites] = useState<any[]>([]);
   const toggleFavorite = (title: any) => {
     const isFav = favorites.some(fav => fav.id === title.id);
@@ -87,6 +89,7 @@ export default function ClientTabs() {
   useEffect(() => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
+  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -107,11 +110,13 @@ export default function ClientTabs() {
   const deleteCustomLink = (id: number) => {
     setCustomLinks(customLinks.filter(link => link.id !== id));
   };
+  // Debounce search
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 600);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+  // DYNAMIC PAGE TITLE FOR SEO
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
     if (tab === 'discover') {
@@ -129,6 +134,7 @@ export default function ClientTabs() {
     }
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
+  // Fetch titles with infinite scroll + static fallback
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -178,6 +184,7 @@ export default function ClientTabs() {
     };
     fetchData();
   }, [tab, region, contentType, debouncedSearch, selectedGenre, topGenre]);
+  // Infinite scroll observer
   useEffect(() => {
     if (tab !== 'discover') {
       if (observerRef.current) observerRef.current.disconnect();
@@ -210,6 +217,7 @@ export default function ClientTabs() {
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
+  // TMDB posters
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -236,6 +244,7 @@ export default function ClientTabs() {
     };
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
+  // NEW: Fetch "More Like This" (just like Netflix/Tubi/Reelgood)
   useEffect(() => {
     if (!selectedTitle?.tmdb_id || !TMDB_READ_TOKEN) {
       setRelatedTitles([]);
@@ -258,6 +267,7 @@ export default function ClientTabs() {
     };
     fetchRelated();
   }, [selectedTitle]);
+  // Sources fetch
   useEffect(() => {
     if (!selectedTitle || tab !== 'discover') {
       setSources([]);
@@ -278,6 +288,7 @@ export default function ClientTabs() {
     };
     fetchSources();
   }, [selectedTitle, region, tab]);
+  // Video.js player
   useEffect(() => {
     if (!selectedChannel || !videoRef.current) return;
     if (playerRef.current) {
@@ -318,6 +329,7 @@ export default function ClientTabs() {
     setSearchQuery('');
     setSelectedGenre('');
   };
+  // Share function
   const shareTitle = (title: any) => {
     const url = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
     const text = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal streaming.`;
@@ -328,6 +340,7 @@ export default function ClientTabs() {
       alert('Link copied to clipboard!');
     }
   };
+  // NEW: Helper to show "Updated X hours ago"
   const getHoursAgo = () => {
     if (!lastUpdated) return 'just now';
     const diff = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / 3600000);
@@ -338,7 +351,6 @@ export default function ClientTabs() {
   const trending = allTitles.slice(0, 12);
   const newReleases = allTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : allTitles.slice(0, 8);
-
   const handleRowClick = (title: any) => setSelectedTitle(title);
 
   return (
@@ -448,7 +460,7 @@ export default function ClientTabs() {
         )}
       </header>
 
-      {/* Discover Tab — FULL NETFLIX CAROUSELS */}
+      {/* Discover Tab — FULL NETFLIX CAROUSELS + SEO JSON-LD */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -493,7 +505,7 @@ export default function ClientTabs() {
                 <HorizontalRow title="Because You Favorited..." items={favorites.slice(0, 10)} onClick={handleRowClick} />
               )}
 
-              {/* Original Infinite Scroll Grid (kept exactly as before) */}
+              {/* Original Infinite Scroll Grid + FULL SEO JSON-LD */}
               <div className="mt-12">
                 <h3 className="text-3xl font-bold mb-6 flex items-center gap-4">
                   <MonitorPlay className="text-green-400" size={32} />
@@ -582,6 +594,31 @@ export default function ClientTabs() {
                     );
                   })}
                 </div>
+
+                {/* FULL SEO JSON-LD STRUCTURED DATA (Google/AdSense) */}
+                <script
+                  type="application/ld+json"
+                  dangerouslySetInnerHTML={{
+                    __html: JSON.stringify({
+                      "@context": "https://schema.org",
+                      "@type": "ItemList",
+                      "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles",
+                      "numberOfItems": allTitles.length,
+                      "itemListElement": allTitles.map((title, index) => ({
+                        "@type": "ListItem",
+                        "position": index + 1,
+                        "item": {
+                          "@type": title.type === 'tv_series' ? "TVSeries" : "Movie",
+                          "name": title.title,
+                          "url": `https://freestreamworld.com/title/${title.id}`,
+                          "image": title.poster_path ? `https://image.tmdb.org/t/p/w500${title.poster_path}` : undefined,
+                          "datePublished": title.year ? `${title.year}-01-01` : undefined,
+                        }
+                      }))
+                    })
+                  }}
+                />
+
                 {hasMore && (
                   <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
                     {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
@@ -594,7 +631,7 @@ export default function ClientTabs() {
         </>
       )}
 
-      {/* Top 10 Tab (unchanged) */}
+      {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -659,7 +696,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Live TV Tab (unchanged) */}
+      {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -703,7 +740,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* My Custom Links Tab (unchanged) */}
+      {/* My Custom Links Tab */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -789,7 +826,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Favorites Tab (unchanged) */}
+      {/* Favorites Tab */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
@@ -885,7 +922,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Player Modal (unchanged) */}
+      {/* Player Modal */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -912,7 +949,7 @@ export default function ClientTabs() {
         </div>
       )}
 
-      {/* Sources Modal (unchanged) */}
+      {/* Sources Modal */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
