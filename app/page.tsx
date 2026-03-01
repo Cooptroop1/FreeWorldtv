@@ -118,39 +118,41 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search
-  useEffect(() => {
-    if (tab !== 'discover' && tab !== 'top10') return;
+  // Fetch titles / search with KV caching (server-side)
+useEffect(() => {
+  if (tab !== 'discover' && tab !== 'top10') return;
 
-    const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
 
-      try {
-        let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
+    let url = `/api/cached-fetch?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}&tab=${tab}`;
 
-        if (debouncedSearch) {
-          url = `/api/search?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${currentPage}`;
-        } else if (selectedGenre) {
-          url += `&genres=${selectedGenre}`;
-        }
+    if (debouncedSearch) {
+      url += `&query=${encodeURIComponent(debouncedSearch)}`;
+    } else if (selectedGenre) {
+      url += `&genres=${selectedGenre}`;
+    } else if (topGenre) {
+      url += `&genres=${topGenre}`;
+    }
 
-        const res = await fetch(url);
-        const json = await res.json();
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
 
-        if (json.success) {
-          setData(json);
-        } else {
-          setError(json.error || 'Failed to load titles');
-        }
-      } catch (err: any) {
-        setError(err.message || 'Network error');
+      if (json.success) {
+        setData(json);
+      } else {
+        setError(json.error || 'Failed to load titles');
       }
-      setLoading(false);
-    };
+    } catch (err: any) {
+      setError(err.message || 'Network error');
+    }
+    setLoading(false);
+  };
 
-    fetchData();
-  }, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
+  fetchData();
+}, [tab, region, contentType, currentPage, debouncedSearch, selectedGenre, topGenre]);
 
   useEffect(() => {
     setCurrentPage(1);
