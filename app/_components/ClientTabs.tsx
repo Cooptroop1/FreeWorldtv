@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Tv, Film, Radio, MonitorPlay, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
@@ -115,10 +116,8 @@ export default function ClientTabs() {
   // FIXED: postersFetched Set (prevents duplicates + clears on filter changes)
   const postersFetched = useRef(new Set<number>());
 
-  // NEW: Providers with logos (for the Sources Modal)
+  // Providers with logos (kept for future use / consistency)
   const [allProviders, setAllProviders] = useState<any[]>([]);
-
-  // Load provider logos once (cached from the daily snapshot)
   useEffect(() => {
     fetch('/api/providers')
       .then(res => res.json())
@@ -137,7 +136,7 @@ export default function ClientTabs() {
         setPage(1);
         setHasMore(true);
         setError(null);
-        postersFetched.current.clear(); // ← CRITICAL FIX: clears old poster cache when switching Movies/TV/All or search
+        postersFetched.current.clear();
       } else {
         setLoadingMore(true);
       }
@@ -414,31 +413,32 @@ export default function ClientTabs() {
               return (
                 <div
                   key={item.id}
-                  onClick={() => setSelectedTitle(item)}
                   className="flex-shrink-0 w-40 snap-start cursor-pointer group"
                 >
-                  <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
-                    {item.poster_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
-                        alt={item.title}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 50vw, 20vw"
-                        quality={85}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Film className="w-12 h-12 text-gray-600" />
-                      </div>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 transition-colors"
-                    >
-                      <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
-                    </button>
-                  </div>
+                  <Link href={`/title/${item.id}`}>
+                    <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
+                      {item.poster_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w500${item.poster_path}`}
+                          alt={item.title}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 50vw, 20vw"
+                          quality={85}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Film className="w-12 h-12 text-gray-600" />
+                        </div>
+                      )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 transition-colors"
+                      >
+                        <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
+                      </button>
+                    </div>
+                  </Link>
                   <p className="text-sm mt-2 line-clamp-2 text-center text-gray-200 group-hover:text-white">
                     {item.title}
                   </p>
@@ -482,7 +482,7 @@ export default function ClientTabs() {
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-       
+        
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
@@ -628,12 +628,11 @@ export default function ClientTabs() {
                   <div className="absolute bottom-12 left-12 max-w-md">
                     <h1 className="text-6xl font-bold mb-4">{filteredTitles[0].title}</h1>
                     <p className="text-xl text-gray-300 mb-6">{filteredTitles[0].year}</p>
-                    <button
-                      onClick={() => setSelectedTitle(filteredTitles[0])}
-                      className="bg-white text-black px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition"
-                    >
-                      ▶ Watch Free Now
-                    </button>
+                    <Link href={`/title/${filteredTitles[0].id}`}>
+                      <button className="bg-white text-black px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition">
+                        ▶ Watch Free Now
+                      </button>
+                    </Link>
                   </div>
                 </div>
               )}
@@ -662,74 +661,71 @@ export default function ClientTabs() {
                     const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                     const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
                     return (
-                      <div
-                        key={title.id}
-                        onClick={() => setSelectedTitle(title)}
-                        className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                      >
-                        <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                          {title.poster_path ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                              alt={title.title}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                              quality={85}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                            </div>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
-                            className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                          >
-                            <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'} />
-                          </button>
-                        </div>
-                        <div className="p-4">
-                          <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                            {title.title}
-                          </h3>
-                          <p className="text-gray-400 text-sm">
-                            {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                          </p>
-                          <div className="flex gap-2 mt-3">
+                      <Link href={`/title/${title.id}`} key={title.id}>
+                        <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative">
+                          <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                            {title.poster_path ? (
+                              <Image
+                                src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                                alt={title.title}
+                                fill
+                                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                                quality={85}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                              </div>
+                            )}
                             <button
-                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
-                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                              onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
+                              className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
                             >
-                              📋 Copy
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                            >
-                              𝕏
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                            >
-                              📘
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
-                              className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                            >
-                              💬
+                              <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'} />
                             </button>
                           </div>
-                          <button
-                            className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                            onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                          >
-                            View Free Sources
-                          </button>
+                          <div className="p-4">
+                            <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                              {title.title}
+                            </h3>
+                            <p className="text-gray-400 text-sm">
+                              {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                            </p>
+                            <div className="flex gap-2 mt-3">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
+                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                              >
+                                📋 Copy
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                              >
+                                𝕏
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                              >
+                                📘
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
+                                className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                              >
+                                💬
+                              </button>
+                            </div>
+                            <button
+                              className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                            >
+                              View Free Sources
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>
@@ -791,42 +787,39 @@ export default function ClientTabs() {
           {!loading && allTitles.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {allTitles.slice(0, 10).map((title: any) => (
-                <div
-                  key={title.id}
-                  onClick={() => setSelectedTitle(title)}
-                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                >
-                  <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                    {title.poster_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                        alt={title.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                        quality={85}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                      </div>
-                    )}
+                <Link href={`/title/${title.id}`} key={title.id}>
+                  <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative">
+                    <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                      {title.poster_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                          alt={title.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                          quality={85}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                        {title.title}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                      </p>
+                      <button
+                        className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                      >
+                        View Free Sources
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                      {title.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                    </p>
-                    <button
-                      className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                    >
-                      View Free Sources
-                    </button>
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
@@ -979,74 +972,71 @@ export default function ClientTabs() {
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                 const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
                 return (
-                  <div
-                    key={title.id}
-                    onClick={() => setSelectedTitle(title)}
-                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                  >
-                    <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                      {title.poster_path ? (
-                        <Image
-                          src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                          alt={title.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                          quality={85}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                        </div>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
-                        className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                      >
-                        <Heart size={20} className="fill-red-500 text-red-500" />
-                      </button>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                        {title.title}
-                      </h3>
-                      <p className="text-gray-400 text-sm">
-                        {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                      </p>
-                      <div className="flex gap-2 mt-3">
+                  <Link href={`/title/${title.id}`} key={title.id}>
+                    <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative">
+                      <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                        {title.poster_path ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                            alt={title.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                            quality={85}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                          </div>
+                        )}
                         <button
-                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
+                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
                         >
-                          📋 Copy
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                        >
-                          𝕏
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                        >
-                          📘
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                        >
-                          💬
+                          <Heart size={20} className="fill-red-500 text-red-500" />
                         </button>
                       </div>
-                      <button
-                        className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                        onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                      >
-                        View Free Sources
-                      </button>
+                      <div className="p-4">
+                        <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                          {title.title}
+                        </h3>
+                        <p className="text-gray-400 text-sm">
+                          {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                        </p>
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            📋 Copy
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            𝕏
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            📘
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
+                            className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
+                          >
+                            💬
+                          </button>
+                        </div>
+                        <button
+                          className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                        >
+                          View Free Sources
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -1059,7 +1049,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Player Modal */}
+      {/* Player Modal (only for My Links) */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -1081,128 +1071,6 @@ export default function ClientTabs() {
                 className="video-js vjs-big-play-centered vjs-fluid"
                 playsInline
               />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Sources Modal — UPDATED WITH PROVIDER LOGOS */}
-      {tab === 'discover' && selectedTitle && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
-            <div className="p-6 md:p-8">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl md:text-3xl font-bold pr-10">
-                  {selectedTitle.title} ({selectedTitle.year})
-                </h2>
-                <button
-                  onClick={() => { setSelectedTitle(null); setSources([]); }}
-                  className="text-gray-400 hover:text-white text-4xl leading-none"
-                >
-                  ×
-                </button>
-              </div>
-
-              {sourcesLoading ? (
-                <div className="text-center py-16 text-xl">Loading sources...</div>
-              ) : sources.length > 0 ? (
-                <div className="space-y-5">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <MonitorPlay size={22} /> Free Streaming Options
-                  </h3>
-                  {sources.map((source: any, idx: number) => {
-                    const provider = allProviders.find(p => 
-                      p.name?.toLowerCase() === source.name?.toLowerCase() ||
-                      p.display_name?.toLowerCase() === source.name?.toLowerCase()
-                    );
-                    const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
-
-                    return (
-                      <a
-                        key={idx}
-                        href={source.web_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
-                      >
-                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
-                          {logoUrl ? (
-                            <Image
-                              src={logoUrl}
-                              alt={source.name}
-                              width={48}
-                              height={48}
-                              className="object-contain"
-                            />
-                          ) : (
-                            <MonitorPlay size={24} className="text-gray-400" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
-                          <div className="text-gray-400 text-sm">
-                            Free with Ads {source.format && `• ${source.format}`}
-                          </div>
-                        </div>
-                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                          Watch now →
-                        </div>
-                      </a>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-16 text-gray-300 text-lg">
-                  No free sources available right now in {region}.<br />
-                  Availability changes frequently — try again later!
-                </div>
-              )}
-
-              {relatedTitles.length > 0 && (
-                <div className="mt-8 pt-8 border-t border-gray-700">
-                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Star className="text-yellow-400" size={20} /> More Like This
-                  </h3>
-                  <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
-                    {relatedTitles.map((rel: any) => (
-                      <div
-                        key={rel.id}
-                        onClick={() => {
-                          setSelectedTitle({
-                            id: rel.id,
-                            title: rel.title || rel.name,
-                            year: (rel.release_date || rel.first_air_date || '').slice(0, 4),
-                            tmdb_id: rel.id,
-                            tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
-                            poster_path: rel.poster_path
-                          });
-                        }}
-                        className="snap-start flex-shrink-0 w-28 cursor-pointer group"
-                      >
-                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
-                          {rel.poster_path ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w500${rel.poster_path}`}
-                              alt={rel.title || rel.name}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform"
-                              sizes="112px"
-                              quality={85}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                              <Film className="w-8 h-8 text-gray-500" />
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
-                          {rel.title || rel.name}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
