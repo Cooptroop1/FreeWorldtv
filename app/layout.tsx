@@ -79,9 +79,6 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
 
-        {/* Preload ONLY the logo (used immediately in header + cached by SW) */}
-        <link rel="preload" href="/logo.png" as="image" />
-
         {/* Structured Data for Google (Organization + WebSite) */}
         <script
           type="application/ld+json"
