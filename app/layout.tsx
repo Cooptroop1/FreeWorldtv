@@ -35,11 +35,6 @@ export const metadata: Metadata = {
     locale: 'en_US',
     type: 'website',
   },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'FreeStream World - Free Movies & Live TV',
-    description: '100% legal free streaming. No sign-up required.',
-  },
 };
 
 export default function RootLayout({
@@ -81,6 +76,25 @@ export default function RootLayout({
         {/* Preload icons */}
         <link rel="preload" href="/icon-192.png" as="image" />
         <link rel="preload" href="/icon-512.png" as="image" />
+
+        {/* Structured Data for Google (Organization + WebSite) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "FreeStream World",
+              "url": "https://freestreamworld.com",
+              "description": "Discover 100% legal free streaming movies, TV shows and live UK TV channels. No sign-up needed.",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://freestreamworld.com/?q={search_term_string}",
+                "query-input": "required name=search_term_string"
+              }
+            })
+          }}
+        />
 
         {/* Service Worker */}
         <script
