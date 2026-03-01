@@ -4,18 +4,6 @@ import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Sear
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../lib/static-fallback-titles';
-
-// SEO Metadata for Google (this is what search engines see)
-export const metadata = {
-  title: 'FreeStream World - Free Movies, TV Shows & Live TV (Legal)',
-  description: 'Discover 100% legal free streaming movies, TV shows and live UK TV channels. No sign-up needed. Powered by Watchmode & TMDB.',
-  openGraph: {
-    title: 'FreeStream World - Free Legal Streaming',
-    description: 'Watch free movies, TV shows & live TV legally. Tubi, Pluto TV, BBC iPlayer and more.',
-    images: [{ url: 'https://freestreamworld.com/og-image.jpg' }],
-  },
-};
-
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 // Public live channels (official links)
