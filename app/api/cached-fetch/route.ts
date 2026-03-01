@@ -3,6 +3,7 @@ import { kv } from '@vercel/kv';
 
 const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const BASE_URL = 'https://api.watchmode.com/v1';
+const REFRESH_SECRET = 'FreeStreamWorld2026';   // ← change this if you want a different secret
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +12,24 @@ export async function GET(request: NextRequest) {
   const types = searchParams.get('types') || 'movie,tv_series';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
+
+  // === NEW: 24h auto-snapshot trigger (exactly what you asked for) ===
+  // First visitor after 24h automatically refreshes the full catalog
+  try {
+    const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
+    const now = Date.now();
+
+    if (now - lastFullRefresh > 24 * 60 * 60 * 1000 && !query && !genres) {
+      console.log('🕒 24h expired → first visitor triggering full snapshot...');
+      // Fire and forget (background) so the user doesn't wait
+      fetch(`https://${request.headers.get('host')}/api/refresh-all-free?secret=${REFRESH_SECRET}`, {
+        cache: 'no-store'
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.error('Auto-refresh check failed (continuing):', e);
+  }
+  // === END OF NEW LOGIC ===
 
   // FIRST: Check full catalog cache (your daily preload)
   try {
