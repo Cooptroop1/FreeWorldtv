@@ -4,13 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
-import { Redis } from '@upstash/redis';
-
-// Redis client (Vercel KV)
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL || '',
-  token: process.env.KV_REST_API_TOKEN || '',
-});
 
 // Use env vars (set in Vercel/Render)
 const WATCHMODE_API_KEY = process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
@@ -92,7 +85,7 @@ export default function Home() {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  // Custom links (unchanged)
+  // Custom links
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -125,28 +118,13 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch titles / search with KV caching
+  // Fetch titles / search
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
 
     const fetchData = async () => {
       setLoading(true);
       setError(null);
-
-      // Unique cache key
-      const cacheKey = `wm-cache:${tab}:${region}:${contentType}:${currentPage}:${debouncedSearch || 'no-search'}:${selectedGenre || topGenre || 'no-genre'}`;
-
-      // Check cache first
-      try {
-        const cached = await redis.get(cacheKey);
-        if (cached) {
-          setData(cached);
-          setLoading(false);
-          return;
-        }
-      } catch (cacheErr) {
-        console.warn('Redis get failed:', cacheErr);
-      }
 
       try {
         let url = `/api/popular-free?region=${region}&type=${encodeURIComponent(contentType)}&page=${currentPage}`;
@@ -162,12 +140,6 @@ export default function Home() {
 
         if (json.success) {
           setData(json);
-          // Cache for 1 hour
-          try {
-            await redis.set(cacheKey, json, { ex: 3600 });
-          } catch (cacheErr) {
-            console.warn('Redis set failed:', cacheErr);
-          }
         } else {
           setError(json.error || 'Failed to load titles');
         }
@@ -310,44 +282,19 @@ export default function Home() {
         </p>
 
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
-          <button
-            onClick={() => setTab('discover')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
-              tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'
-            }`}
-          >
+          <button onClick={() => setTab('discover')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}>
             <Tv size={20} /> Discover
           </button>
-          <button
-            onClick={() => setTab('live')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
-              tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'
-            }`}
-          >
+          <button onClick={() => setTab('live')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'}`}>
             <Radio size={20} /> Live TV
           </button>
-          <button
-            onClick={() => setTab('mylinks')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
-              tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'
-            }`}
-          >
+          <button onClick={() => setTab('mylinks')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}>
             <Plus size={20} /> My Links
           </button>
-          <button
-            onClick={() => setTab('favorites')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
-              tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'
-            }`}
-          >
+          <button onClick={() => setTab('favorites')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}>
             <Heart size={20} /> Favorites ({favorites.length})
           </button>
-          <button
-            onClick={() => setTab('top10')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
-              tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'
-            }`}
-          >
+          <button onClick={() => setTab('top10')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'}`}>
             <Star size={20} /> Top 10
           </button>
         </div>
@@ -523,6 +470,7 @@ export default function Home() {
                       );
                     })}
                   </div>
+
                   <div className="flex justify-center items-center gap-6 mt-12">
                     <button
                       onClick={goToPrevPage}
@@ -662,302 +610,302 @@ export default function Home() {
         </section>
       )}
 
-  // Live TV Tab
-  {tab === 'live' && (
-    <section className="max-w-7xl mx-auto">
-      <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-        <Radio className="text-purple-400" size={32} />
-        Live & Free UK TV Services
-      </h2>
-      <p className="text-yellow-400 mb-4 text-center text-sm">
-        Links only — we do not host videos. All content from official sources.
-      </p>
-      <p className="text-gray-400 mb-10 text-lg">
-        Click any service to open the official live or catch-up player in a new tab.<br />
-        Some require a UK TV licence or VPN if you're outside the UK.
-      </p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-        {liveChannels.map((channel) => (
-          <div
-            key={channel.id}
-            className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
-          >
-            <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
-              <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
-            </div>
-            <div className="p-5 flex flex-col flex-grow">
-              <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
-                {channel.name}
-              </h3>
-              <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
-              <div className="flex-grow"></div>
-              <a
-                href={channel.officialUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
+      {/* Live TV Tab */}
+      {tab === 'live' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+            <Radio className="text-purple-400" size={32} />
+            Live & Free UK TV Services
+          </h2>
+          <p className="text-yellow-400 mb-4 text-center text-sm">
+            Links only — we do not host videos. All content from official sources.
+          </p>
+          <p className="text-gray-400 mb-10 text-lg">
+            Click any service to open the official live or catch-up player in a new tab.<br />
+            Some require a UK TV licence or VPN if you're outside the UK.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+            {liveChannels.map((channel) => (
+              <div
+                key={channel.id}
+                className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
               >
-                Watch Live / Catch-up →
-              </a>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  )}
-
-  // My Custom Links Tab
-  {tab === 'mylinks' && (
-    <section className="max-w-7xl mx-auto">
-      <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-        <Plus className="text-purple-400" size={32} />
-        My Custom Streams
-      </h2>
-      <div className="bg-red-900/50 border border-red-600 text-red-200 p-4 mb-6 rounded-lg">
-        <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams (e.g. official FAST channels, personal cameras, free public feeds). Do NOT add pirated, copyrighted, or illegal links. You are solely responsible for the legality of any URL you add. We do not review or endorse user links.
-      </div>
-      <p className="text-gray-400 mb-6 text-lg">
-        Add your own HLS/m3u8 or direct video links (public streams only).<br />
-        Links are saved in your browser only — private & local.
-      </p>
-      <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
-            <input
-              type="text"
-              value={newLinkName}
-              onChange={(e) => setNewLinkName(e.target.value)}
-              placeholder="e.g. My Sports Channel"
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Stream URL</label>
-            <input
-              type="url"
-              value={newLinkUrl}
-              onChange={(e) => setNewLinkUrl(e.target.value)}
-              placeholder="https://example.com/stream.m3u8"
-              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-        </div>
-        <button
-          onClick={addCustomLink}
-          disabled={!newLinkName.trim() || !newLinkUrl.trim().startsWith('http')}
-          className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Add Link
-        </button>
-      </div>
-
-      {customLinks.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-          {customLinks.map((link) => (
-            <div
-              key={link.id}
-              className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
-            >
-              <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
-                <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
-              </div>
-              <div className="p-5 flex flex-col flex-grow">
-                <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
-                  {link.name}
-                </h3>
-                <div className="flex-grow"></div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSelectedChannel(link)}
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors"
+                <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+                  <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
+                </div>
+                <div className="p-5 flex flex-col flex-grow">
+                  <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+                    {channel.name}
+                  </h3>
+                  <p className="text-gray-400 text-sm mb-4">{channel.category}</p>
+                  <div className="flex-grow"></div>
+                  <a
+                    href={channel.officialUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-auto block w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-medium text-center transition-colors shadow-md"
                   >
-                    Play
-                  </button>
-                  <button
-                    onClick={() => deleteCustomLink(link.id)}
-                    className="bg-red-600/70 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
-                    title="Delete link"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                    Watch Live / Catch-up →
+                  </a>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20 text-xl text-gray-300">
-          No custom links added yet.<br />
-          Paste a public HLS/m3u8 URL above to start.
-        </div>
+            ))}
+          </div>
+        </section>
       )}
-    </section>
-  )}
 
-  // Favorites Tab
-  {tab === 'favorites' && (
-    <section className="max-w-7xl mx-auto">
-      <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
-        <Heart className="text-red-400" size={32} />
-        My Favorites ({favorites.length})
-      </h2>
-      <p className="text-yellow-400 mb-4 text-center text-sm">
-        Links only — we do not host videos. All content from official sources.
-      </p>
-      <p className="text-gray-400 mb-10 text-lg">
-        Titles you've saved. Click to view free sources.
-      </p>
-      {favorites.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-          {favorites.map((title: any) => (
-            <div
-              key={title.id}
-              onClick={() => setSelectedTitle(title)}
-              className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-            >
-              <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
-                {title.poster_path ? (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-                    alt={title.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                  </div>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(title);
-                  }}
-                  className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                >
-                  <Heart size={20} className="fill-red-500 text-red-500" />
-                </button>
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
-                  {title.title}
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                </p>
-                <button
-                  className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                  onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                >
-                  View Free Sources
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20 text-xl text-gray-300">
-          No favorites saved yet.<br />
-          Go to Discover tab and click the heart on any title to add it here.
-        </div>
-      )}
-    </section>
-  )}
-
-  // Player Modal
-  {selectedChannel && (
-    <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-      <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
-        <div className="flex justify-between items-center p-5 border-b border-gray-800">
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <Radio size={24} className="text-purple-400" />
-            {selectedChannel.name}
+      {/* My Custom Links Tab */}
+      {tab === 'mylinks' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+            <Plus className="text-purple-400" size={32} />
+            My Custom Streams
           </h2>
-          <button
-            onClick={() => setSelectedChannel(null)}
-            className="text-gray-400 hover:text-white text-4xl leading-none"
-          >
-            ×
-          </button>
-        </div>
-        <div data-vjs-player className="aspect-video bg-black">
-          <video
-            ref={videoRef}
-            className="video-js vjs-big-play-centered vjs-fluid"
-            playsInline
-          />
-        </div>
-      </div>
-    </div>
-  )}
-
-  // Sources Modal
-  {tab === 'discover' && selectedTitle && (
-    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
-        <div className="p-6 md:p-8">
-          <div className="flex justify-between items-start mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold pr-10">
-              {selectedTitle.title} ({selectedTitle.year})
-            </h2>
+          <div className="bg-red-900/50 border border-red-600 text-red-200 p-4 mb-6 rounded-lg">
+            <strong>Legal Warning:</strong> Only add public, legal, non-copyrighted streams (e.g. official FAST channels, personal cameras, free public feeds). Do NOT add pirated, copyrighted, or illegal links. You are solely responsible for the legality of any URL you add. We do not review or endorse user links.
+          </div>
+          <p className="text-gray-400 mb-6 text-lg">
+            Add your own HLS/m3u8 or direct video links (public streams only).<br />
+            Links are saved in your browser only — private & local.
+          </p>
+          <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                <input
+                  type="text"
+                  value={newLinkName}
+                  onChange={(e) => setNewLinkName(e.target.value)}
+                  placeholder="e.g. My Sports Channel"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">Stream URL</label>
+                <input
+                  type="url"
+                  value={newLinkUrl}
+                  onChange={(e) => setNewLinkUrl(e.target.value)}
+                  placeholder="https://example.com/stream.m3u8"
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
             <button
-              onClick={() => { setSelectedTitle(null); setSources([]); }}
-              className="text-gray-400 hover:text-white text-4xl leading-none"
+              onClick={addCustomLink}
+              disabled={!newLinkName.trim() || !newLinkUrl.trim().startsWith('http')}
+              className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              ×
+              Add Link
             </button>
           </div>
 
-          {sourcesLoading ? (
-            <div className="text-center py-16 text-xl">Loading sources...</div>
-          ) : sources.length > 0 ? (
-            <div className="space-y-5">
-              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <MonitorPlay size={22} /> Free Streaming Options
-              </h3>
-              {sources.map((source: any, idx: number) => (
-                <a
-                  key={idx}
-                  href={source.web_url || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500"
+          {customLinks.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+              {customLinks.map((link) => (
+                <div
+                  key={link.id}
+                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col"
                 >
-                  <div className="font-semibold text-lg mb-1">{source.name}</div>
-                  <div className="text-gray-400 text-sm">
-                    Free with Ads {source.format && `• ${source.format}`}
+                  <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
+                    <Radio className="w-16 h-16 text-purple-600 group-hover:text-purple-400 transition-colors" />
                   </div>
-                  {source.web_url && (
-                    <div className="mt-3 text-blue-400 text-sm font-medium">
-                      Watch now →
+                  <div className="p-5 flex flex-col flex-grow">
+                    <h3 className="font-semibold text-lg mb-2 group-hover:text-purple-300 transition-colors">
+                      {link.name}
+                    </h3>
+                    <div className="flex-grow"></div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setSelectedChannel(link)}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-medium transition-colors"
+                      >
+                        Play
+                      </button>
+                      <button
+                        onClick={() => deleteCustomLink(link.id)}
+                        className="bg-red-600/70 hover:bg-red-700 text-white p-2 rounded-lg transition-colors"
+                        title="Delete link"
+                      >
+                        <Trash2 size={18} />
+                      </button>
                     </div>
-                  )}
-                </a>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-16 text-gray-300 text-lg">
-              No free sources available right now in {region}.<br />
-              Availability changes frequently — try again later!
+            <div className="text-center py-20 text-xl text-gray-300">
+              No custom links added yet.<br />
+              Paste a public HLS/m3u8 URL above to start.
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  )}
+        </section>
+      )}
 
-  <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
-    <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
-    <p className="mt-2">
-      <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> | 
-      <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> | 
-      <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
-    </p>
-    <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
-  </footer>
-</main>
+      {/* Favorites Tab */}
+      {tab === 'favorites' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+            <Heart className="text-red-400" size={32} />
+            My Favorites ({favorites.length})
+          </h2>
+          <p className="text-yellow-400 mb-4 text-center text-sm">
+            Links only — we do not host videos. All content from official sources.
+          </p>
+          <p className="text-gray-400 mb-10 text-lg">
+            Titles you've saved. Click to view free sources.
+          </p>
+          {favorites.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+              {favorites.map((title: any) => (
+                <div
+                  key={title.id}
+                  onClick={() => setSelectedTitle(title)}
+                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                >
+                  <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
+                    {title.poster_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                        alt={title.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(title);
+                      }}
+                      className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
+                    >
+                      <Heart size={20} className="fill-red-500 text-red-500" />
+                    </button>
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
+                      {title.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                    </p>
+                    <button
+                      className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                    >
+                      View Free Sources
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 text-xl text-gray-300">
+              No favorites saved yet.<br />
+              Go to Discover tab and click the heart on any title to add it here.
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Player Modal */}
+      {selectedChannel && (
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+          <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b border-gray-800">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                <Radio size={24} className="text-purple-400" />
+                {selectedChannel.name}
+              </h2>
+              <button
+                onClick={() => setSelectedChannel(null)}
+                className="text-gray-400 hover:text-white text-4xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div data-vjs-player className="aspect-video bg-black">
+              <video
+                ref={videoRef}
+                className="video-js vjs-big-play-centered vjs-fluid"
+                playsInline
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sources Modal */}
+      {tab === 'discover' && selectedTitle && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
+            <div className="p-6 md:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold pr-10">
+                  {selectedTitle.title} ({selectedTitle.year})
+                </h2>
+                <button
+                  onClick={() => { setSelectedTitle(null); setSources([]); }}
+                  className="text-gray-400 hover:text-white text-4xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
+
+              {sourcesLoading ? (
+                <div className="text-center py-16 text-xl">Loading sources...</div>
+              ) : sources.length > 0 ? (
+                <div className="space-y-5">
+                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <MonitorPlay size={22} /> Free Streaming Options
+                  </h3>
+                  {sources.map((source: any, idx: number) => (
+                    <a
+                      key={idx}
+                      href={source.web_url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500"
+                    >
+                      <div className="font-semibold text-lg mb-1">{source.name}</div>
+                      <div className="text-gray-400 text-sm">
+                        Free with Ads {source.format && `• ${source.format}`}
+                      </div>
+                      {source.web_url && (
+                        <div className="mt-3 text-blue-400 text-sm font-medium">
+                          Watch now →
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 text-gray-300 text-lg">
+                  No free sources available right now in {region}.<br />
+                  Availability changes frequently — try again later!
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
+        <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
+        <p className="mt-2">
+          <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> | 
+          <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> | 
+          <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
+        </p>
+        <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
+      </footer>
+    </main>
   );
 }
