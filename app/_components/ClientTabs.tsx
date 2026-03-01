@@ -354,7 +354,7 @@ export default function ClientTabs() {
     const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
     return matchesSearch && matchesGenres && matchesYear && matchesRating && matchesType;
   });
-  // FIXED: Surprise Me now navigates to the title page (no more old modal)
+  // FIXED: Surprise Me now navigates correctly
   const surpriseMe = () => {
     if (filteredTitles.length === 0) return;
     const randomIndex = Math.floor(Math.random() * filteredTitles.length);
