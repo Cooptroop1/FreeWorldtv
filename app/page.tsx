@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image'; // ← NEW: Next.js Image optimization
 import { Tv, Film, Globe, X, Radio, MonitorPlay, ChevronLeft, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
@@ -397,7 +398,7 @@ export default function Home() {
         )}
       </header>
 
-      {/* Discover Tab – INFINITE SCROLL + PUBLISHER CONTENT (fixes AdSense "Needs attention") */}
+      {/* Discover Tab – INFINITE SCROLL + NEXT.JS IMAGE OPTIMIZATION */}
       {tab === 'discover' && (
         <>
           {loading && (
@@ -411,7 +412,7 @@ export default function Home() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
-              {/* PUBLISHER CONTENT – This is what Google Ads requires to clear the warning */}
+              {/* PUBLISHER CONTENT – already here */}
               <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
                 <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
                 <p className="text-gray-300 leading-relaxed mb-4">
@@ -435,7 +436,7 @@ export default function Home() {
                 Found {allTitles.length} titles • Scroll for more
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                {allTitles.map((title: any) => {
+                {allTitles.map((title: any, index: number) => {
                   const isFavorite = favorites.some(fav => fav.id === title.id);
                   return (
                     <div
@@ -445,13 +446,14 @@ export default function Home() {
                     >
                       <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
                         {title.poster_path ? (
-                          <img
+                          <Image
                             src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
                             alt={title.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                            }}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                            quality={85}
+                            priority={index < 6} // only preload first few for better LCP
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
@@ -490,7 +492,7 @@ export default function Home() {
                 })}
               </div>
 
-              {/* MOVIE STRUCTURED DATA (JSON-LD) */}
+              {/* MOVIE STRUCTURED DATA */}
               <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{
@@ -514,7 +516,6 @@ export default function Home() {
                 }}
               />
 
-              {/* Infinite Scroll Sentinel */}
               {hasMore && (
                 <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
                   {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
@@ -526,7 +527,7 @@ export default function Home() {
         </>
       )}
 
-      {/* Top 10 Tab */}
+      {/* Top 10 Tab – also uses optimized Image */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -548,7 +549,7 @@ export default function Home() {
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
           {!loading && allTitles.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {allTitles.slice(0, 10).map((title: any) => (
+              {allTitles.slice(0, 10).map((title: any, index: number) => (
                 <div
                   key={title.id}
                   onClick={() => setSelectedTitle(title)}
@@ -556,13 +557,14 @@ export default function Home() {
                 >
                   <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
                     {title.poster_path ? (
-                      <img
+                      <Image
                         src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
                         alt={title.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                        }}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                        quality={85}
+                        priority={index < 4}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -741,13 +743,13 @@ export default function Home() {
                 >
                   <div className="aspect-[2/3] bg-gray-700 relative overflow-hidden">
                     {title.poster_path ? (
-                      <img
+                      <Image
                         src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
                         alt={title.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300x450?text=No+Poster';
-                        }}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                        quality={85}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -871,7 +873,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* FLOATING LEGAL BUTTON – pauses infinite scroll for 10 seconds so footer stays visible */}
+      {/* FLOATING LEGAL BUTTON */}
       {tab === 'discover' && allTitles.length > 8 && (
         <button
           onClick={() => {
