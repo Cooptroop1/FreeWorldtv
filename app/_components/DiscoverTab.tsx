@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { Film, Loader2, MonitorPlay, Heart, Filter, X } from 'lucide-react';
+import { Film, Loader2, MonitorPlay, Heart, Filter, X, ArrowUp } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 
 interface DiscoverTabProps {
@@ -57,21 +57,19 @@ export default function DiscoverTab({
   const [page, setPage] = useState(1);
   const [selectedGenre, setSelectedGenre] = useState('');
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const prevSearchRef = useRef(debouncedSearch);
-
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // Dynamic page title for SEO & browser tab
+  // Dynamic page title
   useEffect(() => {
-    if (debouncedSearch) {
-      document.title = `Free "${debouncedSearch}" Movies & TV Shows | FreeStream World`;
-    } else {
-      document.title = 'FreeStream World - Watch Free Movies & TV Shows Legally';
-    }
+    document.title = debouncedSearch
+      ? `Free "${debouncedSearch}" Movies & TV Shows | FreeStream World`
+      : 'FreeStream World - Watch Free Movies & TV Shows Legally';
   }, [debouncedSearch]);
 
   // Scroll to top on search change
@@ -84,6 +82,17 @@ export default function DiscoverTab({
       setHasMore(true);
     }
   }, [debouncedSearch]);
+
+  // Back to Top visibility
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 600);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Initial fetch
   useEffect(() => {
@@ -105,7 +114,6 @@ export default function DiscoverTab({
         let newTitles: any[] = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
         if (newTitles === staticFallbackTitles) {
           setIsUsingFallback(true);
-          console.warn('🔄 Using cached fallback titles');
         } else {
           setIsUsingFallback(false);
         }
@@ -113,7 +121,6 @@ export default function DiscoverTab({
         setHasMore(newTitles.length >= 48);
         if (json.success) setLastUpdated(new Date().toISOString());
       } catch (err) {
-        console.error(err);
         setAllTitles(staticFallbackTitles);
         setIsUsingFallback(true);
         setHasMore(false);
@@ -123,7 +130,7 @@ export default function DiscoverTab({
     fetchData();
   }, [debouncedSearch, selectedGenre, region, contentType]);
 
-  // Stable loadMore
+  // Load more
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || pauseInfinite) return;
     setLoadingMore(true);
@@ -141,14 +148,13 @@ export default function DiscoverTab({
       setPage(prev => prev + 1);
       setHasMore(newTitles.length >= 48);
     } catch (err) {
-      console.error(err);
       setHasMore(false);
     } finally {
       setLoadingMore(false);
     }
   }, [page, debouncedSearch, selectedGenre, region, contentType, loadingMore, hasMore, pauseInfinite]);
 
-  // Observer
+  // Infinite scroll observer
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver(
@@ -159,21 +165,18 @@ export default function DiscoverTab({
       },
       { threshold: 0.5 }
     );
-    if (sentinelRef.current) {
-      observerRef.current.observe(sentinelRef.current);
-    }
-    return () => {
-      if (observerRef.current) observerRef.current.disconnect();
-    };
+    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
+    return () => observerRef.current?.disconnect();
   }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
 
-  // OPTIMIZED POSTER FETCHING
+  // Optimized poster fetching
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const titlesNeedingPoster = allTitles.filter((title: any) =>
       title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
     );
     if (titlesNeedingPoster.length === 0) return;
+
     const fetchWithLimit = async () => {
       const batch = titlesNeedingPoster.slice(0, 8);
       const updates = await Promise.all(
@@ -236,7 +239,6 @@ export default function DiscoverTab({
     }))
   }), [debouncedSearch, filteredTitles]);
 
-  // NEW: Clear filters function
   const clearFilters = () => {
     setSelectedGenresFilter([]);
     setMinYearFilter('');
@@ -244,30 +246,27 @@ export default function DiscoverTab({
     setMinRatingFilter(0);
   };
 
-  // Matching skeleton for main grid
   const MovieCardSkeleton = () => (
-    <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg">
+    <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg" aria-hidden="true">
       <div className="relative aspect-[2/3] bg-zinc-800 animate-pulse" />
       <div className="p-4">
         <div className="h-6 bg-zinc-700 rounded animate-pulse mb-2 w-4/5" />
         <div className="h-4 bg-zinc-700 rounded animate-pulse w-1/3" />
         <div className="flex gap-2 mt-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex-1 h-7 bg-zinc-700 rounded animate-pulse" />
-          ))}
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="flex-1 h-7 bg-zinc-700 rounded animate-pulse" />)}
         </div>
         <div className="mt-3 h-10 bg-zinc-700 rounded-lg animate-pulse" />
       </div>
     </div>
   );
 
-  const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" />;
+  const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
   const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     return (
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
+      <section className="mb-10" aria-labelledby={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+        <h2 id={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`} className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
           {title} {isLoading && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
         </h2>
         <div className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory scrollbar-hide">
@@ -277,73 +276,82 @@ export default function DiscoverTab({
             items.map((item) => {
               const isFavorite = favorites.some(fav => fav.id === item.id);
               return (
-                <div key={item.id} onClick={() => setSelectedTitle(item)} className="flex-shrink-0 w-40 snap-start cursor-pointer group">
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedTitle(item)}
+                  className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left"
+                  aria-label={`View details for ${item.title} (${item.year})`}
+                >
                   <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
                     {item.poster_path ? (
                       <Image
                         src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
-                        alt={item.title}
+                        alt={`${item.title} poster`}
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 50vw, 20vw"
                         quality={82}
+                        loading="lazy"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"><Film className="w-12 h-12 text-gray-600" /></div>
                     )}
-                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 transition-colors">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                      aria-label={isFavorite ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
+                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 transition-colors"
+                    >
                       <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
                     </button>
                   </div>
                   <p className="text-sm mt-2 line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
                   <p className="text-xs text-center text-gray-400">{item.year}</p>
-                </div>
+                </button>
               );
             })
           ) : (
-            <div className="text-gray-500 italic">No titles in this section yet</div>
+            <p className="text-gray-500 italic">No titles in this section yet</p>
           )}
         </div>
-      </div>
+      </section>
     );
   };
 
   return (
     <>
       {isUsingFallback && !debouncedSearch && (
-        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-center py-3 px-6 rounded-2xl mx-auto max-w-2xl mb-8 text-sm">
+        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-center py-3 px-6 rounded-2xl mx-auto max-w-2xl mb-8 text-sm" role="alert">
           Temporarily using cached titles (Watchmode is slow right now).<br />
           Everything still works — refreshes automatically every 24 hours.
         </div>
       )}
 
       {(loading || allTitles.length > 0) && (
-        <section className="max-w-7xl mx-auto">
+        <section className="max-w-7xl mx-auto" aria-labelledby="discover-main">
           {/* Welcome box */}
           <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
             <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
             <p className="text-gray-300 leading-relaxed mb-4">
               We help you discover completely legal free movies, TV shows and live TV channels from official providers like Tubi, Pluto TV, BBC iPlayer, ITVX and more.
-              No sign-up, no hidden fees — just direct links to the best free content available in your region right now.
             </p>
             <p className="text-gray-300 leading-relaxed">
               All titles shown are 100% free to watch on the original services. We never host or stream any video ourselves.
-              Availability changes daily, so bookmark us and check back often!
             </p>
           </div>
 
           {lastUpdated && (
-            <div className="text-center text-xs text-emerald-400 mb-6">
+            <div className="text-center text-xs text-emerald-400 mb-6" aria-live="polite">
               Updated {(() => { const diff = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / 3600000); return diff === 0 ? 'just now' : `${diff} hour${diff > 1 ? 's' : ''} ago`; })()} • Refreshes automatically every 24 hours
             </div>
           )}
 
+          {/* Hero */}
           {filteredTitles[0] && (
-            <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
+            <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden" role="img" aria-label={`${filteredTitles[0].title} hero background`}>
               {filteredTitles[0].poster_path ? (
                 <Image
                   src={`https://image.tmdb.org/t/p/w1280${filteredTitles[0].poster_path}`}
-                  alt={filteredTitles[0].title}
+                  alt={`${filteredTitles[0].title} hero`}
                   fill
                   className="object-cover brightness-75"
                   priority
@@ -368,16 +376,16 @@ export default function DiscoverTab({
           <HorizontalCarousel title="New Releases This Week" items={newReleases} loadingKey="initial" />
           {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />}
 
-          {/* === FILTERS PANEL (NEW) === */}
+          {/* Filters Panel */}
           <div className="mb-8 flex flex-wrap items-center gap-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
+              aria-expanded={showFilters}
+              aria-controls="filters-panel"
               className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-2xl font-medium transition-all"
             >
-              <Filter size={20} />
-              {showFilters ? 'Hide Filters' : '🔍 Filters & Options'}
+              <Filter size={20} /> {showFilters ? 'Hide Filters' : '🔍 Filters & Options'}
             </button>
-
             <button
               onClick={surpriseMe}
               className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-2xl font-medium transition-all"
@@ -387,7 +395,7 @@ export default function DiscoverTab({
           </div>
 
           {showFilters && (
-            <div className="mb-10 bg-gray-800/50 border border-gray-700 rounded-3xl p-8">
+            <div id="filters-panel" className="mb-10 bg-gray-800/50 border border-gray-700 rounded-3xl p-8">
               <div className="flex justify-between items-center mb-6">
                 <h4 className="text-2xl font-bold">Filters</h4>
                 <button onClick={clearFilters} className="text-sm text-gray-400 hover:text-white flex items-center gap-1">
@@ -398,17 +406,16 @@ export default function DiscoverTab({
               {/* Genres */}
               <div className="mb-8">
                 <p className="text-sm text-gray-400 mb-3">Genres</p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Genre filters">
                   {genres.map((g) => {
                     const isActive = selectedGenresFilter.includes(g.id);
                     return (
                       <button
                         key={g.id}
                         onClick={() => toggleGenreFilter(g.id)}
+                        aria-pressed={isActive}
                         className={`px-5 py-2 rounded-full text-sm transition-all ${
-                          isActive 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                          isActive ? 'bg-blue-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                         }`}
                       >
                         {g.name}
@@ -421,8 +428,9 @@ export default function DiscoverTab({
               {/* Year Range */}
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <div>
-                  <p className="text-sm text-gray-400 mb-2">Min Year</p>
+                  <label htmlFor="min-year" className="text-sm text-gray-400 mb-2 block">Min Year</label>
                   <input
+                    id="min-year"
                     type="number"
                     value={minYearFilter}
                     onChange={(e) => setMinYearFilter(e.target.value)}
@@ -431,8 +439,9 @@ export default function DiscoverTab({
                   />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400 mb-2">Max Year</p>
+                  <label htmlFor="max-year" className="text-sm text-gray-400 mb-2 block">Max Year</label>
                   <input
+                    id="max-year"
                     type="number"
                     value={maxYearFilter}
                     onChange={(e) => setMaxYearFilter(e.target.value)}
@@ -444,11 +453,12 @@ export default function DiscoverTab({
 
               {/* Min Rating */}
               <div className="mb-8">
-                <div className="flex justify-between text-sm text-gray-400 mb-2">
+                <label htmlFor="rating-slider" className="flex justify-between text-sm text-gray-400 mb-2">
                   <span>Minimum Rating</span>
-                  <span className="font-mono">{minRatingFilter}.0+</span>
-                </div>
+                  <span className="font-mono" aria-live="polite">{minRatingFilter}.0+</span>
+                </label>
                 <input
+                  id="rating-slider"
                   type="range"
                   min="0"
                   max="10"
@@ -456,21 +466,24 @@ export default function DiscoverTab({
                   value={minRatingFilter}
                   onChange={(e) => setMinRatingFilter(parseFloat(e.target.value))}
                   className="w-full accent-blue-500"
+                  aria-valuemin={0}
+                  aria-valuemax={10}
+                  aria-valuenow={minRatingFilter}
+                  aria-valuetext={`${minRatingFilter}.0 and above`}
                 />
               </div>
 
               {/* Content Type */}
               <div>
                 <p className="text-sm text-gray-400 mb-3">Content Type</p>
-                <div className="flex gap-3">
+                <div className="flex gap-3" role="group" aria-label="Content type filter">
                   {['movie,tv_series', 'movie', 'tv_series'].map((type) => (
                     <button
                       key={type}
                       onClick={() => setContentType(type)}
+                      aria-pressed={contentType === type}
                       className={`px-6 py-2.5 rounded-2xl text-sm font-medium transition-all ${
-                        contentType === type 
-                          ? 'bg-white text-black' 
-                          : 'bg-gray-700 hover:bg-gray-600'
+                        contentType === type ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'
                       }`}
                     >
                       {type === 'movie,tv_series' ? 'All' : type === 'movie' ? 'Movies Only' : 'TV Series Only'}
@@ -482,14 +495,17 @@ export default function DiscoverTab({
           )}
 
           <div className="mt-12">
-            <h3 className="text-3xl font-bold mb-6 flex items-center gap-4"><MonitorPlay className="text-green-400" size={32} /> All Free Titles</h3>
+            <h3 id="all-titles-heading" className="text-3xl font-bold mb-6 flex items-center gap-4">
+              <MonitorPlay className="text-green-400" size={32} /> All Free Titles
+            </h3>
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
-            <p className="text-gray-400 mb-8 text-lg">
-              {loading ? 'Searching free titles...' : `Found ${filteredTitles.length} titles • Scroll for more`}
-            </p>
 
-            {/* MAIN GRID WITH SKELETONS */}
-            <div className="min-h-[600px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+            <div aria-live="polite" className="text-gray-400 mb-8 text-lg">
+              {loading ? 'Searching free titles...' : `Found ${filteredTitles.length} titles • Scroll for more`}
+            </div>
+
+            {/* MAIN GRID */}
+            <div className="min-h-[600px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6" aria-labelledby="all-titles-heading">
               {loading ? (
                 Array.from({ length: 18 }).map((_, i) => <MovieCardSkeleton key={i} />)
               ) : (
@@ -497,53 +513,76 @@ export default function DiscoverTab({
                   const isFavorite = favorites.some(fav => fav.id === title.id);
                   const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
+
                   return (
-                    <div key={title.id} onClick={() => setSelectedTitle(title)} className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative">
+                    <button
+                      key={title.id}
+                      onClick={() => setSelectedTitle(title)}
+                      className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative text-left"
+                      aria-label={`View free sources for ${title.title} (${title.year})`}
+                    >
                       <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                         {title.poster_path ? (
                           <Image
                             src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
-                            alt={title.title}
+                            alt={`${title.title} poster`}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                             quality={82}
                             priority={index < 6}
+                            loading={index < 6 ? 'eager' : 'lazy'}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
                         )}
-                        <button onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }} className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
+                          aria-label={isFavorite ? `Remove ${title.title} from favorites` : `Add ${title.title} to favorites`}
+                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
+                        >
                           <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'} />
                         </button>
                       </div>
                       <div className="p-4">
-                        <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">{title.title}</h3>
+                        <h4 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">{title.title}</h4>
                         <p className="text-gray-400 text-sm">{title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}</p>
                         <div className="flex gap-2 mt-3">
-                          <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">📋 Copy</button>
-                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">𝕏</button>
-                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">📘</button>
-                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">💬</button>
+                          <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Copy link">📋 Copy</button>
+                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Share on X">𝕏</button>
+                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Share on Facebook">📘</button>
+                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Share on WhatsApp">💬</button>
                         </div>
                         <button className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all" onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}>View Free Sources</button>
                       </div>
-                    </div>
+                    </button>
                   );
                 })
               )}
             </div>
 
             {/* SEO JSON-LD */}
-            <script
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{ __html: jsonLd }}
-            />
+            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
 
-            {hasMore && <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">{loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}</div>}
+            {hasMore && (
+              <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12" aria-live="polite">
+                {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
+              </div>
+            )}
             {!hasMore && <p className="text-center text-gray-400 py-12">End of results • Try a different search or filter</p>}
           </div>
         </section>
+      )}
+
+      {/* Floating Back to Top Button */}
+      {showBackToTop && (
+        <button
+          onClick={scrollToTop}
+          aria-label="Scroll back to top"
+          className="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
+        >
+          <ArrowUp size={24} />
+        </button>
       )}
     </>
   );
