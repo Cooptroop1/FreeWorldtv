@@ -216,13 +216,15 @@ export default function Tabs() {
     fetchTop10();
   }, [tab, region, contentType]);
 
-  const surpriseMe = () => {
-    if (favorites.length > 0) {
-      const randomIndex = Math.floor(Math.random() * favorites.length);
-      setSelectedTitle(favorites[randomIndex]);
-    } else {
-      alert('Add some favorites first or switch to Discover tab!');
+   const surpriseMe = () => {
+    // True random from discovery (or favorites if you have any)
+    const sourceList = favorites.length > 0 ? favorites : staticFallbackTitles;
+    if (sourceList.length === 0) {
+      alert("No titles available yet – browse Discover first!");
+      return;
     }
+    const randomIndex = Math.floor(Math.random() * sourceList.length);
+    setSelectedTitle(sourceList[randomIndex]);
   };
 
   const toggleGenreFilter = (genreId: number) => {
