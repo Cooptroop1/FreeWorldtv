@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { MonitorPlay, Star, Clock, Users } from 'lucide-react';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
@@ -46,10 +45,31 @@ async function getTitleDetails(id: string) {
 }
 
 export default async function TitlePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;   // ← THIS IS THE FIX (Next.js 15+ requirement)
+  const { id } = await params;
 
   const title = await getTitleDetails(id);
-  if (!title) notFound();
+
+  // SOFT FALLBACK — no hard 404
+  if (!title) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-950 to-black text-white flex items-center justify-center p-8">
+        <div className="max-w-md text-center">
+          <MonitorPlay className="w-20 h-20 mx-auto mb-6 text-gray-600" />
+          <h1 className="text-5xl font-bold mb-4">Title Not Available</h1>
+          <p className="text-xl text-gray-300 mb-8">
+            Sorry, we couldn't load details for this title right now.<br />
+            It may not have free sources or the data is temporarily unavailable.
+          </p>
+          <Link 
+            href="/" 
+            className="inline-block bg-blue-600 hover:bg-blue-700 px-10 py-4 rounded-full text-lg font-medium transition"
+          >
+            ← Back to Discover
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const trailerUrl = title.trailer ? `https://www.youtube.com/embed/${title.trailer}` : null;
 
