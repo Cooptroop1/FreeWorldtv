@@ -458,45 +458,64 @@ export default function ClientTabs() {
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
 
-  // ==================== STRONGEST PROVIDER LOGO MATCHING (real logos now) ====================
+  // ==================== FINAL ULTRA-STRONG LOGO MATCHING (this WILL show real logos or we keep placeholders) ====================
 const getProviderLogo = (sourceName: string) => {
   if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
 
   const clean = sourceName.toLowerCase().trim();
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
 
-  // Normal matching
-  let provider = safeProviders.find(p => {
-    const pName = (p.name || p.display_name || '').toLowerCase().trim();
-    return pName === clean || pName.includes(clean) || clean.includes(pName);
-  });
-
-  // Extra hard-coded matches for the exact names in your cache
-  if (!provider) {
-    if (clean.includes('fx')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('fx'));
-    if (clean.includes('spectrum')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('spectrum'));
-    if (clean.includes('bbc') || clean.includes('iplayer')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('bbc'));
-    if (clean.includes('itv') || clean.includes('itvx')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('itv'));
-    if (clean.includes('my5')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('my5'));
-    if (clean.includes('all 4') || clean.includes('channel 4')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('all 4') || (p.name || '').toLowerCase().includes('channel 4'));
-    if (clean.includes('tubi')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('tubi'));
-    if (clean.includes('pluto')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('pluto'));
+  // === ONE-TIME FULL DEBUG: Show every provider name in console ===
+  if (safeProviders.length > 0 && !window.providersLogged) {
+    console.log('📋 ALL PROVIDERS IN CACHE RIGHT NOW:', safeProviders.map(p => p.name));
+    window.providersLogged = true;
   }
 
-  const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
-
-  // Nice colors
+  // === MANUAL FORCE FOR THE ONES THAT KEEP FAILING ===
+  let logoUrl = null;
   let color = 'from-indigo-500 to-purple-600';
-  if (clean.includes('fx')) color = 'from-orange-500 to-red-600';
-  if (clean.includes('spectrum')) color = 'from-blue-500 to-cyan-600';
-  if (clean.includes('bbc')) color = 'from-blue-600 to-indigo-600';
-  if (clean.includes('tubi')) color = 'from-green-500 to-emerald-600';
-  if (clean.includes('pluto')) color = 'from-purple-500 to-pink-600';
+
+  if (clean.includes('fx')) {
+    const fxProvider = safeProviders.find(p => (p.name || '').toLowerCase().includes('fx'));
+    logoUrl = fxProvider?.logo_100px || fxProvider?.logo_300px;
+    color = 'from-orange-500 to-red-600';
+    console.log('🔧 Forcing REAL FX logo from cache');
+  }
+  else if (clean.includes('spectrum')) {
+    const specProvider = safeProviders.find(p => (p.name || '').toLowerCase().includes('spectrum'));
+    logoUrl = specProvider?.logo_100px || specProvider?.logo_300px;
+    color = 'from-blue-500 to-cyan-600';
+    console.log('🔧 Forcing REAL Spectrum On Demand logo from cache');
+  }
+  else if (clean.includes('bbc') || clean.includes('iplayer')) {
+    const bbcProvider = safeProviders.find(p => (p.name || '').toLowerCase().includes('bbc'));
+    logoUrl = bbcProvider?.logo_100px || bbcProvider?.logo_300px;
+    color = 'from-blue-600 to-indigo-600';
+  }
+  else if (clean.includes('itv') || clean.includes('itvx')) {
+    const itvProvider = safeProviders.find(p => (p.name || '').toLowerCase().includes('itv'));
+    logoUrl = itvProvider?.logo_100px || itvProvider?.logo_300px;
+  }
+  else if (clean.includes('my5')) {
+    const my5Provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('my5'));
+    logoUrl = my5Provider?.logo_100px || my5Provider?.logo_300px;
+  }
+  else if (clean.includes('all 4') || clean.includes('channel 4')) {
+    const all4Provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('all 4') || (p.name || '').toLowerCase().includes('channel 4'));
+    logoUrl = all4Provider?.logo_100px || all4Provider?.logo_300px;
+  }
+  else {
+    // Normal matching as backup
+    const provider = safeProviders.find(p => {
+      const pName = (p.name || p.display_name || '').toLowerCase().trim();
+      return pName === clean || pName.includes(clean) || clean.includes(pName);
+    });
+    logoUrl = provider?.logo_100px || provider?.logo_300px;
+  }
 
   const initials = sourceName.slice(0, 2).toUpperCase();
 
-  // Debug line (open F12 → Console to see what's happening)
-  console.log(`Logo for "${sourceName}" → ${logoUrl ? 'REAL LOGO FOUND' : 'using placeholder'}`, logoUrl);
+  console.log(`🎯 Logo for "${sourceName}" → ${logoUrl ? '✅ REAL LOGO' : 'placeholder'}`, logoUrl);
 
   return { logoUrl, initials, color };
 };
