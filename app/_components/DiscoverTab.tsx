@@ -187,16 +187,18 @@ export default function DiscoverTab({
   }, [allTitles, TMDB_READ_TOKEN]);
 
   // ==================== FILTERED TITLES (FIXED — no more double filter bug) ====================
-  const filteredTitles = allTitles.filter((title: any) => {
-    const matchesSearch = !debouncedSearch || title.title.toLowerCase().includes(debouncedSearch.toLowerCase());
-    const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
-    const year = parseInt(title.year || '0');
-    const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
-    const rating = title.vote_average || 0;
-    const matchesRating = rating >= minRatingFilter;
-    const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
-    return matchesSearch && matchesGenres && matchesYear && matchesRating && matchesType;
-  });
+    // FIXED: Trust API results when searching → titles no longer disappear
+  const filteredTitles = debouncedSearch 
+    ? allTitles  // ← API already filtered the search, so show everything
+    : allTitles.filter((title: any) => {
+        const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
+        const year = parseInt(title.year || '0');
+        const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
+        const rating = title.vote_average || 0;
+        const matchesRating = rating >= minRatingFilter;
+        const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
+        return matchesGenres && matchesYear && matchesRating && matchesType;
+      });
 
   const trending = filteredTitles.slice(0, 12);
   const newReleases = filteredTitles.slice(12, 24);
