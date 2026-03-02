@@ -1,10 +1,8 @@
-// app/api/cached-fetch/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
 const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
-const BASE_URL = 'https://api.watchmode.com/v1';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'FreeStreamWorld2026'; // ← now reads your Vercel env var
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'FreeStreamWorld2026';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -14,12 +12,12 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
 
-  // === 24h auto-snapshot trigger (now uses your Vercel env var) ===
+  // === AUTO-REFRESH: First visitor after 24h triggers full snapshot ===
   try {
     const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
     const now = Date.now();
     if (now - lastFullRefresh > 24 * 60 * 60 * 1000 && !query && !genres) {
-      console.log('🕒 24h expired → first visitor triggering full snapshot...');
+      console.log('🕒 24h expired → first visitor triggering full snapshot in background...');
       const host = request.headers.get('host');
       fetch(`https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}`, {
         cache: 'no-store'
@@ -28,9 +26,8 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     console.error('Auto-refresh check failed (continuing):', e);
   }
-  // === END ===
 
-  // FIRST: Check full catalog cache
+  // === FAST PATH: Use full catalog snapshot if available (kept from your old file) ===
   try {
     const fullCatalog = await kv.get('full_free_catalog');
     if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres) {
@@ -49,6 +46,7 @@ export async function GET(request: NextRequest) {
     console.error('Full catalog read failed (continuing):', e);
   }
 
+  // === Regular cache for search or filtered results ===
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}`;
   const cacheTTL = query ? 1800 : 86400;
 
@@ -59,11 +57,12 @@ export async function GET(request: NextRequest) {
     console.error('KV read failed (continuing):', e);
   }
 
+  // === Normal Watchmode API call ===
   let apiUrl = '';
   if (query) {
-    apiUrl = `${BASE_URL}/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
+    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
   } else {
-    apiUrl = `${BASE_URL}/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
+    apiUrl = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
     if (genres) apiUrl += `&genres=${genres}`;
   }
 
@@ -72,6 +71,7 @@ export async function GET(request: NextRequest) {
     if (!res.ok) throw new Error(`Watchmode ${res.status}`);
     const raw = await res.json();
     const titles = raw.titles || raw.results || [];
+
     const normalized = {
       titles,
       region,
@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
       message: query ? `Free results for "${query}"` : `Popular free titles in ${region}`,
       fromCache: false,
     };
+
     await kv.set(cacheKey, normalized, { ex: cacheTTL });
     return NextResponse.json({ success: true, ...normalized });
   } catch (error) {
