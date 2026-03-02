@@ -1,6 +1,5 @@
-
 'use client';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { Film, Loader2, MonitorPlay, Heart } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
@@ -58,93 +57,119 @@ export default function DiscoverTab({
   const [page, setPage] = useState(1);
   const [selectedGenre, setSelectedGenre] = useState('');
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const prevSearchRef = useRef(debouncedSearch);
+
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // Fetch data (same as original)
+  // FIXED: Scroll to top ONLY on real search change (exactly like original monolithic file)
   useEffect(() => {
-    const fetchData = async (isLoadMore = false) => {
-      if (!isLoadMore) {
-        setLoading(true);
-        setAllTitles([]);
-        setPage(1);
-        setHasMore(true);
-        setIsUsingFallback(false);
-      } else {
-        setLoadingMore(true);
-      }
+    if (prevSearchRef.current !== debouncedSearch) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      prevSearchRef.current = debouncedSearch;
+      setAllTitles([]);
+      setPage(1);
+      setHasMore(true);
+    }
+  }, [debouncedSearch]);
+
+  // FIXED: Initial fetch ONLY when search/filters change — page removed from deps (this was the jump cause)
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setAllTitles([]);
+      setPage(1);
+      setHasMore(true);
+      setIsUsingFallback(false);
+
       try {
-        let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${isLoadMore ? page + 1 : 1}`;
+        let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1`;
         if (debouncedSearch) {
-          url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${isLoadMore ? page + 1 : 1}`;
+          url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=1`;
         } else if (selectedGenre) {
           url += `&genres=${selectedGenre}`;
         }
+
         const res = await fetch(url);
         const json = await res.json();
         let newTitles: any[] = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
+
         if (newTitles === staticFallbackTitles) {
           setIsUsingFallback(true);
           console.warn('🔄 Using cached fallback titles');
         } else {
           setIsUsingFallback(false);
         }
-        if (isLoadMore) {
-          setAllTitles(prev => [...prev, ...newTitles]);
-          setPage(prev => prev + 1);
-          setHasMore(newTitles.length >= 48);
-        } else {
-          setAllTitles(newTitles);
-          setPage(1);
-          setHasMore(newTitles.length >= 48);
-          if (json.success) setLastUpdated(new Date().toISOString());
-        }
+
+        setAllTitles(newTitles);
+        setHasMore(newTitles.length >= 48);
+        if (json.success) setLastUpdated(new Date().toISOString());
       } catch (err) {
         console.error(err);
-        if (!isLoadMore) {
-          setAllTitles(staticFallbackTitles);
-          setIsUsingFallback(true);
-        }
+        setAllTitles(staticFallbackTitles);
+        setIsUsingFallback(true);
         setHasMore(false);
       }
       setLoading(false);
-      setLoadingMore(false);
     };
-    fetchData();
-  }, [debouncedSearch, selectedGenre, region, contentType, page]);
 
-  // Infinite scroll (same as original)
+    fetchData();
+  }, [debouncedSearch, selectedGenre, region, contentType]);
+
+  // NEW: Stable loadMore (prevents any remounting or flicker during pagination)
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || pauseInfinite) return;
+
+    setLoadingMore(true);
+    try {
+      let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${page + 1}`;
+      if (debouncedSearch) {
+        url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${page + 1}`;
+      } else if (selectedGenre) {
+        url += `&genres=${selectedGenre}`;
+      }
+
+      const res = await fetch(url);
+      const json = await res.json();
+      const newTitles = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
+
+      setAllTitles(prev => [...prev, ...newTitles]);
+      setPage(prev => prev + 1);
+      setHasMore(newTitles.length >= 48);
+    } catch (err) {
+      console.error(err);
+      setHasMore(false);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [page, debouncedSearch, selectedGenre, region, contentType, loadingMore, hasMore, pauseInfinite]);
+
+  // FIXED: Observer now uses the stable loadMore function (no more duplicate fetch code)
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfinite) {
-        setLoadingMore(true);
-        const loadMore = async () => {
-          try {
-            let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${page + 1}`;
-            if (debouncedSearch) url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${page + 1}`;
-            else if (selectedGenre) url += `&genres=${selectedGenre}`;
-            const res = await fetch(url);
-            const json = await res.json();
-            const newTitles = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
-            setAllTitles(prev => [...prev, ...newTitles]);
-            setPage(prev => prev + 1);
-            setHasMore(newTitles.length >= 48);
-          } catch {
-            setHasMore(false);
-          }
-          setLoadingMore(false);
-        };
-        loadMore();
-      }
-    });
-    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
-    return () => { if (observerRef.current) observerRef.current.disconnect(); };
-  }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, pauseInfinite]);
 
-  // TMDB posters (same as original)
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfinite) {
+          loadMore();
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
+
+  // TMDB posters (unchanged)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -152,6 +177,7 @@ export default function DiscoverTab({
         title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
       );
       if (titlesNeedingPoster.length === 0) return;
+
       const updates = await Promise.all(
         titlesNeedingPoster.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
@@ -173,10 +199,10 @@ export default function DiscoverTab({
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
 
-  // Filtered titles (search fixed + filters work)
-  const filteredTitles = useMemo(() => 
-    debouncedSearch 
-      ? allTitles 
+  // Filtered titles (unchanged)
+  const filteredTitles = useMemo(() =>
+    debouncedSearch
+      ? allTitles
       : allTitles.filter((title: any) => {
           const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
           const year = parseInt(title.year || '0');
@@ -298,8 +324,8 @@ export default function DiscoverTab({
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
             <p className="text-gray-400 mb-8 text-lg">Found {filteredTitles.length} titles • Scroll for more</p>
 
-            {/* STABLE GRID — exactly like your original working file (no page in key) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+            {/* STABLE GRID — no key, min-height prevents any collapse/jump */}
+            <div className="min-h-[600px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {filteredTitles.map((title: any) => {
                 const isFavorite = favorites.some(fav => fav.id === title.id);
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
