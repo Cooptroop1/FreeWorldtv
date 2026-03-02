@@ -6,7 +6,7 @@ const CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
 export async function GET() {
   try {
-    // Check cached data + timestamp
+    // Check if we have fresh cached providers
     const cached = await kv.get(CACHE_KEY);
     const lastUpdated = await kv.get('watchmode_providers_updated');
 
@@ -17,7 +17,9 @@ export async function GET() {
       return NextResponse.json({ success: true, providers: cached });
     }
 
-    // Refresh from Watchmode API
+    // Only fetch fresh if the cache is older than 24h (your daily snapshot will keep it updated)
+    console.log('🔄 Providers cache stale → fetching fresh logos from Watchmode...');
+
     const res = await fetch('https://api.watchmode.com/v1/providers/?apiKey=' + process.env.WATCHMODE_API_KEY, {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -27,22 +29,22 @@ export async function GET() {
     const data = await res.json();
     const providers = data.results || data;
 
-    // Save to KV with timestamp
+    // Save to KV for the next 24 hours
     await kv.set(CACHE_KEY, providers);
     await kv.set('watchmode_providers_updated', now);
 
-    console.log('✅ Providers cache refreshed from Watchmode');
+    console.log(`✅ Cached ${providers.length} real provider logos (will last 24h)`);
 
     return NextResponse.json({ success: true, providers });
   } catch (err) {
     console.error('Providers cache error:', err);
 
-    // Fallback to cached data if refresh fails
+    // Fallback to whatever we have (won't break the site)
     const cached = await kv.get(CACHE_KEY);
     return NextResponse.json({
       success: !!cached,
       providers: cached || [],
-      error: 'Using cached providers (Watchmode refresh failed)'
+      error: 'Using cached providers'
     });
   }
 }
