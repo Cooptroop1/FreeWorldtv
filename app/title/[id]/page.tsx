@@ -1,21 +1,27 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { MonitorPlay, Star, Clock, Users, ArrowLeft } from 'lucide-react';
+import { MonitorPlay, Star, Clock, Users, ArrowLeft, AlertCircle } from 'lucide-react';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
 async function getTitleDetails(id: string) {
+  const debug: any = { id, step: 'start' };
   try {
-    // Relative path — works locally and on Vercel
+    // Relative path — works on Vercel + localhost
     const wmRes = await fetch(`/api/title-sources?id=${id}&region=US`, {
-      cache: 'no-store'
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' }
     });
+    debug.wmStatus = wmRes.status;
     const wmJson = await wmRes.json();
+    debug.wmSuccess = wmJson.success;
     const watchmodeTitle = wmJson.success ? wmJson.title || {} : {};
 
-    if (!watchmodeTitle.tmdb_id) return null;
+    if (!watchmodeTitle.tmdb_id) {
+      debug.error = 'No tmdb_id from Watchmode';
+      return { error: debug };
+    }
 
     const type = watchmodeTitle.tmdb_type === 'movie' ? 'movie' : 'tv';
 
@@ -26,6 +32,7 @@ async function getTitleDetails(id: string) {
         cache: 'no-store'
       }
     );
+    debug.tmdbStatus = tmdbRes.status;
     const tmdb = await tmdbRes.json();
 
     return {
@@ -38,28 +45,37 @@ async function getTitleDetails(id: string) {
       genres: tmdb.genres || [],
       cast: tmdb.credits?.cast?.slice(0, 8) || [],
       trailer: tmdb.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube')?.key || null,
-      sources: wmJson.freeSources || []
+      sources: wmJson.freeSources || [],
+      debug // for troubleshooting
     };
-  } catch (e) {
-    console.error(e);
-    return null;
+  } catch (e: any) {
+    debug.error = e.message || String(e);
+    return { error: debug };
   }
 }
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
-  const titleData = await getTitleDetails(params.id);
-  if (!titleData) return { title: 'Title Not Found - FreeStream World' };
-
-  return {
-    title: `${titleData.title || titleData.name} - FreeStream World`,
-    description: titleData.overview?.slice(0, 160) || 'Watch free on official platforms',
-  };
-}
-
 export default async function TitlePage({ params }: { params: { id: string } }) {
-  const title = await getTitleDetails(params.id);
-  if (!title) notFound();
+  const data = await getTitleDetails(params.id);
 
+  // DEBUG MODE — shows exactly what failed
+  if (data.error) {
+    return (
+      <div className="min-h-screen bg-black text-white p-10 flex flex-col items-center justify-center">
+        <AlertCircle className="w-20 h-20 text-red-500 mb-6" />
+        <h1 className="text-5xl font-bold mb-4">Debug Info</h1>
+        <p className="text-2xl mb-8">ID: <span className="text-blue-400">{params.id}</span></p>
+        <pre className="bg-gray-900 p-8 rounded-2xl text-left max-w-3xl overflow-auto text-sm">
+          {JSON.stringify(data.error, null, 2)}
+        </pre>
+        <p className="mt-10 text-gray-400">This is the exact reason it was 404-ing.</p>
+        <Link href="/" className="mt-8 text-xl underline hover:text-blue-400">
+          ← Back to Discover
+        </Link>
+      </div>
+    );
+  }
+
+  const title = data;
   const trailerUrl = title.trailer ? `https://www.youtube.com/embed/${title.trailer}` : null;
 
   return (
