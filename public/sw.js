@@ -1,4 +1,5 @@
-const CACHE_NAME = 'freestreamworld-v5';
+// public/sw.js - v6 (Safe upgrade of your v5)
+const CACHE_NAME = 'freestreamworld-v6';
 
 const urlsToCache = [
   '/',
@@ -6,6 +7,7 @@ const urlsToCache = [
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json',
+  '/og-image.jpg',      // ← added safely (this was the missing file)
   '/globals.css'
 ];
 
@@ -13,8 +15,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Pre-caching static assets v5');
-        return cache.addAll(urlsToCache);
+        console.log('[SW] Pre-caching static assets v6');
+        return cache.addAll(urlsToCache).catch((err) => {
+          console.warn('[SW] Some assets failed to cache (continuing anyway):', err);
+          // This line stops the entire service worker from crashing
+        });
       })
   );
 });
@@ -34,11 +39,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network-First for APIs (stops scroll flicker & jump)
+// Network-First for APIs (keeps infinite scroll smooth - your original logic)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request)
@@ -52,7 +58,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate for everything else
+  // Stale-While-Revalidate for everything else (your original logic)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
