@@ -1,27 +1,20 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { MonitorPlay, Star, Clock, Users, ArrowLeft, AlertCircle } from 'lucide-react';
+import { notFound } from 'next/navigation';
+import { MonitorPlay, Star, Clock, Users } from 'lucide-react';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
 
 async function getTitleDetails(id: string) {
-  const debug: any = { id, step: 'start' };
   try {
-    // Relative path — works on Vercel + localhost
     const wmRes = await fetch(`/api/title-sources?id=${id}&region=US`, {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' }
+      cache: 'no-store'
     });
-    debug.wmStatus = wmRes.status;
     const wmJson = await wmRes.json();
-    debug.wmSuccess = wmJson.success;
     const watchmodeTitle = wmJson.success ? wmJson.title || {} : {};
 
-    if (!watchmodeTitle.tmdb_id) {
-      debug.error = 'No tmdb_id from Watchmode';
-      return { error: debug };
-    }
+    if (!watchmodeTitle.tmdb_id) return null;
 
     const type = watchmodeTitle.tmdb_type === 'movie' ? 'movie' : 'tv';
 
@@ -32,7 +25,6 @@ async function getTitleDetails(id: string) {
         cache: 'no-store'
       }
     );
-    debug.tmdbStatus = tmdbRes.status;
     const tmdb = await tmdbRes.json();
 
     return {
@@ -45,42 +37,24 @@ async function getTitleDetails(id: string) {
       genres: tmdb.genres || [],
       cast: tmdb.credits?.cast?.slice(0, 8) || [],
       trailer: tmdb.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube')?.key || null,
-      sources: wmJson.freeSources || [],
-      debug // for troubleshooting
+      sources: wmJson.freeSources || []
     };
-  } catch (e: any) {
-    debug.error = e.message || String(e);
-    return { error: debug };
+  } catch (e) {
+    console.error(e);
+    return null;
   }
 }
 
-export default async function TitlePage({ params }: { params: { id: string } }) {
-  const data = await getTitleDetails(params.id);
+export default async function TitlePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;   // ← THIS LINE WAS MISSING (Next.js 15+ requirement)
 
-  // DEBUG MODE — shows exactly what failed
-  if (data.error) {
-    return (
-      <div className="min-h-screen bg-black text-white p-10 flex flex-col items-center justify-center">
-        <AlertCircle className="w-20 h-20 text-red-500 mb-6" />
-        <h1 className="text-5xl font-bold mb-4">Debug Info</h1>
-        <p className="text-2xl mb-8">ID: <span className="text-blue-400">{params.id}</span></p>
-        <pre className="bg-gray-900 p-8 rounded-2xl text-left max-w-3xl overflow-auto text-sm">
-          {JSON.stringify(data.error, null, 2)}
-        </pre>
-        <p className="mt-10 text-gray-400">This is the exact reason it was 404-ing.</p>
-        <Link href="/" className="mt-8 text-xl underline hover:text-blue-400">
-          ← Back to Discover
-        </Link>
-      </div>
-    );
-  }
+  const title = await getTitleDetails(id);
+  if (!title) notFound();
 
-  const title = data;
   const trailerUrl = title.trailer ? `https://www.youtube.com/embed/${title.trailer}` : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-950 via-black to-gray-950 text-white">
-      {/* Back button */}
       <div className="absolute top-6 left-6 z-50">
         <Link href="/" className="flex items-center gap-2 bg-black/70 hover:bg-black/90 px-5 py-2 rounded-full text-sm font-medium transition">
           ← Back to Discover
