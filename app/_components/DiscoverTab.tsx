@@ -65,7 +65,7 @@ export default function DiscoverTab({
 
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // FIXED: Scroll to top ONLY on real search change
+  // Scroll to top on search change
   useEffect(() => {
     if (prevSearchRef.current !== debouncedSearch) {
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -76,7 +76,7 @@ export default function DiscoverTab({
     }
   }, [debouncedSearch]);
 
-  // Initial fetch (no page dependency)
+  // Initial fetch
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -169,7 +169,7 @@ export default function DiscoverTab({
     };
   }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
 
-  // OPTIMIZED POSTER FETCHING — only new titles + max 8 at a time (no TMDB spam)
+  // OPTIMIZED POSTER FETCHING (batch 8)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
 
@@ -180,7 +180,7 @@ export default function DiscoverTab({
     if (titlesNeedingPoster.length === 0) return;
 
     const fetchWithLimit = async () => {
-      const batch = titlesNeedingPoster.slice(0, 8); // concurrency limit
+      const batch = titlesNeedingPoster.slice(0, 8);
       const updates = await Promise.all(
         batch.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
@@ -223,6 +223,25 @@ export default function DiscoverTab({
   const trending = filteredTitles.slice(0, 12);
   const newReleases = filteredTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
+
+  // FIXED: JSON-LD extracted to useMemo → eliminates Vercel build parser error
+  const jsonLd = useMemo(() => JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles",
+    "numberOfItems": filteredTitles.length,
+    "itemListElement": filteredTitles.map((title, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": {
+        "@type": title.type === 'tv_series' ? "TVSeries" : "Movie",
+        "name": title.title,
+        "url": `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`,
+        "image": title.poster_path ? `https://image.tmdb.org/t/p/w342${title.poster_path}` : undefined,
+        "datePublished": title.year ? `${title.year}-01-01` : undefined,
+      }
+    }))
+  }), [debouncedSearch, filteredTitles]);
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" />;
 
@@ -343,7 +362,6 @@ export default function DiscoverTab({
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
             <p className="text-gray-400 mb-8 text-lg">Found {filteredTitles.length} titles • Scroll for more</p>
 
-            {/* STABLE GRID */}
             <div className="min-h-[600px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {filteredTitles.map((title: any, index: number) => {
                 const isFavorite = favorites.some(fav => fav.id === title.id);
@@ -360,7 +378,7 @@ export default function DiscoverTab({
                           className="object-cover group-hover:scale-105 transition-transform duration-500" 
                           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
                           quality={82}
-                          priority={index < 6}   {/* ← first screen loads instantly */}
+                          priority={index < 6}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
@@ -385,28 +403,10 @@ export default function DiscoverTab({
               })}
             </div>
 
-            {/* FULL SEO JSON-LD */}
+            {/* SEO JSON-LD - now safely extracted */}
             <script
               type="application/ld+json"
-              dangerouslySetInnerHTML={{
-                __html: JSON.stringify({
-                  "@context": "https://schema.org",
-                  "@type": "ItemList",
-                  "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles",
-                  "numberOfItems": filteredTitles.length,
-                  "itemListElement": filteredTitles.map((title, index) => ({
-                    "@type": "ListItem",
-                    "position": index + 1,
-                    "item": {
-                      "@type": title.type === 'tv_series' ? "TVSeries" : "Movie",
-                      "name": title.title,
-                      "url": `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`,
-                      "image": title.poster_path ? `https://image.tmdb.org/t/p/w342${title.poster_path}` : undefined,
-                      "datePublished": title.year ? `${title.year}-01-01` : undefined,
-                    }
-                  }))
-                })
-              }}
+              dangerouslySetInnerHTML={{ __html: jsonLd }}
             />
 
             {hasMore && <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">{loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}</div>}
