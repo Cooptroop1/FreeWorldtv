@@ -1154,20 +1154,22 @@ const getProviderLogo = (sourceName: string) => {
                         className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                       >
                         <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
-                          {logoUrl ? (
-                            <Image
-                              src={logoUrl}
-                              alt={source.name}
-                              width={48}
-                              height={48}
-                              className="object-contain"
-                            />
-                          ) : (
-                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>
-                              {initials}
-                            </div>
-                          )}
-                        </div>
+  {logoUrl ? (
+    <img
+      src={logoUrl}
+      alt={source.name}
+      className="w-full h-full object-contain p-1"
+      onError={(e) => {
+        console.error('Logo failed to load:', logoUrl);
+        e.currentTarget.style.display = 'none';
+      }}
+    />
+  ) : (
+    <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>
+      {initials}
+    </div>
+  )}
+</div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
                           <div className="text-gray-400 text-sm">
