@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   let totalCalls = 0;
 
   try {
-    // === 1. Fetch full catalog (fixed to handle both 'titles' and 'results') ===
+    // Fetch full catalog
     while (true) {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US,GB,CA,AU&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
@@ -39,14 +39,14 @@ export async function GET(request: Request) {
       await new Promise(r => setTimeout(r, 400));
     }
 
-    // === 2. Fetch ALL provider logos (this is what gives you real FX logo etc.) ===
+    // Fetch ALL provider logos (this is what gives you real FX logo)
     console.log('Fetching providers with real logos...');
     const sourcesRes = await fetch(`https://api.watchmode.com/v1/providers/?apiKey=${WATCHMODE_API_KEY}`, { cache: 'no-store' });
     const providersData = await sourcesRes.json();
     const allProviders = providersData.results || providersData || [];
     console.log(`✅ Fetched ${allProviders.length} real provider logos`);
 
-    // Save both for 24 hours (this is what your modal reads)
+    // SAVE UNDER THE CORRECT KEY your modal expects
     await kv.set('full_free_catalog', allTitles, { ex: 86400 });
     await kv.set('watchmode_providers', allProviders, { ex: 86400 });
     await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
