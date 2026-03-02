@@ -65,6 +65,15 @@ export default function DiscoverTab({
 
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
+  // Dynamic page title for SEO & browser tab (this is the new SEO part)
+  useEffect(() => {
+    if (debouncedSearch) {
+      document.title = `Free "${debouncedSearch}" Movies & TV Shows | FreeStream World`;
+    } else {
+      document.title = 'FreeStream World - Watch Free Movies & TV Shows Legally';
+    }
+  }, [debouncedSearch]);
+
   // Scroll to top on search change
   useEffect(() => {
     if (prevSearchRef.current !== debouncedSearch) {
@@ -224,7 +233,7 @@ export default function DiscoverTab({
   const newReleases = filteredTitles.slice(12, 24);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
 
-  // SEO JSON-LD (safe version)
+  // SEO JSON-LD
   const jsonLd = useMemo(() => JSON.stringify({
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -243,7 +252,7 @@ export default function DiscoverTab({
     }))
   }), [debouncedSearch, filteredTitles]);
 
-  // NEW: Matching skeleton for main grid (exact same style as real cards)
+  // Matching skeleton for main grid
   const MovieCardSkeleton = () => (
     <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg">
       <div className="relative aspect-[2/3] bg-zinc-800 animate-pulse" />
