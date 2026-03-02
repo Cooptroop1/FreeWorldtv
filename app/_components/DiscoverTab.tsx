@@ -248,13 +248,13 @@ export default function DiscoverTab({
         </div>
       )}
 
-      {/* CLEAN FALLBACK NOTICE — no more scary red error */}
-      {isUsingFallback && (
-        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-center py-3 px-6 rounded-2xl mx-auto max-w-2xl mb-8 text-sm">
-          Temporarily using cached titles (Watchmode is slow right now).<br />
-          Everything still works — refreshes automatically every 24 hours.
-        </div>
-      )}
+      {/* CLEAN FALLBACK NOTICE — hidden during search so typing feels instant */}
+{isUsingFallback && !debouncedSearch && (
+  <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-center py-3 px-6 rounded-2xl mx-auto max-w-2xl mb-8 text-sm">
+    Temporarily using cached titles (Watchmode is slow right now).<br />
+    Everything still works — refreshes automatically every 24 hours.
+  </div>
+)}
 
       {!loading && allTitles.length > 0 && (
         <section className="max-w-7xl mx-auto">
