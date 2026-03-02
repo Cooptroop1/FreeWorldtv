@@ -1,18 +1,19 @@
-const CACHE_NAME = 'freestreamworld-v3'; // ← bumped version
+const CACHE_NAME = 'freestreamworld-v4';
 
 const urlsToCache = [
   '/',
   '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/manifest.json'
+  '/manifest.json',
+  '/globals.css'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Pre-caching static assets');
+        console.log('[SW] Pre-caching static assets v4');
         return cache.addAll(urlsToCache);
       })
   );
@@ -33,21 +34,34 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Improved strategy: Stale-While-Revalidate (faster + fresher)
+// FIXED STRATEGY: Network-First for APIs (stops infinite scroll flicker)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const url = new URL(event.request.url);
+
+  // Network-First for API calls (fresh data on scroll)
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate for everything else (fast & smooth)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Update cache in background for next time
         const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
         return networkResponse;
-      }).catch(() => cachedResponse); // offline fallback
-
+      }).catch(() => cachedResponse);
       return cachedResponse || fetchPromise;
     })
   );
