@@ -1,9 +1,10 @@
+// app/api/cached-fetch/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
 const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const BASE_URL = 'https://api.watchmode.com/v1';
-const REFRESH_SECRET = 'FreeStreamWorld2026';   // ← change this if you want a different secret
+const REFRESH_SECRET = 'FreeStreamWorld2026'; // ← change this if you want a different secret
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -13,23 +14,34 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
 
-  // === NEW: 24h auto-snapshot trigger (exactly what you asked for) ===
-  // First visitor after 24h automatically refreshes the full catalog
+  // === IMPROVED: 24h auto-snapshot trigger (now also refreshes provider logos) ===
+  // First visitor after 24h automatically refreshes BOTH titles + providers
   try {
     const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
     const now = Date.now();
 
     if (now - lastFullRefresh > 24 * 60 * 60 * 1000 && !query && !genres) {
-      console.log('🕒 24h expired → first visitor triggering full snapshot...');
-      // Fire and forget (background) so the user doesn't wait
-      fetch(`https://${request.headers.get('host')}/api/refresh-all-free?secret=${REFRESH_SECRET}`, {
+      console.log('🕒 24h expired → first visitor triggering full snapshot + providers...');
+
+      const host = request.headers.get('host');
+
+      // Refresh titles (your existing background job)
+      fetch(`https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}`, {
         cache: 'no-store'
       }).catch(() => {});
+
+      // ALSO refresh providers (so FX, Spectrum, etc. logos appear)
+      fetch(`https://${host}/api/providers`, {
+        cache: 'no-store'
+      }).catch(() => {});
+
+      // Update timestamp so it doesn't trigger again for 24h
+      await kv.set('lastFullRefresh', now);
     }
   } catch (e) {
     console.error('Auto-refresh check failed (continuing):', e);
   }
-  // === END OF NEW LOGIC ===
+  // === END OF IMPROVED LOGIC ===
 
   // FIRST: Check full catalog cache (your daily preload)
   try {
