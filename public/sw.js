@@ -1,8 +1,8 @@
-const CACHE_NAME = 'freestreamworld-v2';   // ← bumped version
+const CACHE_NAME = 'freestreamworld-v3'; // ← bumped version
 
 const urlsToCache = [
   '/',
-  '/logo.png',                 // ← your new header logo
+  '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json'
@@ -18,7 +18,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Clean up old caches when new service worker activates
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -34,15 +33,22 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Improved strategy: Stale-While-Revalidate (faster + fresher)
 self.addEventListener('fetch', (event) => {
-  // Skip POST requests — browsers don't allow caching them
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        return response || fetch(event.request);
-      })
+    caches.match(event.request).then((cachedResponse) => {
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Update cache in background for next time
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
+        });
+        return networkResponse;
+      }).catch(() => cachedResponse); // offline fallback
+
+      return cachedResponse || fetchPromise;
+    })
   );
 });
