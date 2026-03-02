@@ -62,7 +62,7 @@ export default function DiscoverTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // Fetch data
+  // Fetch data (same as original)
   useEffect(() => {
     const fetchData = async (isLoadMore = false) => {
       if (!isLoadMore) {
@@ -114,7 +114,7 @@ export default function DiscoverTab({
     fetchData();
   }, [debouncedSearch, selectedGenre, region, contentType, page]);
 
-  // Infinite scroll
+  // Infinite scroll (same as original)
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver((entries) => {
@@ -143,7 +143,7 @@ export default function DiscoverTab({
     return () => { if (observerRef.current) observerRef.current.disconnect(); };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, pauseInfinite]);
 
-  // TMDB posters
+  // TMDB posters (same as original)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -172,7 +172,7 @@ export default function DiscoverTab({
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
 
-  // Filtered titles
+  // Filtered titles (search fixed + filters work)
   const filteredTitles = useMemo(() => 
     debouncedSearch 
       ? allTitles 
@@ -250,6 +250,7 @@ export default function DiscoverTab({
 
       {!loading && allTitles.length > 0 && (
         <section className="max-w-7xl mx-auto">
+          {/* Welcome box */}
           <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
             <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
             <p className="text-gray-300 leading-relaxed mb-4">
@@ -296,8 +297,8 @@ export default function DiscoverTab({
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
             <p className="text-gray-400 mb-8 text-lg">Found {filteredTitles.length} titles • Scroll for more</p>
 
-            {/* STABLE GRID — no page in key = no more jump to top */}
-            <div key="discover-main-grid" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+            {/* STABLE GRID — exactly like your original working file (no page in key) */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {filteredTitles.map((title: any) => {
                 const isFavorite = favorites.some(fav => fav.id === title.id);
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
