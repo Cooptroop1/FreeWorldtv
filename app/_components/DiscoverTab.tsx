@@ -62,7 +62,7 @@ export default function DiscoverTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // Fetch data
+  // ==================== FETCH DATA ====================
   useEffect(() => {
     const fetchData = async (isLoadMore = false) => {
       if (!isLoadMore) {
@@ -114,7 +114,7 @@ export default function DiscoverTab({
     fetchData();
   }, [debouncedSearch, selectedGenre, region, contentType, page]);
 
-  // Infinite scroll
+  // ==================== INFINITE SCROLL ====================
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver((entries) => {
@@ -143,7 +143,7 @@ export default function DiscoverTab({
     return () => { if (observerRef.current) observerRef.current.disconnect(); };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, pauseInfinite]);
 
-  // TMDB posters
+  // ==================== TMDB POSTERS ====================
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -172,7 +172,7 @@ export default function DiscoverTab({
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
 
-  // STABLE FILTERED TITLES (prevents jump to top)
+  // ==================== FILTERED TITLES (search fixed) ====================
   const filteredTitles = useMemo(() => 
     debouncedSearch 
       ? allTitles 
@@ -276,10 +276,7 @@ export default function DiscoverTab({
                 <Image src={`https://image.tmdb.org/t/p/original${filteredTitles[0].poster_path}`} alt={filteredTitles[0].title} fill className="object-cover brightness-75" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
-                  <div className="text-center">
-                    <Film className="w-24 h-24 text-gray-600 mx-auto mb-6" />
-                    <p className="text-4xl font-bold text-white">{filteredTitles[0].title}</p>
-                  </div>
+                  <div className="text-center"><Film className="w-24 h-24 text-gray-600 mx-auto mb-6" /><p className="text-4xl font-bold text-white">{filteredTitles[0].title}</p></div>
                 </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-transparent" />
@@ -296,14 +293,13 @@ export default function DiscoverTab({
           <HorizontalCarousel title="New Releases This Week" items={newReleases} loadingKey="initial" />
           {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />}
 
-          {/* ALL FREE TITLES GRID */}
           <div className="mt-12">
             <h3 className="text-3xl font-bold mb-6 flex items-center gap-4"><MonitorPlay className="text-green-400" size={32} /> All Free Titles</h3>
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
             <p className="text-gray-400 mb-8 text-lg">Found {filteredTitles.length} titles • Scroll for more</p>
 
-            {/* STABLE GRID KEY — this stops the jump to top */}
-            <div key={`discover-grid-${page}-${debouncedSearch}`} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+            {/* STABLE GRID — this stops the jump to top */}
+            <div key={`discover-grid-${debouncedSearch || 'main'}`} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {filteredTitles.map((title: any) => {
                 const isFavorite = favorites.some(fav => fav.id === title.id);
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
