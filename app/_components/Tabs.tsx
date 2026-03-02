@@ -257,7 +257,7 @@ export default function Tabs() {
       <header className="max-w-7xl mx-auto mb-10">
         {/* Disclaimer unchanged */}
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
-          <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content...
+          <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
 
         <div className="flex items-center justify-between mb-6">
