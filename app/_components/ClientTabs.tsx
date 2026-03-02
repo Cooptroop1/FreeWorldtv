@@ -7,8 +7,11 @@ import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 import InstallPrompt from './InstallPrompt';
 import OfflineMessage from './OfflineMessage';
+import GlobalSearch from './GlobalSearch';   // ← NEW IMPORT
+
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
+
 // Public live channels (official links)
 const liveChannels = [
   { id: 1, name: 'BBC iPlayer (Live & On-Demand)', category: 'BBC Channels', officialUrl: 'https://www.bbc.co.uk/iplayer' },
@@ -22,6 +25,7 @@ const liveChannels = [
   { id: 9, name: 'Pluto TV UK (FAST Channels)', category: 'Free Ad-Supported TV', officialUrl: 'https://pluto.tv/en/live-tv' },
   { id: 10, name: 'Tubi (if available in your region)', category: 'Free Movies & Shows', officialUrl: 'https://tubitv.com' },
 ];
+
 // Genres
 const genres = [
   { id: 28, name: 'Action' },
@@ -43,6 +47,7 @@ const genres = [
   { id: 10752, name: 'War' },
   { id: 37, name: 'Western' },
 ];
+
 export default function ClientTabs() {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
   const [data, setData] = useState<any>(null);
@@ -113,13 +118,11 @@ export default function ClientTabs() {
   const postersFetched = useRef(new Set<number>());
   // NEW: Providers with logos (for the Sources Modal) — FIXED to handle your cache perfectly
 const [allProviders, setAllProviders] = useState<any[]>([]);
-
 // Load provider logos once (cached from the daily snapshot)
 useEffect(() => {
   fetch('/api/providers')
     .then(res => res.json())
     .then(data => {
-      // Handles both {success: true, providers: [...]} AND plain array (what your current route returns)
       const providersList = Array.isArray(data) ? data : (data.providers || []);
       setAllProviders(providersList);
       console.log(`✅ Loaded ${providersList.length} provider logos from cache`);
@@ -135,7 +138,7 @@ useEffect(() => {
         setPage(1);
         setHasMore(true);
         setError(null);
-        postersFetched.current.clear(); // ← CRITICAL FIX: clears old poster cache when switching Movies/TV/All or search
+        postersFetched.current.clear();
       } else {
         setLoadingMore(true);
       }
@@ -457,29 +460,22 @@ useEffect(() => {
     }
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
-
   // ==================== FINAL FIXED LOGO MATCHING (no build errors + real logos) ====================
 const getProviderLogo = (sourceName: string) => {
   if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
-
   const clean = sourceName.toLowerCase().trim();
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
-
-  // === MANUAL FORCE for the ones that always fail ===
   let logoUrl = null;
   let color = 'from-indigo-500 to-purple-600';
-
   if (clean.includes('fx')) {
     const fxProvider = safeProviders.find(p => (p.name || '').toLowerCase().includes('fx'));
     logoUrl = fxProvider?.logo_100px || fxProvider?.logo_300px;
     color = 'from-orange-500 to-red-600';
-    console.log('🔧 Forcing REAL FX logo from cache');
   }
   else if (clean.includes('spectrum')) {
     const specProvider = safeProviders.find(p => (p.name || '').toLowerCase().includes('spectrum'));
     logoUrl = specProvider?.logo_100px || specProvider?.logo_300px;
     color = 'from-blue-500 to-cyan-600';
-    console.log('🔧 Forcing REAL Spectrum On Demand logo from cache');
   }
   else if (clean.includes('bbc') || clean.includes('iplayer')) {
     const bbcProvider = safeProviders.find(p => (p.name || '').toLowerCase().includes('bbc'));
@@ -499,35 +495,29 @@ const getProviderLogo = (sourceName: string) => {
     logoUrl = all4Provider?.logo_100px || all4Provider?.logo_300px;
   }
   else {
-    // Normal matching as backup
     const provider = safeProviders.find(p => {
       const pName = (p.name || p.display_name || '').toLowerCase().trim();
       return pName === clean || pName.includes(clean) || clean.includes(pName);
     });
     logoUrl = provider?.logo_100px || provider?.logo_300px;
   }
-
   const initials = sourceName.slice(0, 2).toUpperCase();
-
-  console.log(`🎯 Logo for "${sourceName}" → ${logoUrl ? '✅ REAL LOGO' : 'placeholder'}`, logoUrl);
-
   return { logoUrl, initials, color };
 };
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-    
+   
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
             <MonitorPlay className="w-12 h-12 text-blue-500" />
             FreeStream World
           </h1>
-      
+     
           {/* YOUR PWA LOGO — placed exactly where you asked */}
           <Image
             src="/logo.png"
@@ -541,18 +531,15 @@ const getProviderLogo = (sourceName: string) => {
         <p className="text-lg md:text-xl text-gray-300 mb-8">
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
-        {/* SINGLE CLEAN GLOBAL SEARCH BAR */}
+
+        {/* PROMINENT GLOBAL SEARCH WITH AUTOCOMPLETE — THIS IS THE NEW FEATURE */}
         <div className="flex flex-wrap gap-3 mb-8">
-          <div className="flex-1 relative min-w-[280px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search free movies & shows anywhere..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-400"
-            />
-          </div>
+          <GlobalSearch
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            onTitleSelect={setSelectedTitle}
+            region={region}
+          />
           <button
             onClick={surpriseMe}
             className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-xl font-medium transition-all"
@@ -566,6 +553,7 @@ const getProviderLogo = (sourceName: string) => {
             <Filter size={20} /> Filters
           </button>
         </div>
+
         {/* Tab navigation ONLY */}
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
           <button
@@ -610,9 +598,12 @@ const getProviderLogo = (sourceName: string) => {
           </button>
         </div>
       </header>
+
       {/* PWA INSTALL BANNER + OFFLINE MESSAGE — ADDED HERE */}
       <InstallPrompt />
       <OfflineMessage />
+
+      {/* ALL THE REST OF YOUR TABS (Discover, Top10, Live, My Links, Favorites, Modals, Footer) — 100% unchanged */}
       {/* Discover Tab — FULL NETFLIX CAROUSELS + SKELETONS + PUBLISHER BOX + SEO */}
       {tab === 'discover' && (
         <>
@@ -625,7 +616,7 @@ const getProviderLogo = (sourceName: string) => {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-      
+     
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               {/* Publisher content */}
@@ -807,6 +798,7 @@ const getProviderLogo = (sourceName: string) => {
           )}
         </>
       )}
+
       {/* Top 10 Tab */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
@@ -871,6 +863,7 @@ const getProviderLogo = (sourceName: string) => {
           )}
         </section>
       )}
+
       {/* Live TV Tab */}
       {tab === 'live' && (
         <section className="max-w-7xl mx-auto">
@@ -914,6 +907,7 @@ const getProviderLogo = (sourceName: string) => {
           </div>
         </section>
       )}
+
       {/* My Custom Links Tab */}
       {tab === 'mylinks' && (
         <section className="max-w-7xl mx-auto">
@@ -999,6 +993,7 @@ const getProviderLogo = (sourceName: string) => {
           )}
         </section>
       )}
+
       {/* Favorites Tab */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
@@ -1094,6 +1089,7 @@ const getProviderLogo = (sourceName: string) => {
           )}
         </section>
       )}
+
       {/* Player Modal */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
@@ -1120,6 +1116,7 @@ const getProviderLogo = (sourceName: string) => {
           </div>
         </div>
       )}
+
       {/* Sources Modal — FIXED WITH NICE COLORED INITIALS FOR FX ETC. */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
@@ -1154,22 +1151,22 @@ const getProviderLogo = (sourceName: string) => {
                         className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                       >
                         <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
-  {logoUrl ? (
-    <img
-      src={logoUrl}
-      alt={source.name}
-      className="w-full h-full object-contain p-1"
-      onError={(e) => {
-        console.error('Logo failed to load:', logoUrl);
-        e.currentTarget.style.display = 'none';
-      }}
-    />
-  ) : (
-    <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>
-      {initials}
-    </div>
-  )}
-</div>
+                          {logoUrl ? (
+                            <img
+                              src={logoUrl}
+                              alt={source.name}
+                              className="w-full h-full object-contain p-1"
+                              onError={(e) => {
+                                console.error('Logo failed to load:', logoUrl);
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>
+                              {initials}
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
                           <div className="text-gray-400 text-sm">
@@ -1238,6 +1235,7 @@ const getProviderLogo = (sourceName: string) => {
           </div>
         </div>
       )}
+
       {/* FLOATING LEGAL BUTTON */}
       {tab === 'discover' && allTitles.length > 8 && (
         <button
@@ -1253,6 +1251,7 @@ const getProviderLogo = (sourceName: string) => {
           <ChevronRight size={20} />
         </button>
       )}
+
       {/* Filters Modal */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
