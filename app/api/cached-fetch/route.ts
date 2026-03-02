@@ -4,7 +4,7 @@ import { kv } from '@vercel/kv';
 
 const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
 const BASE_URL = 'https://api.watchmode.com/v1';
-const REFRESH_SECRET = 'FreeStreamWorld2026'; // ← change this if you want a different secret
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'FreeStreamWorld2026'; // ← now reads your Vercel env var
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -14,40 +14,26 @@ export async function GET(request: NextRequest) {
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
 
-  // === IMPROVED: 24h auto-snapshot trigger (now also refreshes provider logos) ===
-  // First visitor after 24h automatically refreshes BOTH titles + providers
+  // === 24h auto-snapshot trigger (now uses your Vercel env var) ===
   try {
     const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
     const now = Date.now();
-
     if (now - lastFullRefresh > 24 * 60 * 60 * 1000 && !query && !genres) {
-      console.log('🕒 24h expired → first visitor triggering full snapshot + providers...');
-
+      console.log('🕒 24h expired → first visitor triggering full snapshot...');
       const host = request.headers.get('host');
-
-      // Refresh titles (your existing background job)
       fetch(`https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}`, {
         cache: 'no-store'
       }).catch(() => {});
-
-      // ALSO refresh providers (so FX, Spectrum, etc. logos appear)
-      fetch(`https://${host}/api/providers`, {
-        cache: 'no-store'
-      }).catch(() => {});
-
-      // Update timestamp so it doesn't trigger again for 24h
-      await kv.set('lastFullRefresh', now);
     }
   } catch (e) {
     console.error('Auto-refresh check failed (continuing):', e);
   }
-  // === END OF IMPROVED LOGIC ===
+  // === END ===
 
-  // FIRST: Check full catalog cache (your daily preload)
+  // FIRST: Check full catalog cache
   try {
     const fullCatalog = await kv.get('full_free_catalog');
     if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres) {
-      // For popular lists (no search, no genre) → use full cache
       const start = (page - 1) * 48;
       const pagedTitles = fullCatalog.slice(start, start + 48);
       return NextResponse.json({
@@ -63,7 +49,6 @@ export async function GET(request: NextRequest) {
     console.error('Full catalog read failed (continuing):', e);
   }
 
-  // Fallback to per-page caching (your original logic)
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}`;
   const cacheTTL = query ? 1800 : 86400;
 
