@@ -458,26 +458,48 @@ export default function ClientTabs() {
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
 
-  // ==================== BULLETPROOF PROVIDER LOGO HELPER (fixes crash + shows real logos) ====================
-  const getProviderLogo = (sourceName: string) => {
-    if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-indigo-500 to-purple-600' };
-    const clean = sourceName.toLowerCase().trim();
-    // Safety: make sure allProviders is always an array
-    const safeProviders = Array.isArray(allProviders) ? allProviders : [];
-    const provider = safeProviders.find(p => {
-      const pName = (p.name || p.display_name || '').toLowerCase().trim();
-      return pName === clean || pName.includes(clean) || clean.includes(pName);
-    });
-    const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
-    // Special nice colors for popular providers that often miss logos
-    let color = 'from-indigo-500 to-purple-600';
-    if (clean.includes('fx')) color = 'from-orange-500 to-red-600';
-    if (clean.includes('spectrum')) color = 'from-blue-500 to-cyan-600';
-    if (clean.includes('tubi')) color = 'from-green-500 to-emerald-600';
-    if (clean.includes('pluto')) color = 'from-purple-500 to-pink-600';
-    const initials = sourceName.slice(0, 2).toUpperCase();
-    return { logoUrl, initials, color };
-  };
+  // ==================== STRONGEST PROVIDER LOGO MATCHING (real logos now) ====================
+const getProviderLogo = (sourceName: string) => {
+  if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
+
+  const clean = sourceName.toLowerCase().trim();
+  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
+
+  // Normal matching
+  let provider = safeProviders.find(p => {
+    const pName = (p.name || p.display_name || '').toLowerCase().trim();
+    return pName === clean || pName.includes(clean) || clean.includes(pName);
+  });
+
+  // Extra hard-coded matches for the exact names in your cache
+  if (!provider) {
+    if (clean.includes('fx')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('fx'));
+    if (clean.includes('spectrum')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('spectrum'));
+    if (clean.includes('bbc') || clean.includes('iplayer')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('bbc'));
+    if (clean.includes('itv') || clean.includes('itvx')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('itv'));
+    if (clean.includes('my5')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('my5'));
+    if (clean.includes('all 4') || clean.includes('channel 4')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('all 4') || (p.name || '').toLowerCase().includes('channel 4'));
+    if (clean.includes('tubi')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('tubi'));
+    if (clean.includes('pluto')) provider = safeProviders.find(p => (p.name || '').toLowerCase().includes('pluto'));
+  }
+
+  const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
+
+  // Nice colors
+  let color = 'from-indigo-500 to-purple-600';
+  if (clean.includes('fx')) color = 'from-orange-500 to-red-600';
+  if (clean.includes('spectrum')) color = 'from-blue-500 to-cyan-600';
+  if (clean.includes('bbc')) color = 'from-blue-600 to-indigo-600';
+  if (clean.includes('tubi')) color = 'from-green-500 to-emerald-600';
+  if (clean.includes('pluto')) color = 'from-purple-500 to-pink-600';
+
+  const initials = sourceName.slice(0, 2).toUpperCase();
+
+  // Debug line (open F12 → Console to see what's happening)
+  console.log(`Logo for "${sourceName}" → ${logoUrl ? 'REAL LOGO FOUND' : 'using placeholder'}`, logoUrl);
+
+  return { logoUrl, initials, color };
+};
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
