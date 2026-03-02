@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Search, X, Loader2 } from 'lucide-react';
@@ -17,29 +16,40 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  // Live autocomplete (debounced)
+  // Live autocomplete (debounced + smarter)
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (searchQuery.trim().length < 2) {
+      const trimmed = searchQuery.trim();
+
+      // Require 3+ characters (prevents error on single letter)
+      if (trimmed.length < 3) {
         setSuggestions([]);
         setShowDropdown(false);
         return;
       }
 
       setLoading(true);
+      setShowDropdown(true);
+
       try {
         const res = await fetch(
-          `/api/cached-fetch?query=${encodeURIComponent(searchQuery.trim())}&region=${region}&page=1`
+          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&region=${region}&page=1`
         );
         const json = await res.json();
-        const titles = json.success && json.titles ? json.titles.slice(0, 8) : [];
-        setSuggestions(titles);
-        setShowDropdown(titles.length > 0);
-      } catch {
+
+        if (json.success && Array.isArray(json.titles)) {
+          const titles = json.titles.slice(0, 8);
+          setSuggestions(titles);
+        } else {
+          setSuggestions([]);
+        }
+      } catch (err) {
+        // SILENT fallback — never show the ugly error to users
+        console.warn('Search temporarily unavailable (fallback hidden)');
         setSuggestions([]);
-        setShowDropdown(false);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }, 320);
 
     return () => clearTimeout(timer);
@@ -57,9 +67,8 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
   }, []);
 
   const handleSelect = (title: any) => {
-    onTitleSelect(title);           // ← instantly opens your Sources modal
+    onTitleSelect(title);
     setShowDropdown(false);
-    // Query stays in the input so the Discover tab still filters (your existing logic)
   };
 
   const clearSearch = () => {
@@ -74,10 +83,10 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
           type="text"
-          placeholder="Search free movies & shows (e.g. The Bear, NCIS...)"
+          placeholder="Search free movies & shows (min 3 letters)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          onFocus={() => searchQuery.length >= 2 && setShowDropdown(true)}
+          onFocus={() => searchQuery.trim().length >= 3 && setShowDropdown(true)}
           className="w-full bg-gray-800 border border-gray-700 rounded-2xl pl-12 pr-12 py-3.5 text-base text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all"
         />
         {searchQuery && (
@@ -108,7 +117,7 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
                   {title.poster_path ? (
                     <Image
                       src={`https://image.tmdb.org/t/p/w200${title.poster_path}`}
-                      alt={title.title}
+                      alt={title.title || 'Poster'}
                       fill
                       className="object-cover"
                       sizes="48px"
@@ -128,13 +137,14 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
                   </p>
                 </div>
                 <div className="text-blue-400 text-xs font-medium opacity-0 group-hover:opacity-100 transition-all pr-2">
-                  Open →
+                  View sources →
                 </div>
               </div>
             ))
           ) : (
-            <div className="px-5 py-8 text-center text-gray-400 text-sm">
-              No matches found
+            <div className="px-5 py-10 text-center text-gray-400 text-sm">
+              No free titles found for <span className="font-medium text-white">"{searchQuery.trim()}"</span>
+              <div className="text-xs mt-1">Try a different word or check spelling</div>
             </div>
           )}
         </div>
