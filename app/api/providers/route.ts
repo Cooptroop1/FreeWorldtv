@@ -3,39 +3,18 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // === PRIORITY 1: Use the real data you already have in watchmode_sources ===
-    let providers = await kv.get('watchmode_sources');
+    // Pull directly from the key where your data actually lives
+    let providers = await kv.get('watchmode_sources') || await kv.get('watchmode_providers') || [];
 
-    // === PRIORITY 2: Fallback to the old key if needed ===
-    if (!providers) {
-      providers = await kv.get('watchmode_providers');
+    if (Array.isArray(providers) && providers.length > 0) {
+      console.log(`✅ Returning ${providers.length} real providers (including FX, Spectrum, etc.)`);
+      return NextResponse.json(providers);
     }
 
-    // === If we have real providers (which you do!), return them instantly ===
-    if (providers && Array.isArray(providers) && providers.length > 0) {
-      console.log(`✅ Loaded ${providers.length} real provider logos from cache (including FX, Spectrum, Tubi, etc.)`);
-      return NextResponse.json({ success: true, providers });
-    }
-
-    // === Safety fallback (won't ever happen now) ===
-    return NextResponse.json({ 
-      success: false, 
-      providers: [], 
-      message: 'No providers found in cache' 
-    });
+    console.log('⚠️ No providers found in cache');
+    return NextResponse.json([]);
   } catch (err) {
     console.error('Providers route error:', err);
-    
-    // Emergency fallback — never breaks the modal
-    try {
-      const cached = await kv.get('watchmode_sources') || await kv.get('watchmode_providers') || [];
-      return NextResponse.json({
-        success: true,
-        providers: cached,
-        error: 'Using cached providers (fallback)'
-      });
-    } catch (fallbackErr) {
-      return NextResponse.json({ success: false, providers: [] });
-    }
+    return NextResponse.json([]);
   }
 }
