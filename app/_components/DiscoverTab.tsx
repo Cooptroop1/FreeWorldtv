@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { Film, Loader2, MonitorPlay, Heart } from 'lucide-react';
+import { Film, Loader2, MonitorPlay, Heart, Filter, X } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 
 interface DiscoverTabProps {
@@ -65,7 +65,7 @@ export default function DiscoverTab({
 
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // Dynamic page title for SEO & browser tab (this is the new SEO part)
+  // Dynamic page title for SEO & browser tab
   useEffect(() => {
     if (debouncedSearch) {
       document.title = `Free "${debouncedSearch}" Movies & TV Shows | FreeStream World`;
@@ -93,7 +93,6 @@ export default function DiscoverTab({
       setPage(1);
       setHasMore(true);
       setIsUsingFallback(false);
-
       try {
         let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1`;
         if (debouncedSearch) {
@@ -101,18 +100,15 @@ export default function DiscoverTab({
         } else if (selectedGenre) {
           url += `&genres=${selectedGenre}`;
         }
-
         const res = await fetch(url);
         const json = await res.json();
         let newTitles: any[] = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
-
         if (newTitles === staticFallbackTitles) {
           setIsUsingFallback(true);
           console.warn('🔄 Using cached fallback titles');
         } else {
           setIsUsingFallback(false);
         }
-
         setAllTitles(newTitles);
         setHasMore(newTitles.length >= 48);
         if (json.success) setLastUpdated(new Date().toISOString());
@@ -124,14 +120,12 @@ export default function DiscoverTab({
       }
       setLoading(false);
     };
-
     fetchData();
   }, [debouncedSearch, selectedGenre, region, contentType]);
 
   // Stable loadMore
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || pauseInfinite) return;
-
     setLoadingMore(true);
     try {
       let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${page + 1}`;
@@ -140,11 +134,9 @@ export default function DiscoverTab({
       } else if (selectedGenre) {
         url += `&genres=${selectedGenre}`;
       }
-
       const res = await fetch(url);
       const json = await res.json();
       const newTitles = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
-
       setAllTitles(prev => [...prev, ...newTitles]);
       setPage(prev => prev + 1);
       setHasMore(newTitles.length >= 48);
@@ -159,7 +151,6 @@ export default function DiscoverTab({
   // Observer
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
-
     observerRef.current = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfinite) {
@@ -168,11 +159,9 @@ export default function DiscoverTab({
       },
       { threshold: 0.5 }
     );
-
     if (sentinelRef.current) {
       observerRef.current.observe(sentinelRef.current);
     }
-
     return () => {
       if (observerRef.current) observerRef.current.disconnect();
     };
@@ -181,13 +170,10 @@ export default function DiscoverTab({
   // OPTIMIZED POSTER FETCHING
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
-
     const titlesNeedingPoster = allTitles.filter((title: any) =>
       title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
     );
-
     if (titlesNeedingPoster.length === 0) return;
-
     const fetchWithLimit = async () => {
       const batch = titlesNeedingPoster.slice(0, 8);
       const updates = await Promise.all(
@@ -206,10 +192,8 @@ export default function DiscoverTab({
           }
         })
       );
-
       setAllTitles(prev => prev.map(title => updates.find((u: any) => u.id === title.id) || title));
     };
-
     fetchWithLimit();
   }, [allTitles, TMDB_READ_TOKEN]);
 
@@ -252,6 +236,14 @@ export default function DiscoverTab({
     }))
   }), [debouncedSearch, filteredTitles]);
 
+  // NEW: Clear filters function
+  const clearFilters = () => {
+    setSelectedGenresFilter([]);
+    setMinYearFilter('');
+    setMaxYearFilter('');
+    setMinRatingFilter(0);
+  };
+
   // Matching skeleton for main grid
   const MovieCardSkeleton = () => (
     <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg">
@@ -288,12 +280,12 @@ export default function DiscoverTab({
                 <div key={item.id} onClick={() => setSelectedTitle(item)} className="flex-shrink-0 w-40 snap-start cursor-pointer group">
                   <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
                     {item.poster_path ? (
-                      <Image 
-                        src={`https://image.tmdb.org/t/p/w342${item.poster_path}`} 
-                        alt={item.title} 
-                        fill 
-                        className="object-cover" 
-                        sizes="(max-width: 768px) 50vw, 20vw" 
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
+                        alt={item.title}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 50vw, 20vw"
                         quality={82}
                       />
                     ) : (
@@ -349,12 +341,12 @@ export default function DiscoverTab({
           {filteredTitles[0] && (
             <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
               {filteredTitles[0].poster_path ? (
-                <Image 
-                  src={`https://image.tmdb.org/t/p/w1280${filteredTitles[0].poster_path}`} 
-                  alt={filteredTitles[0].title} 
-                  fill 
-                  className="object-cover brightness-75" 
-                  priority 
+                <Image
+                  src={`https://image.tmdb.org/t/p/w1280${filteredTitles[0].poster_path}`}
+                  alt={filteredTitles[0].title}
+                  fill
+                  className="object-cover brightness-75"
+                  priority
                   quality={85}
                 />
               ) : (
@@ -376,6 +368,119 @@ export default function DiscoverTab({
           <HorizontalCarousel title="New Releases This Week" items={newReleases} loadingKey="initial" />
           {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />}
 
+          {/* === FILTERS PANEL (NEW) === */}
+          <div className="mb-8 flex flex-wrap items-center gap-4">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-2xl font-medium transition-all"
+            >
+              <Filter size={20} />
+              {showFilters ? 'Hide Filters' : '🔍 Filters & Options'}
+            </button>
+
+            <button
+              onClick={surpriseMe}
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-2xl font-medium transition-all"
+            >
+              🎲 Surprise Me
+            </button>
+          </div>
+
+          {showFilters && (
+            <div className="mb-10 bg-gray-800/50 border border-gray-700 rounded-3xl p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-2xl font-bold">Filters</h4>
+                <button onClick={clearFilters} className="text-sm text-gray-400 hover:text-white flex items-center gap-1">
+                  <X size={16} /> Clear all
+                </button>
+              </div>
+
+              {/* Genres */}
+              <div className="mb-8">
+                <p className="text-sm text-gray-400 mb-3">Genres</p>
+                <div className="flex flex-wrap gap-2">
+                  {genres.map((g) => {
+                    const isActive = selectedGenresFilter.includes(g.id);
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => toggleGenreFilter(g.id)}
+                        className={`px-5 py-2 rounded-full text-sm transition-all ${
+                          isActive 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        }`}
+                      >
+                        {g.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Year Range */}
+              <div className="grid grid-cols-2 gap-6 mb-8">
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">Min Year</p>
+                  <input
+                    type="number"
+                    value={minYearFilter}
+                    onChange={(e) => setMinYearFilter(e.target.value)}
+                    placeholder="1900"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-2">Max Year</p>
+                  <input
+                    type="number"
+                    value={maxYearFilter}
+                    onChange={(e) => setMaxYearFilter(e.target.value)}
+                    placeholder="2026"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Min Rating */}
+              <div className="mb-8">
+                <div className="flex justify-between text-sm text-gray-400 mb-2">
+                  <span>Minimum Rating</span>
+                  <span className="font-mono">{minRatingFilter}.0+</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.1"
+                  value={minRatingFilter}
+                  onChange={(e) => setMinRatingFilter(parseFloat(e.target.value))}
+                  className="w-full accent-blue-500"
+                />
+              </div>
+
+              {/* Content Type */}
+              <div>
+                <p className="text-sm text-gray-400 mb-3">Content Type</p>
+                <div className="flex gap-3">
+                  {['movie,tv_series', 'movie', 'tv_series'].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setContentType(type)}
+                      className={`px-6 py-2.5 rounded-2xl text-sm font-medium transition-all ${
+                        contentType === type 
+                          ? 'bg-white text-black' 
+                          : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      {type === 'movie,tv_series' ? 'All' : type === 'movie' ? 'Movies Only' : 'TV Series Only'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-12">
             <h3 className="text-3xl font-bold mb-6 flex items-center gap-4"><MonitorPlay className="text-green-400" size={32} /> All Free Titles</h3>
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
@@ -396,12 +501,12 @@ export default function DiscoverTab({
                     <div key={title.id} onClick={() => setSelectedTitle(title)} className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative">
                       <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                         {title.poster_path ? (
-                          <Image 
-                            src={`https://image.tmdb.org/t/p/w342${title.poster_path}`} 
-                            alt={title.title} 
-                            fill 
-                            className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                            alt={title.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                             quality={82}
                             priority={index < 6}
                           />
