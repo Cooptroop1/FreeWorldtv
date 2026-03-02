@@ -1,5 +1,5 @@
-import ClientTabs from './_components/ClientTabs';
 import type { Metadata, Viewport } from 'next';
+import Tabs from './_components/Tabs';
 
 export const metadata: Metadata = {
   title: 'FreeStream World - Free Movies, TV Shows & Live TV',
@@ -26,5 +26,5 @@ export const viewport: Viewport = {
 };
 
 export default function Home() {
-  return <ClientTabs />;
+  return <Tabs />;
 }
