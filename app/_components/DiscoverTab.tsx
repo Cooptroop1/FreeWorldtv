@@ -333,9 +333,11 @@ export default function DiscoverTab({
             <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
             <p className="text-gray-300 leading-relaxed mb-4">
               We help you discover completely legal free movies, TV shows and live TV channels from official providers like Tubi, Pluto TV, BBC iPlayer, ITVX and more.
+              No sign-up, no hidden fees — just direct links to the best free content available in your region right now.
             </p>
             <p className="text-gray-300 leading-relaxed">
               All titles shown are 100% free to watch on the original services. We never host or stream any video ourselves.
+              Availability changes daily, so bookmark us and check back often!
             </p>
           </div>
 
