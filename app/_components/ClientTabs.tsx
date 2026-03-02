@@ -111,21 +111,21 @@ export default function ClientTabs() {
   }, [searchQuery]);
   // FIXED: postersFetched Set (prevents duplicates + clears on filter changes)
   const postersFetched = useRef(new Set<number>());
-  // NEW: Providers with logos (for the Sources Modal)
-  const [allProviders, setAllProviders] = useState<any[]>([]);
-  // Load provider logos once (cached from the daily snapshot) — now bulletproof
-  useEffect(() => {
-    fetch('/api/providers')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && Array.isArray(data.providers)) {
-          setAllProviders(data.providers);
-        } else {
-          setAllProviders([]);
-        }
-      })
-      .catch(() => setAllProviders([]));
-  }, []);
+  // NEW: Providers with logos (for the Sources Modal) — FIXED to handle your cache perfectly
+const [allProviders, setAllProviders] = useState<any[]>([]);
+
+// Load provider logos once (cached from the daily snapshot)
+useEffect(() => {
+  fetch('/api/providers')
+    .then(res => res.json())
+    .then(data => {
+      // Handles both {success: true, providers: [...]} AND plain array (what your current route returns)
+      const providersList = Array.isArray(data) ? data : (data.providers || []);
+      setAllProviders(providersList);
+      console.log(`✅ Loaded ${providersList.length} provider logos from cache`);
+    })
+    .catch(() => setAllProviders([]));
+}, []);
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
     const fetchData = async (isLoadMore = false) => {
@@ -458,20 +458,14 @@ export default function ClientTabs() {
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
 
-  // ==================== FINAL ULTRA-STRONG LOGO MATCHING (this WILL show real logos or we keep placeholders) ====================
+  // ==================== FINAL FIXED LOGO MATCHING (no build errors + real logos) ====================
 const getProviderLogo = (sourceName: string) => {
   if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
 
   const clean = sourceName.toLowerCase().trim();
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
 
-  // === ONE-TIME FULL DEBUG: Show every provider name in console ===
-  if (safeProviders.length > 0 && !window.providersLogged) {
-    console.log('📋 ALL PROVIDERS IN CACHE RIGHT NOW:', safeProviders.map(p => p.name));
-    window.providersLogged = true;
-  }
-
-  // === MANUAL FORCE FOR THE ONES THAT KEEP FAILING ===
+  // === MANUAL FORCE for the ones that always fail ===
   let logoUrl = null;
   let color = 'from-indigo-500 to-purple-600';
 
