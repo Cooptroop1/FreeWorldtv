@@ -15,43 +15,35 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Live autocomplete (debounced + smarter)
+  // Live autocomplete (debounced)
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
-
-      // Require 3+ characters (prevents error on single letter)
       if (trimmed.length < 3) {
         setSuggestions([]);
         setShowDropdown(false);
         return;
       }
-
       setLoading(true);
       setShowDropdown(true);
-
       try {
         const res = await fetch(
           `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&region=${region}&page=1`
         );
         const json = await res.json();
-
         if (json.success && Array.isArray(json.titles)) {
-          const titles = json.titles.slice(0, 8);
-          setSuggestions(titles);
+          setSuggestions(json.titles.slice(0, 8));
         } else {
           setSuggestions([]);
         }
-      } catch (err) {
-        // SILENT fallback — never show the ugly error to users
-        console.warn('Search temporarily unavailable (fallback hidden)');
+      } catch {
         setSuggestions([]);
       } finally {
         setLoading(false);
       }
     }, 320);
-
     return () => clearTimeout(timer);
   }, [searchQuery, region]);
 
@@ -69,20 +61,31 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
   const handleSelect = (title: any) => {
     onTitleSelect(title);
     setShowDropdown(false);
+    setSearchQuery('');
   };
 
   const clearSearch = () => {
     setSearchQuery('');
     setSuggestions([]);
     setShowDropdown(false);
+    inputRef.current?.focus();
   };
 
   return (
     <div ref={wrapperRef} className="relative flex-1 min-w-[280px]">
+      <label htmlFor="global-search-input" className="sr-only">
+        Search free movies and TV shows
+      </label>
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
+          ref={inputRef}
+          id="global-search-input"
           type="text"
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls="search-suggestions"
+          aria-activedescendant=""
           placeholder="Search free movies & shows (min 3 letters)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -92,6 +95,7 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
         {searchQuery && (
           <button
             onClick={clearSearch}
+            aria-label="Clear search"
             className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
           >
             <X size={20} />
@@ -101,7 +105,12 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
 
       {/* AUTOCOMPLETE DROPDOWN */}
       {showDropdown && (
-        <div className="absolute z-50 mt-2 w-full bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[420px] overflow-auto py-2">
+        <div
+          id="search-suggestions"
+          role="listbox"
+          className="absolute z-50 mt-2 w-full bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl max-h-[420px] overflow-auto py-2"
+          aria-live="polite"
+        >
           {loading ? (
             <div className="flex items-center justify-center py-8 text-gray-400">
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Finding free titles...
@@ -110,6 +119,7 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
             suggestions.map((title: any) => (
               <div
                 key={title.id}
+                role="option"
                 onClick={() => handleSelect(title)}
                 className="flex items-center gap-4 px-5 py-3 hover:bg-gray-800 cursor-pointer transition-colors group"
               >
@@ -117,10 +127,11 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
                   {title.poster_path ? (
                     <Image
                       src={`https://image.tmdb.org/t/p/w200${title.poster_path}`}
-                      alt={title.title || 'Poster'}
+                      alt={`${title.title} poster`}
                       fill
                       className="object-cover"
                       sizes="48px"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-800 flex items-center justify-center">
