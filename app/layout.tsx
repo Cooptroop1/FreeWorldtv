@@ -25,18 +25,26 @@ export const metadata: Metadata = {
     title: 'FreeStream World',
   },
   openGraph: {
-    title: 'FreeStream World - Free Legal Streaming',
-    description: 'Watch free movies, TV shows & live TV legally from Tubi, Pluto TV, BBC iPlayer and more.',
+    title: 'FreeStream World - Free Legal Movies & TV Shows',
+    description: 'Watch completely free movies, TV shows & live TV legally from Tubi, Pluto TV, BBC iPlayer and more. No signup. No fees.',
     url: 'https://freestreamworld.com',
     siteName: 'FreeStream World',
-    images: [{ url: '/icon-512.png', width: 512, height: 512, alt: 'FreeStream World Logo' }],
+    images: [
+      {
+        url: '/og-image.jpg',           // ← Create this 1200x630 image (see note below)
+        width: 1200,
+        height: 630,
+        alt: 'FreeStream World - Free Legal Streaming',
+      },
+    ],
     locale: 'en_US',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'FreeStream World',
-    description: 'Free & legal movies, TV shows & live TV',
+    title: 'FreeStream World - Watch Free Movies & TV Legally',
+    description: '100% legal free streaming. Thousands of movies, shows & live channels. No signup needed.',
+    images: ['/og-image.jpg'],
   },
   robots: {
     index: true,
@@ -65,14 +73,13 @@ export default function RootLayout({
       <head>
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
-        
+       
         {/* AdSense global script */}
         <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
           crossOrigin="anonymous"
         ></script>
-
         {/* Structured Data - Organization + WebSite */}
         <script
           type="application/ld+json"
@@ -88,7 +95,6 @@ export default function RootLayout({
             })
           }}
         />
-
         {/* Service Worker Registration */}
         <script
           dangerouslySetInnerHTML={{
