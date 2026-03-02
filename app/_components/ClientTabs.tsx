@@ -454,17 +454,26 @@ export default function ClientTabs() {
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
 
-  // ==================== IMPROVED PROVIDER LOGO HELPER (fixes empty picture for FX etc.) ====================
+  // ==================== IMPROVED PROVIDER LOGO HELPER (fixes FX and all others) ====================
   const getProviderLogo = (sourceName: string) => {
-    if (!sourceName) return { logoUrl: null, initials: '??' };
+    if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-indigo-500 to-purple-600' };
+
     const clean = sourceName.toLowerCase().trim();
     const provider = allProviders.find(p => {
       const pName = (p.name || p.display_name || '').toLowerCase().trim();
       return pName === clean || pName.includes(clean) || clean.includes(pName);
     });
     const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
+
+    // Special nice colors for popular providers that often miss logos
+    let color = 'from-indigo-500 to-purple-600';
+    if (clean.includes('fx')) color = 'from-orange-500 to-red-600';
+    if (clean.includes('spectrum')) color = 'from-blue-500 to-cyan-600';
+    if (clean.includes('tubi')) color = 'from-green-500 to-emerald-600';
+    if (clean.includes('pluto')) color = 'from-purple-500 to-pink-600';
+
     const initials = sourceName.slice(0, 2).toUpperCase();
-    return { logoUrl, initials };
+    return { logoUrl, initials, color };
   };
 
   return (
@@ -1073,7 +1082,7 @@ export default function ClientTabs() {
           </div>
         </div>
       )}
-      {/* Sources Modal — UPDATED WITH PROVIDER LOGOS */}
+      {/* Sources Modal — FIXED WITH NICE COLORED INITIALS FOR FX ETC. */}
       {tab === 'discover' && selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
@@ -1097,7 +1106,7 @@ export default function ClientTabs() {
                     <MonitorPlay size={22} /> Free Streaming Options
                   </h3>
                   {sources.map((source: any, idx: number) => {
-                    const { logoUrl, initials } = getProviderLogo(source.name);
+                    const { logoUrl, initials, color } = getProviderLogo(source.name);
                     return (
                       <a
                         key={idx}
@@ -1116,7 +1125,7 @@ export default function ClientTabs() {
                               className="object-contain"
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-inner">
+                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>
                               {initials}
                             </div>
                           )}
