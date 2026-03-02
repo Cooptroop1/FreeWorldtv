@@ -112,11 +112,13 @@ export default function ClientTabs() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // postersFetched Set
+  // FIXED: postersFetched Set (prevents duplicates + clears on filter changes)
   const postersFetched = useRef(new Set<number>());
 
-  // Providers with logos
+  // NEW: Providers with logos (for the Sources Modal)
   const [allProviders, setAllProviders] = useState<any[]>([]);
+
+  // Load provider logos once (cached from the daily snapshot)
   useEffect(() => {
     fetch('/api/providers')
       .then(res => res.json())
@@ -135,7 +137,7 @@ export default function ClientTabs() {
         setPage(1);
         setHasMore(true);
         setError(null);
-        postersFetched.current.clear();
+        postersFetched.current.clear(); // ← CRITICAL FIX: clears old poster cache when switching Movies/TV/All or search
       } else {
         setLoadingMore(true);
       }
@@ -210,7 +212,7 @@ export default function ClientTabs() {
     };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, tab, pauseInfinite]);
 
-  // poster fetching
+  // FIXED + IMPROVED: poster fetching (retries missing posters + only new ones)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -359,6 +361,7 @@ export default function ClientTabs() {
   const [maxYearFilter, setMaxYearFilter] = useState('');
   const [minRatingFilter, setMinRatingFilter] = useState(0);
 
+  // Filtered titles (respects contentType)
   const filteredTitles = allTitles.filter((title: any) => {
     const matchesSearch = !searchQuery || title.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
@@ -411,8 +414,8 @@ export default function ClientTabs() {
               return (
                 <div
                   key={item.id}
-                  className="flex-shrink-0 w-40 snap-start cursor-pointer group"
                   onClick={() => setSelectedTitle(item)}
+                  className="flex-shrink-0 w-40 snap-start cursor-pointer group"
                 >
                   <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
                     {item.poster_path ? (
@@ -475,17 +478,19 @@ export default function ClientTabs() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
-      {/* HEADER + SEARCH + TABS (exactly as you had) */}
       <header className="max-w-7xl mx-auto mb-10">
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
        
+        {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
             <MonitorPlay className="w-12 h-12 text-blue-500" />
             FreeStream World
           </h1>
+         
+          {/* YOUR PWA LOGO — placed exactly where you asked */}
           <Image
             src="/logo.png"
             alt="FreeStream World Logo"
@@ -498,6 +503,7 @@ export default function ClientTabs() {
         <p className="text-lg md:text-xl text-gray-300 mb-8">
           Free movies, TV shows & live channels worldwide — no sign-up needed
         </p>
+        {/* SINGLE CLEAN GLOBAL SEARCH BAR */}
         <div className="flex flex-wrap gap-3 mb-8">
           <div className="flex-1 relative min-w-[280px]">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -522,12 +528,48 @@ export default function ClientTabs() {
             <Filter size={20} /> Filters
           </button>
         </div>
+        {/* Tab navigation ONLY */}
         <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
-          <button onClick={() => setTab('discover')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}><Tv size={20} /> Discover</button>
-          <button onClick={() => setTab('live')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'}`}><Radio size={20} /> Live TV</button>
-          <button onClick={() => setTab('mylinks')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}><Plus size={20} /> My Links</button>
-          <button onClick={() => setTab('favorites')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}><Heart size={20} /> Favorites ({favorites.length})</button>
-          <button onClick={() => setTab('top10')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'}`}><Star size={20} /> Top 10</button>
+          <button
+            onClick={() => setTab('discover')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Tv size={20} /> Discover
+          </button>
+          <button
+            onClick={() => setTab('live')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Radio size={20} /> Live TV
+          </button>
+          <button
+            onClick={() => setTab('mylinks')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Plus size={20} /> My Links
+          </button>
+          <button
+            onClick={() => setTab('favorites')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Heart size={20} /> Favorites ({favorites.length})
+          </button>
+          <button
+            onClick={() => setTab('top10')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${
+              tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Star size={20} /> Top 10
+          </button>
         </div>
       </header>
 
@@ -543,7 +585,7 @@ export default function ClientTabs() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-        
+         
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               {/* Publisher content */}
@@ -564,7 +606,7 @@ export default function ClientTabs() {
                   Updated {getHoursAgo()} • Refreshes automatically every 24 hours
                 </div>
               )}
-              {/* Hero Banner */}
+              {/* Hero Banner — NOW FIXED with safe fallback (no broken image) */}
               {filteredTitles[0] && (
                 <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
                   {filteredTitles[0].poster_path ? (
@@ -586,7 +628,10 @@ export default function ClientTabs() {
                   <div className="absolute bottom-12 left-12 max-w-md">
                     <h1 className="text-6xl font-bold mb-4">{filteredTitles[0].title}</h1>
                     <p className="text-xl text-gray-300 mb-6">{filteredTitles[0].year}</p>
-                    <button onClick={() => setSelectedTitle(filteredTitles[0])} className="bg-white text-black px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition">
+                    <button
+                      onClick={() => setSelectedTitle(filteredTitles[0])}
+                      className="bg-white text-black px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition"
+                    >
                       ▶ Watch Free Now
                     </button>
                   </div>
@@ -599,7 +644,7 @@ export default function ClientTabs() {
               {favorites.length > 0 && (
                 <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />
               )}
-              {/* Original Grid */}
+              {/* Original Grid + FULL SEO JSON-LD */}
               <div className="mt-12">
                 <h3 className="text-3xl font-bold mb-6 flex items-center gap-4">
                   <MonitorPlay className="text-green-400" size={32} />
@@ -619,8 +664,8 @@ export default function ClientTabs() {
                     return (
                       <div
                         key={title.id}
-                        className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                         onClick={() => setSelectedTitle(title)}
+                        className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                       >
                         <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                           {title.poster_path ? (
@@ -679,6 +724,7 @@ export default function ClientTabs() {
                           </div>
                           <button
                             className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                            onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
                           >
                             View Free Sources
                           </button>
@@ -747,8 +793,8 @@ export default function ClientTabs() {
               {allTitles.slice(0, 10).map((title: any) => (
                 <div
                   key={title.id}
-                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                   onClick={() => setSelectedTitle(title)}
+                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                 >
                   <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                     {title.poster_path ? (
@@ -775,6 +821,7 @@ export default function ClientTabs() {
                     </p>
                     <button
                       className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
                     >
                       View Free Sources
                     </button>
@@ -934,8 +981,8 @@ export default function ClientTabs() {
                 return (
                   <div
                     key={title.id}
-                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                     onClick={() => setSelectedTitle(title)}
+                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                   >
                     <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                       {title.poster_path ? (
@@ -994,6 +1041,7 @@ export default function ClientTabs() {
                       </div>
                       <button
                         className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                        onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
                       >
                         View Free Sources
                       </button>
@@ -1011,7 +1059,7 @@ export default function ClientTabs() {
         </section>
       )}
 
-      {/* Player Modal (only for My Links) */}
+      {/* Player Modal */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -1038,62 +1086,123 @@ export default function ClientTabs() {
         </div>
       )}
 
-      {/* SOURCES MODAL — OLD WAY RESTORED */}
-      {selectedTitle && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
-          <div className="bg-gray-900 rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center p-6 border-b border-gray-700">
-              <h2 className="text-2xl font-bold">{selectedTitle.title}</h2>
-              <button
-                onClick={() => setSelectedTitle(null)}
-                className="text-4xl text-gray-400 hover:text-white transition-colors"
-              >
-                ×
-              </button>
-            </div>
+      {/* Sources Modal — UPDATED WITH PROVIDER LOGOS */}
+      {tab === 'discover' && selectedTitle && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
+            <div className="p-6 md:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold pr-10">
+                  {selectedTitle.title} ({selectedTitle.year})
+                </h2>
+                <button
+                  onClick={() => { setSelectedTitle(null); setSources([]); }}
+                  className="text-gray-400 hover:text-white text-4xl leading-none"
+                >
+                  ×
+                </button>
+              </div>
 
-            <div className="flex-1 overflow-auto p-6">
               {sourcesLoading ? (
-                <div className="text-center py-20">
-                  <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4" />
-                  Finding free sources...
-                </div>
+                <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : sources.length > 0 ? (
-                <div className="grid gap-4">
+                <div className="space-y-5">
+                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <MonitorPlay size={22} /> Free Streaming Options
+                  </h3>
                   {sources.map((source: any, idx: number) => {
-                    const provider = allProviders.find(p => p.name?.toLowerCase() === source.name?.toLowerCase());
-                    const logoUrl = provider?.logo_100px || provider?.logo_300px;
+                    const provider = allProviders.find(p => 
+                      p.name?.toLowerCase() === source.name?.toLowerCase() ||
+                      p.display_name?.toLowerCase() === source.name?.toLowerCase()
+                    );
+                    const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
+
                     return (
                       <a
                         key={idx}
-                        href={source.web_url}
+                        href={source.web_url || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-5 bg-gray-800/70 hover:bg-gray-700/70 p-6 rounded-2xl transition-all group"
+                        className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                       >
-                        <div className="w-16 h-16 bg-gray-700 rounded-2xl flex items-center justify-center overflow-hidden">
+                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
                           {logoUrl ? (
-                            <Image src={logoUrl} alt={source.name} width={64} height={64} className="object-contain" />
+                            <Image
+                              src={logoUrl}
+                              alt={source.name}
+                              width={48}
+                              height={48}
+                              className="object-contain"
+                            />
                           ) : (
-                            <MonitorPlay size={32} className="text-gray-400" />
+                            <MonitorPlay size={24} className="text-gray-400" />
                           )}
                         </div>
-                        <div className="flex-1">
-                          <div className="text-2xl font-semibold group-hover:text-blue-400 transition-colors">{source.name}</div>
-                          <div className="text-gray-400">Free with ads • Official platform</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
+                          <div className="text-gray-400 text-sm">
+                            Free with Ads {source.format && `• ${source.format}`}
+                          </div>
                         </div>
-                        <div className="text-blue-400 text-xl font-medium group-hover:translate-x-1 transition">→</div>
+                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
+                          Watch now →
+                        </div>
                       </a>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-gray-400 text-lg italic text-center py-20">No free sources available right now. Check back soon!</p>
+                <div className="text-center py-16 text-gray-300 text-lg">
+                  No free sources available right now in {region}.<br />
+                  Availability changes frequently — try again later!
+                </div>
               )}
-            </div>
 
-            <div className="p-6 border-t border-gray-700 text-center text-sm text-gray-500">
-              All links go directly to official providers. Availability changes.
+              {relatedTitles.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-700">
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Star className="text-yellow-400" size={20} /> More Like This
+                  </h3>
+                  <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
+                    {relatedTitles.map((rel: any) => (
+                      <div
+                        key={rel.id}
+                        onClick={() => {
+                          setSelectedTitle({
+                            id: rel.id,
+                            title: rel.title || rel.name,
+                            year: (rel.release_date || rel.first_air_date || '').slice(0, 4),
+                            tmdb_id: rel.id,
+                            tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
+                            poster_path: rel.poster_path
+                          });
+                        }}
+                        className="snap-start flex-shrink-0 w-28 cursor-pointer group"
+                      >
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
+                          {rel.poster_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w500${rel.poster_path}`}
+                              alt={rel.title || rel.name}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform"
+                              sizes="112px"
+                              quality={85}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                              <Film className="w-8 h-8 text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
+                          {rel.title || rel.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
