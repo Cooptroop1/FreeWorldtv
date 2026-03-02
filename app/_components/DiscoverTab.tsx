@@ -65,7 +65,7 @@ export default function DiscoverTab({
 
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // FIXED: Scroll to top ONLY on real search change (exactly like original monolithic file)
+  // FIXED: Scroll to top ONLY on real search change
   useEffect(() => {
     if (prevSearchRef.current !== debouncedSearch) {
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -76,7 +76,7 @@ export default function DiscoverTab({
     }
   }, [debouncedSearch]);
 
-  // FIXED: Initial fetch ONLY when search/filters change — page removed from deps (this was the jump cause)
+  // Initial fetch (no page dependency)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -119,7 +119,7 @@ export default function DiscoverTab({
     fetchData();
   }, [debouncedSearch, selectedGenre, region, contentType]);
 
-  // NEW: Stable loadMore (prevents any remounting or flicker during pagination)
+  // Stable loadMore
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || pauseInfinite) return;
 
@@ -147,7 +147,7 @@ export default function DiscoverTab({
     }
   }, [page, debouncedSearch, selectedGenre, region, contentType, loadingMore, hasMore, pauseInfinite]);
 
-  // FIXED: Observer now uses the stable loadMore function (no more duplicate fetch code)
+  // Observer
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
 
@@ -169,17 +169,20 @@ export default function DiscoverTab({
     };
   }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
 
-  // TMDB posters (unchanged)
+  // OPTIMIZED POSTER FETCHING — only new titles + max 8 at a time (no TMDB spam)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
-    const fetchPosters = async () => {
-      const titlesNeedingPoster = allTitles.filter((title: any) =>
-        title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
-      );
-      if (titlesNeedingPoster.length === 0) return;
 
+    const titlesNeedingPoster = allTitles.filter((title: any) =>
+      title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+    );
+
+    if (titlesNeedingPoster.length === 0) return;
+
+    const fetchWithLimit = async () => {
+      const batch = titlesNeedingPoster.slice(0, 8); // concurrency limit
       const updates = await Promise.all(
-        titlesNeedingPoster.map(async (title: any) => {
+        batch.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
           const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
           try {
@@ -194,12 +197,14 @@ export default function DiscoverTab({
           }
         })
       );
+
       setAllTitles(prev => prev.map(title => updates.find((u: any) => u.id === title.id) || title));
     };
-    fetchPosters();
+
+    fetchWithLimit();
   }, [allTitles, TMDB_READ_TOKEN]);
 
-  // Filtered titles (unchanged)
+  // Filtered titles
   const filteredTitles = useMemo(() =>
     debouncedSearch
       ? allTitles
@@ -238,7 +243,14 @@ export default function DiscoverTab({
                 <div key={item.id} onClick={() => setSelectedTitle(item)} className="flex-shrink-0 w-40 snap-start cursor-pointer group">
                   <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
                     {item.poster_path ? (
-                      <Image src={`https://image.tmdb.org/t/p/w500${item.poster_path}`} alt={item.title} fill className="object-cover" sizes="(max-width: 768px) 50vw, 20vw" quality={85} />
+                      <Image 
+                        src={`https://image.tmdb.org/t/p/w342${item.poster_path}`} 
+                        alt={item.title} 
+                        fill 
+                        className="object-cover" 
+                        sizes="(max-width: 768px) 50vw, 20vw" 
+                        quality={82}
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"><Film className="w-12 h-12 text-gray-600" /></div>
                     )}
@@ -299,7 +311,14 @@ export default function DiscoverTab({
           {filteredTitles[0] && (
             <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
               {filteredTitles[0].poster_path ? (
-                <Image src={`https://image.tmdb.org/t/p/original${filteredTitles[0].poster_path}`} alt={filteredTitles[0].title} fill className="object-cover brightness-75" />
+                <Image 
+                  src={`https://image.tmdb.org/t/p/w1280${filteredTitles[0].poster_path}`} 
+                  alt={filteredTitles[0].title} 
+                  fill 
+                  className="object-cover brightness-75" 
+                  priority 
+                  quality={85}
+                />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
                   <div className="text-center"><Film className="w-24 h-24 text-gray-600 mx-auto mb-6" /><p className="text-4xl font-bold text-white">{filteredTitles[0].title}</p></div>
@@ -324,9 +343,9 @@ export default function DiscoverTab({
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
             <p className="text-gray-400 mb-8 text-lg">Found {filteredTitles.length} titles • Scroll for more</p>
 
-            {/* STABLE GRID — no key, min-height prevents any collapse/jump */}
+            {/* STABLE GRID */}
             <div className="min-h-[600px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {filteredTitles.map((title: any) => {
+              {filteredTitles.map((title: any, index: number) => {
                 const isFavorite = favorites.some(fav => fav.id === title.id);
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                 const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
@@ -334,7 +353,15 @@ export default function DiscoverTab({
                   <div key={title.id} onClick={() => setSelectedTitle(title)} className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative">
                     <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                       {title.poster_path ? (
-                        <Image src={`https://image.tmdb.org/t/p/w500${title.poster_path}`} alt={title.title} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" quality={85} />
+                        <Image 
+                          src={`https://image.tmdb.org/t/p/w342${title.poster_path}`} 
+                          alt={title.title} 
+                          fill 
+                          className="object-cover group-hover:scale-105 transition-transform duration-500" 
+                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
+                          quality={82}
+                          priority={index < 6}   {/* ← first screen loads instantly */}
+                        />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
                       )}
@@ -374,7 +401,7 @@ export default function DiscoverTab({
                       "@type": title.type === 'tv_series' ? "TVSeries" : "Movie",
                       "name": title.title,
                       "url": `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`,
-                      "image": title.poster_path ? `https://image.tmdb.org/t/p/w500${title.poster_path}` : undefined,
+                      "image": title.poster_path ? `https://image.tmdb.org/t/p/w342${title.poster_path}` : undefined,
                       "datePublished": title.year ? `${title.year}-01-01` : undefined,
                     }
                   }))
