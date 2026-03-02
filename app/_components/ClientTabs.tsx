@@ -7,7 +7,6 @@ import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 import InstallPrompt from './InstallPrompt';
 import OfflineMessage from './OfflineMessage';
-
 // Use env vars (set in Vercel/Render)
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 // Public live channels (official links)
@@ -454,20 +453,34 @@ export default function ClientTabs() {
     }
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
+
+  // ==================== IMPROVED PROVIDER LOGO HELPER (fixes empty picture for FX etc.) ====================
+  const getProviderLogo = (sourceName: string) => {
+    if (!sourceName) return { logoUrl: null, initials: '??' };
+    const clean = sourceName.toLowerCase().trim();
+    const provider = allProviders.find(p => {
+      const pName = (p.name || p.display_name || '').toLowerCase().trim();
+      return pName === clean || pName.includes(clean) || clean.includes(pName);
+    });
+    const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
+    const initials = sourceName.slice(0, 2).toUpperCase();
+    return { logoUrl, initials };
+  };
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-      
+     
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
             <MonitorPlay className="w-12 h-12 text-blue-500" />
             FreeStream World
           </h1>
-        
+       
           {/* YOUR PWA LOGO — placed exactly where you asked */}
           <Image
             src="/logo.png"
@@ -550,11 +563,9 @@ export default function ClientTabs() {
           </button>
         </div>
       </header>
-
       {/* PWA INSTALL BANNER + OFFLINE MESSAGE — ADDED HERE */}
       <InstallPrompt />
       <OfflineMessage />
-
       {/* Discover Tab — FULL NETFLIX CAROUSELS + SKELETONS + PUBLISHER BOX + SEO */}
       {tab === 'discover' && (
         <>
@@ -567,7 +578,7 @@ export default function ClientTabs() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-        
+       
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               {/* Publisher content */}
@@ -1086,11 +1097,7 @@ export default function ClientTabs() {
                     <MonitorPlay size={22} /> Free Streaming Options
                   </h3>
                   {sources.map((source: any, idx: number) => {
-                    const provider = allProviders.find(p =>
-                      p.name?.toLowerCase() === source.name?.toLowerCase() ||
-                      p.display_name?.toLowerCase() === source.name?.toLowerCase()
-                    );
-                    const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
+                    const { logoUrl, initials } = getProviderLogo(source.name);
                     return (
                       <a
                         key={idx}
@@ -1099,7 +1106,7 @@ export default function ClientTabs() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                       >
-                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
                           {logoUrl ? (
                             <Image
                               src={logoUrl}
@@ -1109,7 +1116,9 @@ export default function ClientTabs() {
                               className="object-contain"
                             />
                           ) : (
-                            <MonitorPlay size={24} className="text-gray-400" />
+                            <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-inner">
+                              {initials}
+                            </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
