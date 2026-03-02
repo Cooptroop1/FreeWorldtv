@@ -9,6 +9,7 @@ import InstallPrompt from './InstallPrompt';
 import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
+import { getWatchmodeId } from '../../lib/watchmode-map';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -137,24 +138,40 @@ export default function Tabs() {
   }, [selectedTitle]);
 
   useEffect(() => {
-    if (!selectedTitle || tab !== 'discover') {
-      setSources([]);
-      setSourcesLoading(false);
-      return;
-    }
-    const fetchSources = async () => {
-      setSourcesLoading(true);
-      try {
-        const res = await fetch(`/api/title-sources?id=${selectedTitle.id}&region=${region}`);
-        const json = await res.json();
-        setSources(json.success ? json.freeSources || [] : []);
-      } catch {
-        setSources([]);
+  if (!selectedTitle || tab !== 'discover') {
+    setSources([]);
+    setSourcesLoading(false);
+    return;
+  }
+
+  const fetchSources = async () => {
+    setSourcesLoading(true);
+    try {
+      let watchmodeId = selectedTitle.id;
+
+      // NEW: If we only have a TMDB ID (e.g. from "More Like This" related titles), lookup Watchmode ID
+      if (!watchmodeId && selectedTitle.tmdb_id) {
+        watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
       }
+
+      if (!watchmodeId) {
+        setSources([]);
+        return;
+      }
+
+      const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
+      const json = await res.json();
+      setSources(json.success ? json.freeSources || [] : []);
+    } catch (err) {
+      console.error('Sources fetch error:', err);
+      setSources([]);
+    } finally {
       setSourcesLoading(false);
-    };
-    fetchSources();
-  }, [selectedTitle, region, tab]);
+    }
+  };
+
+  fetchSources();
+}, [selectedTitle, region, tab]);
 
   // Video.js player
   useEffect(() => {
