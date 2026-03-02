@@ -31,13 +31,26 @@ interface DiscoverTabProps {
   setContentType: (type: string) => void;
 }
 
-const genres = [ /* your full genres array from before — I kept it exactly the same */ 
-  { id: 28, name: 'Action' }, { id: 12, name: 'Adventure' }, { id: 16, name: 'Animation' },
-  { id: 35, name: 'Comedy' }, { id: 80, name: 'Crime' }, { id: 99, name: 'Documentary' },
-  { id: 18, name: 'Drama' }, { id: 10751, name: 'Family' }, { id: 14, name: 'Fantasy' },
-  { id: 36, name: 'History' }, { id: 27, name: 'Horror' }, { id: 10402, name: 'Music' },
-  { id: 9648, name: 'Mystery' }, { id: 10749, name: 'Romance' }, { id: 878, name: 'Science Fiction' },
-  { id: 53, name: 'Thriller' }, { id: 10752, name: 'War' }, { id: 37, name: 'Western' },
+// FULL GENRES ARRAY (restored)
+const genres = [
+  { id: 28, name: 'Action' },
+  { id: 12, name: 'Adventure' },
+  { id: 16, name: 'Animation' },
+  { id: 35, name: 'Comedy' },
+  { id: 80, name: 'Crime' },
+  { id: 99, name: 'Documentary' },
+  { id: 18, name: 'Drama' },
+  { id: 10751, name: 'Family' },
+  { id: 14, name: 'Fantasy' },
+  { id: 36, name: 'History' },
+  { id: 27, name: 'Horror' },
+  { id: 10402, name: 'Music' },
+  { id: 9648, name: 'Mystery' },
+  { id: 10749, name: 'Romance' },
+  { id: 878, name: 'Science Fiction' },
+  { id: 53, name: 'Thriller' },
+  { id: 10752, name: 'War' },
+  { id: 37, name: 'Western' },
 ];
 
 export default function DiscoverTab({
@@ -49,7 +62,6 @@ export default function DiscoverTab({
   toggleGenreFilter, setSelectedGenresFilter,
   setMinYearFilter, setMaxYearFilter, setMinRatingFilter, setContentType
 }: DiscoverTabProps) {
-
   const [allTitles, setAllTitles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -75,7 +87,6 @@ export default function DiscoverTab({
       } else {
         setLoadingMore(true);
       }
-
       try {
         let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${isLoadMore ? page + 1 : 1}`;
         if (debouncedSearch) {
@@ -83,19 +94,15 @@ export default function DiscoverTab({
         } else if (selectedGenre) {
           url += `&genres=${selectedGenre}`;
         }
-
         const res = await fetch(url);
         const json = await res.json();
-
         let newTitles: any[] = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
-
         if (newTitles === staticFallbackTitles) {
           setIsUsingFallback(true);
           console.warn('🔄 Using cached fallback titles');
         } else {
           setIsUsingFallback(false);
         }
-
         if (isLoadMore) {
           setAllTitles(prev => [...prev, ...newTitles]);
           setPage(prev => prev + 1);
@@ -114,15 +121,13 @@ export default function DiscoverTab({
         }
         setHasMore(false);
       }
-
       setLoading(false);
       setLoadingMore(false);
     };
-
     fetchData();
   }, [debouncedSearch, selectedGenre, region, contentType, page]);
 
-  // ==================== INFINITE SCROLL (unchanged & working) ====================
+  // ==================== INFINITE SCROLL ====================
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver((entries) => {
@@ -133,11 +138,9 @@ export default function DiscoverTab({
             let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${page + 1}`;
             if (debouncedSearch) url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${page + 1}`;
             else if (selectedGenre) url += `&genres=${selectedGenre}`;
-
             const res = await fetch(url);
             const json = await res.json();
             const newTitles = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
-
             setAllTitles(prev => [...prev, ...newTitles]);
             setPage(prev => prev + 1);
             setHasMore(newTitles.length >= 48);
@@ -153,7 +156,7 @@ export default function DiscoverTab({
     return () => { if (observerRef.current) observerRef.current.disconnect(); };
   }, [hasMore, loadingMore, loading, page, region, contentType, debouncedSearch, selectedGenre, pauseInfinite]);
 
-  // ==================== TMDB POSTER FETCH (fixed for search) ====================
+  // ==================== TMDB POSTER FETCH ====================
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const fetchPosters = async () => {
@@ -161,7 +164,6 @@ export default function DiscoverTab({
         title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
       );
       if (titlesNeedingPoster.length === 0) return;
-
       const updates = await Promise.all(
         titlesNeedingPoster.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
@@ -178,7 +180,6 @@ export default function DiscoverTab({
           }
         })
       );
-
       setAllTitles(prev =>
         prev.map(title => updates.find((u: any) => u.id === title.id) || title)
       );
@@ -186,10 +187,9 @@ export default function DiscoverTab({
     fetchPosters();
   }, [allTitles, TMDB_READ_TOKEN]);
 
-  // ==================== FILTERED TITLES (FIXED — no more double filter bug) ====================
-    // FIXED: Trust API results when searching → titles no longer disappear
-  const filteredTitles = debouncedSearch 
-    ? allTitles  // ← API already filtered the search, so show everything
+  // ==================== FILTERED TITLES (FIXED) ====================
+  const filteredTitles = debouncedSearch
+    ? allTitles
     : allTitles.filter((title: any) => {
         const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
         const year = parseInt(title.year || '0');
@@ -253,7 +253,7 @@ export default function DiscoverTab({
         </div>
       )}
 
-      {/* Clean banner — only on normal Discover, hidden while searching */}
+      {/* Clean fallback banner — hidden while searching */}
       {isUsingFallback && !debouncedSearch && (
         <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-center py-3 px-6 rounded-2xl mx-auto max-w-2xl mb-8 text-sm">
           Temporarily using cached titles (Watchmode is slow right now).<br />
@@ -263,11 +263,17 @@ export default function DiscoverTab({
 
       {!loading && allTitles.length > 0 && (
         <section className="max-w-7xl mx-auto">
-          {/* Welcome box, lastUpdated badge, Hero Banner, all carousels, grid — exactly as before */}
+          {/* FULL WELCOME BOX (restored) */}
           <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 mb-8">
             <h2 className="text-2xl font-bold mb-3">Welcome to FreeStream World</h2>
-            <p className="text-gray-300 leading-relaxed mb-4">We help you discover completely legal free movies, TV shows...</p>
-            <p className="text-gray-300 leading-relaxed">All titles shown are 100% free...</p>
+            <p className="text-gray-300 leading-relaxed mb-4">
+              We help you discover completely legal free movies, TV shows and live TV channels from official providers like Tubi, Pluto TV, BBC iPlayer, ITVX and more.
+              No sign-up, no hidden fees — just direct links to the best free content available in your region right now.
+            </p>
+            <p className="text-gray-300 leading-relaxed">
+              All titles shown are 100% free to watch on the original services. We never host or stream any video ourselves.
+              Availability changes daily, so bookmark us and check back often!
+            </p>
           </div>
 
           {lastUpdated && (
@@ -276,6 +282,7 @@ export default function DiscoverTab({
             </div>
           )}
 
+          {/* HERO BANNER */}
           {filteredTitles[0] && (
             <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden">
               {filteredTitles[0].poster_path ? (
@@ -299,11 +306,12 @@ export default function DiscoverTab({
           <HorizontalCarousel title="New Releases This Week" items={newReleases} loadingKey="initial" />
           {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />}
 
-          {/* All Free Titles Grid */}
+          {/* ALL FREE TITLES GRID + SEO JSON-LD (RESTORED) */}
           <div className="mt-12">
             <h3 className="text-3xl font-bold mb-6 flex items-center gap-4"><MonitorPlay className="text-green-400" size={32} /> All Free Titles</h3>
-            <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos.</p>
+            <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
             <p className="text-gray-400 mb-8 text-lg">Found {filteredTitles.length} titles • Scroll for more</p>
+            
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {filteredTitles.map((title: any) => {
                 const isFavorite = favorites.some(fav => fav.id === title.id);
@@ -336,8 +344,31 @@ export default function DiscoverTab({
                 );
               })}
             </div>
-            {/* JSON-LD and sentinel unchanged */}
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ "@context": "https://schema.org", "@type": "ItemList", "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles", "numberOfItems": filteredTitles.length, "itemListElement": filteredTitles.map((title, index) => ({ "@type": "ListItem", "position": index + 1, "item": { "@type": title.type === 'tv_series' ? "TVSeries" : "Movie", "name": title.title, "url": `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`, "image": title.poster_path ? `https://image.tmdb.org/t/p/w500${title.poster_path}` : undefined, "datePublished": title.year ? `${title.year}-01-01` : undefined } })) }) }} />
+
+            {/* FULL SEO JSON-LD (RESTORED — this is the one Google needs) */}
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "ItemList",
+                  "name": debouncedSearch ? `Free Results for "${debouncedSearch}"` : "Popular Free Titles",
+                  "numberOfItems": filteredTitles.length,
+                  "itemListElement": filteredTitles.map((title, index) => ({
+                    "@type": "ListItem",
+                    "position": index + 1,
+                    "item": {
+                      "@type": title.type === 'tv_series' ? "TVSeries" : "Movie",
+                      "name": title.title,
+                      "url": `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`,
+                      "image": title.poster_path ? `https://image.tmdb.org/t/p/w500${title.poster_path}` : undefined,
+                      "datePublished": title.year ? `${title.year}-01-01` : undefined,
+                    }
+                  }))
+                })
+              }}
+            />
+
             {hasMore && <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">{loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}</div>}
             {!hasMore && <p className="text-center text-gray-400 py-12">End of results • Try a different search or filter</p>}
           </div>
