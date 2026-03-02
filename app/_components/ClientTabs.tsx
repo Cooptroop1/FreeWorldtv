@@ -113,14 +113,18 @@ export default function ClientTabs() {
   const postersFetched = useRef(new Set<number>());
   // NEW: Providers with logos (for the Sources Modal)
   const [allProviders, setAllProviders] = useState<any[]>([]);
-  // Load provider logos once (cached from the daily snapshot)
+  // Load provider logos once (cached from the daily snapshot) — now bulletproof
   useEffect(() => {
     fetch('/api/providers')
       .then(res => res.json())
       .then(data => {
-        if (data.success) setAllProviders(data.providers);
+        if (data.success && Array.isArray(data.providers)) {
+          setAllProviders(data.providers);
+        } else {
+          setAllProviders([]);
+        }
       })
-      .catch(() => {});
+      .catch(() => setAllProviders([]));
   }, []);
   useEffect(() => {
     if (tab !== 'discover' && tab !== 'top10') return;
@@ -454,24 +458,23 @@ export default function ClientTabs() {
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
 
-  // ==================== IMPROVED PROVIDER LOGO HELPER (fixes FX and all others) ====================
+  // ==================== BULLETPROOF PROVIDER LOGO HELPER (fixes crash + shows real logos) ====================
   const getProviderLogo = (sourceName: string) => {
     if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-indigo-500 to-purple-600' };
-
     const clean = sourceName.toLowerCase().trim();
-    const provider = allProviders.find(p => {
+    // Safety: make sure allProviders is always an array
+    const safeProviders = Array.isArray(allProviders) ? allProviders : [];
+    const provider = safeProviders.find(p => {
       const pName = (p.name || p.display_name || '').toLowerCase().trim();
       return pName === clean || pName.includes(clean) || clean.includes(pName);
     });
     const logoUrl = provider?.logo_100px || provider?.logo_300px || null;
-
     // Special nice colors for popular providers that often miss logos
     let color = 'from-indigo-500 to-purple-600';
     if (clean.includes('fx')) color = 'from-orange-500 to-red-600';
     if (clean.includes('spectrum')) color = 'from-blue-500 to-cyan-600';
     if (clean.includes('tubi')) color = 'from-green-500 to-emerald-600';
     if (clean.includes('pluto')) color = 'from-purple-500 to-pink-600';
-
     const initials = sourceName.slice(0, 2).toUpperCase();
     return { logoUrl, initials, color };
   };
@@ -482,14 +485,14 @@ export default function ClientTabs() {
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-     
+    
         {/* BRAND ROW — HEADING LEFT + YOUR PWA LOGO RIGHT (same line, top right) */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
             <MonitorPlay className="w-12 h-12 text-blue-500" />
             FreeStream World
           </h1>
-       
+      
           {/* YOUR PWA LOGO — placed exactly where you asked */}
           <Image
             src="/logo.png"
@@ -587,7 +590,7 @@ export default function ClientTabs() {
             </div>
           )}
           {error && <div className="text-red-500 text-center py-20 text-xl">Error: {error}</div>}
-       
+      
           {!loading && allTitles.length > 0 && (
             <section className="max-w-7xl mx-auto">
               {/* Publisher content */}
