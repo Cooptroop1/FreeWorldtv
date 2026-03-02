@@ -1,4 +1,4 @@
-const CACHE_NAME = 'freestreamworld-v4';
+const CACHE_NAME = 'freestreamworld-v5';
 
 const urlsToCache = [
   '/',
@@ -13,7 +13,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Pre-caching static assets v4');
+        console.log('[SW] Pre-caching static assets v5');
         return cache.addAll(urlsToCache);
       })
   );
@@ -34,13 +34,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// FIXED STRATEGY: Network-First for APIs (stops infinite scroll flicker)
+// Network-First for APIs (stops scroll flicker & jump)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-
-  // Network-First for API calls (fresh data on scroll)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request)
@@ -54,7 +52,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate for everything else (fast & smooth)
+  // Stale-While-Revalidate for everything else
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
