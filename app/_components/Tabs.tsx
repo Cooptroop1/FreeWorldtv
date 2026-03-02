@@ -235,15 +235,52 @@ export default function Tabs() {
   };
 
   const getProviderLogo = (sourceName: string) => {
-    if (!sourceName) return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
-    const clean = sourceName.toLowerCase().trim();
-    const safeProviders = Array.isArray(allProviders) ? allProviders : [];
-    let logoUrl = null;
-    let color = 'from-indigo-500 to-purple-600';
-    const initials = sourceName.slice(0, 2).toUpperCase();
-    return { logoUrl, initials, color };
+  if (!sourceName) {
+    return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
+  }
+
+  const name = sourceName.toLowerCase().trim();
+  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
+
+  // Try to find in fetched providers first
+  const matched = safeProviders.find((p: any) =>
+    p.name?.toLowerCase().includes(name) || name.includes(p.name?.toLowerCase())
+  );
+
+  if (matched?.logo_url) {
+    return {
+      logoUrl: matched.logo_url,
+      initials: name.slice(0, 2).toUpperCase(),
+      color: 'from-indigo-500 to-purple-600'
+    };
+  }
+
+  // Hard-coded high-quality logos for the most common providers
+  const logoMap: Record<string, { url: string; color: string }> = {
+    'tubi': { url: 'https://images.tubi.tv/logo/tubi-logo.png', color: 'from-orange-500 to-red-600' },
+    'pluto tv': { url: 'https://pluto.tv/assets/images/pluto-logo-white.png', color: 'from-purple-600 to-violet-600' },
+    'bbc iplayer': { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/BBC_iPlayer_2023.svg/1280px-BBC_iPlayer_2023.svg.png', color: 'from-blue-600 to-cyan-500' },
+    'itvx': { url: 'https://www.itv.com/_next/static/media/itv-logo.4c3d7c0a.svg', color: 'from-red-600 to-pink-600' },
+    'channel 4': { url: 'https://www.channel4.com/static/images/logo/channel4-logo-white.svg', color: 'from-black to-gray-800' },
+    'my5': { url: 'https://www.my5.tv/assets/images/my5-logo-white.png', color: 'from-blue-700 to-cyan-600' },
+    'uktv play': { url: 'https://www.uktv.co.uk/sites/default/files/2023-02/UKTV-Play-Logo-White.png', color: 'from-emerald-600 to-teal-500' },
+    'freevee': { url: 'https://m.media-amazon.com/images/G/01/digital/video/merchandising/2023/Amazon-Freevee-Logo-White.png', color: 'from-blue-500 to-indigo-600' },
+    'crackle': { url: 'https://www.crackle.com/assets/images/crackle-logo-white.png', color: 'from-red-600 to-orange-500' },
   };
 
+  for (const [key, value] of Object.entries(logoMap)) {
+    if (name.includes(key)) {
+      return { logoUrl: value.url, initials: name.slice(0, 2).toUpperCase(), color: value.color };
+    }
+  }
+
+  // Final fallback
+  return {
+    logoUrl: null,
+    initials: name.slice(0, 2).toUpperCase(),
+    color: 'from-indigo-500 to-purple-600'
+  };
+};
   // Dynamic title
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
