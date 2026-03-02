@@ -37,7 +37,7 @@ const genres = [
 
 export default function Tabs() {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
-  const [region, setRegion] = useState('US');                    // ← restored
+  const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -52,24 +52,17 @@ export default function Tabs() {
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [allProviders, setAllProviders] = useState<any[]>([]);
-
-  // Filters (passed to DiscoverTab)
   const [showFilters, setShowFilters] = useState(false);
   const [selectedGenresFilter, setSelectedGenresFilter] = useState<number[]>([]);
   const [minYearFilter, setMinYearFilter] = useState('');
   const [maxYearFilter, setMaxYearFilter] = useState('');
   const [minRatingFilter, setMinRatingFilter] = useState(0);
-
-  // Top 10 light fetch
   const [top10Titles, setTop10Titles] = useState<any[]>([]);
   const [top10Loading, setTop10Loading] = useState(false);
 
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
-
-  // ... (all your existing useEffects for favorites, custom links, debounced search, providers, related titles, sources, player, top10 — unchanged)
 
   // Favorites & custom links persistence
   useEffect(() => {
@@ -230,7 +223,6 @@ export default function Tabs() {
     const safeProviders = Array.isArray(allProviders) ? allProviders : [];
     let logoUrl = null;
     let color = 'from-indigo-500 to-purple-600';
-    // ... (your existing getProviderLogo logic — unchanged)
     const initials = sourceName.slice(0, 2).toUpperCase();
     return { logoUrl, initials, color };
   };
@@ -255,7 +247,6 @@ export default function Tabs() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
-        {/* Disclaimer unchanged */}
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
@@ -273,37 +264,71 @@ export default function Tabs() {
         <div className="flex flex-wrap gap-3 mb-8 items-center">
           <GlobalSearch searchQuery={searchQuery} setSearchQuery={setSearchQuery} onTitleSelect={setSelectedTitle} region={region} />
 
-          {/* REGION SELECTOR — RESTORED */}
-          <select
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            className="bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="US">🇺🇸 United States</option>
-            <option value="GB">🇬🇧 United Kingdom</option>
-            <option value="CA">🇨🇦 Canada</option>
-            <option value="AU">🇦🇺 Australia</option>
-            <option value="DE">🇩🇪 Germany</option>
-            <option value="FR">🇫🇷 France</option>
-            <option value="IN">🇮🇳 India</option>
-          </select>
+          {/* REGION SELECTOR — NOW FULLY ACCESSIBLE */}
+          <div className="flex flex-col">
+            <label htmlFor="region-select" className="sr-only">Select your region</label>
+            <select
+              id="region-select"
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Choose streaming region"
+            >
+              <option value="US">🇺🇸 United States</option>
+              <option value="GB">🇬🇧 United Kingdom</option>
+              <option value="CA">🇨🇦 Canada</option>
+              <option value="AU">🇦🇺 Australia</option>
+              <option value="DE">🇩🇪 Germany</option>
+              <option value="FR">🇫🇷 France</option>
+              <option value="IN">🇮🇳 India</option>
+            </select>
+          </div>
 
           <button onClick={surpriseMe} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-xl font-medium transition-all">
             <Shuffle size={20} /> Surprise Me
           </button>
-
           <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 bg-gray-800 border border-gray-700 hover:bg-gray-700 px-6 py-3 rounded-xl font-medium transition-all">
             <Filter size={20} /> Filters
           </button>
         </div>
 
-        {/* Tab buttons unchanged */}
-        <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4">
-          <button onClick={() => setTab('discover')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}> <Tv size={20} /> Discover </button>
-          <button onClick={() => setTab('live')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'}`}> <Radio size={20} /> Live TV </button>
-          <button onClick={() => setTab('mylinks')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}> <Plus size={20} /> My Links </button>
-          <button onClick={() => setTab('favorites')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}> <Heart size={20} /> Favorites ({favorites.length}) </button>
-          <button onClick={() => setTab('top10')} className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'}`}> <Star size={20} /> Top 10 </button>
+        {/* Tab buttons */}
+        <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4" role="tablist">
+          <button 
+            onClick={() => setTab('discover')} 
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'discover' ? 'page' : undefined}
+          >
+            <Tv size={20} /> Discover
+          </button>
+          <button 
+            onClick={() => setTab('live')} 
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'live' ? 'page' : undefined}
+          >
+            <Radio size={20} /> Live TV
+          </button>
+          <button 
+            onClick={() => setTab('mylinks')} 
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'mylinks' ? 'page' : undefined}
+          >
+            <Plus size={20} /> My Links
+          </button>
+          <button 
+            onClick={() => setTab('favorites')} 
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'favorites' ? 'page' : undefined}
+          >
+            <Heart size={20} /> Favorites ({favorites.length})
+          </button>
+          <button 
+            onClick={() => setTab('top10')} 
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'top10' ? 'page' : undefined}
+          >
+            <Star size={20} /> Top 10
+          </button>
         </div>
       </header>
 
@@ -340,16 +365,14 @@ export default function Tabs() {
         />
       )}
 
-      {/* TOP 10 TAB — light fetch (no duplication) */}
+      {/* TOP 10 TAB */}
       {tab === 'top10' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
             <Star className="text-yellow-400" size={32} />
             Top 10 Free Titles
           </h2>
-          <p className="text-yellow-400 mb-4 text-center text-sm">
-            Links only — we do not host videos. All content from official sources.
-          </p>
+          <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
           {top10Loading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-blue-500 mb-4" />
@@ -372,6 +395,7 @@ export default function Tabs() {
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                         quality={85}
+                        loading="lazy"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -407,9 +431,7 @@ export default function Tabs() {
             <Radio className="text-purple-400" size={32} />
             Live & Free UK TV Services
           </h2>
-          <p className="text-yellow-400 mb-4 text-center text-sm">
-            Links only — we do not host videos. All content from official sources.
-          </p>
+          <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
           <p className="text-gray-400 mb-10 text-lg">
             Click any service to open the official live or catch-up player in a new tab.<br />
             Some require a UK TV licence or VPN if you're outside the UK.
@@ -460,8 +482,9 @@ export default function Tabs() {
           <div className="bg-gray-800/50 p-6 rounded-xl mb-10 border border-gray-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Name</label>
+                <label htmlFor="link-name" className="block text-sm font-medium text-gray-300 mb-2">Name</label>
                 <input
+                  id="link-name"
                   type="text"
                   value={newLinkName}
                   onChange={(e) => setNewLinkName(e.target.value)}
@@ -470,8 +493,9 @@ export default function Tabs() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-300 mb-2">Stream URL</label>
+                <label htmlFor="link-url" className="block text-sm font-medium text-gray-300 mb-2">Stream URL</label>
                 <input
+                  id="link-url"
                   type="url"
                   value={newLinkUrl}
                   onChange={(e) => setNewLinkUrl(e.target.value)}
@@ -537,9 +561,7 @@ export default function Tabs() {
             <Heart className="text-red-400" size={32} />
             My Favorites ({favorites.length})
           </h2>
-          <p className="text-yellow-400 mb-4 text-center text-sm">
-            Links only — we do not host videos.
-          </p>
+          <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos.</p>
           {favorites.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {favorites.map((title: any) => {
@@ -560,6 +582,7 @@ export default function Tabs() {
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
                           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                           quality={85}
+                          loading="lazy"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -581,37 +604,12 @@ export default function Tabs() {
                         {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
                       </p>
                       <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                        >
-                          📋 Copy
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                        >
-                          𝕏
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                        >
-                          📘
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
-                          className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors"
-                        >
-                          💬
-                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">📋 Copy</button>
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">𝕏</button>
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">📘</button>
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors">💬</button>
                       </div>
-                      <button
-                        className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                        onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                      >
-                        View Free Sources
-                      </button>
+                      <button className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all" onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}>View Free Sources</button>
                     </div>
                   </div>
                 );
@@ -626,7 +624,7 @@ export default function Tabs() {
         </section>
       )}
 
-      {/* PLAYER MODAL (live channels) */}
+      {/* PLAYER MODAL */}
       {selectedChannel && (
         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
           <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
@@ -635,12 +633,7 @@ export default function Tabs() {
                 <Radio size={24} className="text-purple-400" />
                 {selectedChannel.name}
               </h2>
-              <button
-                onClick={() => setSelectedChannel(null)}
-                className="text-gray-400 hover:text-white text-4xl leading-none"
-              >
-                ×
-              </button>
+              <button onClick={() => setSelectedChannel(null)} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
             </div>
             <div data-vjs-player className="aspect-video bg-black">
               <video ref={videoRef} className="video-js vjs-big-play-centered vjs-fluid" playsInline />
@@ -658,12 +651,7 @@ export default function Tabs() {
                 <h2 className="text-2xl md:text-3xl font-bold pr-10">
                   {selectedTitle.title} ({selectedTitle.year})
                 </h2>
-                <button
-                  onClick={() => { setSelectedTitle(null); setSources([]); }}
-                  className="text-gray-400 hover:text-white text-4xl leading-none"
-                >
-                  ×
-                </button>
+                <button onClick={() => { setSelectedTitle(null); setSources([]); }} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
               </div>
               {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
@@ -684,27 +672,16 @@ export default function Tabs() {
                       >
                         <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
                           {logoUrl ? (
-                            <img
-                              src={logoUrl}
-                              alt={source.name}
-                              className="w-full h-full object-contain p-1"
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                            />
+                            <img src={logoUrl} alt={source.name} className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                           ) : (
-                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>
-                              {initials}
-                            </div>
+                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
-                          <div className="text-gray-400 text-sm">
-                            Free with Ads {source.format && `• ${source.format}`}
-                          </div>
+                          <div className="text-gray-400 text-sm">Free with Ads {source.format && `• ${source.format}`}</div>
                         </div>
-                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">
-                          Watch now →
-                        </div>
+                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
                       </a>
                     );
                   })}
@@ -745,6 +722,7 @@ export default function Tabs() {
                               className="object-cover group-hover:scale-105 transition-transform"
                               sizes="112px"
                               quality={85}
+                              loading="lazy"
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-700 flex items-center justify-center">
@@ -765,17 +743,13 @@ export default function Tabs() {
         </div>
       )}
 
-      {/* FILTERS MODAL */}
+      {/* FILTERS MODAL — NOW FULLY ACCESSIBLE */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
           <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-8 relative">
-            <button
-              onClick={() => setShowFilters(false)}
-              className="absolute top-6 right-6 text-4xl text-gray-400 hover:text-white transition-colors"
-            >
-              ×
-            </button>
+            <button onClick={() => setShowFilters(false)} className="absolute top-6 right-6 text-4xl text-gray-400 hover:text-white transition-colors">×</button>
             <h2 className="text-2xl font-bold mb-6">Advanced Filters</h2>
+
             <div className="mb-6">
               <h3 className="font-medium mb-3">Genres</h3>
               <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
@@ -792,10 +766,12 @@ export default function Tabs() {
                 ))}
               </div>
             </div>
+
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <label className="block text-sm mb-1">From Year</label>
+                <label htmlFor="min-year" className="block text-sm mb-1">From Year</label>
                 <input
+                  id="min-year"
                   type="number"
                   value={minYearFilter}
                   onChange={(e) => setMinYearFilter(e.target.value)}
@@ -804,8 +780,9 @@ export default function Tabs() {
                 />
               </div>
               <div>
-                <label className="block text-sm mb-1">To Year</label>
+                <label htmlFor="max-year" className="block text-sm mb-1">To Year</label>
                 <input
+                  id="max-year"
                   type="number"
                   value={maxYearFilter}
                   onChange={(e) => setMaxYearFilter(e.target.value)}
@@ -814,9 +791,11 @@ export default function Tabs() {
                 />
               </div>
             </div>
+
             <div className="mb-8">
-              <label className="block text-sm mb-2">Minimum Rating</label>
+              <label htmlFor="min-rating" className="block text-sm mb-2">Minimum Rating</label>
               <select
+                id="min-rating"
                 value={minRatingFilter}
                 onChange={(e) => setMinRatingFilter(Number(e.target.value))}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
@@ -827,9 +806,11 @@ export default function Tabs() {
                 <option value={8}>8+</option>
               </select>
             </div>
+
             <div className="mb-8">
-              <label className="block text-sm font-medium mb-2">Content Type</label>
+              <label htmlFor="content-type" className="block text-sm font-medium mb-2">Content Type</label>
               <select
+                id="content-type"
                 value={contentType}
                 onChange={(e) => setContentType(e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3"
@@ -839,6 +820,7 @@ export default function Tabs() {
                 <option value="tv_series">TV Shows Only</option>
               </select>
             </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => {
@@ -852,10 +834,7 @@ export default function Tabs() {
               >
                 Reset
               </button>
-              <button
-                onClick={() => setShowFilters(false)}
-                className="flex-1 py-3 bg-blue-600 rounded-xl font-medium"
-              >
+              <button onClick={() => setShowFilters(false)} className="flex-1 py-3 bg-blue-600 rounded-xl font-medium">
                 Apply Filters
               </button>
             </div>
