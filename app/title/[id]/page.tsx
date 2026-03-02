@@ -46,7 +46,7 @@ async function getTitleDetails(id: string) {
 }
 
 export default async function TitlePage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;   // ← THIS WAS THE MISSING LINE (Next.js 15+)
+  const { id } = await params;   // ← THIS IS THE FIX (Next.js 15+ requirement)
 
   const title = await getTitleDetails(id);
   if (!title) notFound();
