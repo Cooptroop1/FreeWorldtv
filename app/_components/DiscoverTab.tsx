@@ -216,9 +216,9 @@ export default function DiscoverTab({
     [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
   );
 
-  const trending = filteredTitles.slice(0, 12);
-  const newReleases = filteredTitles.slice(12, 24);
-  const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 8);
+    const trending = filteredTitles.slice(0, 20);
+  const newReleases = filteredTitles.slice(20, 40);
+  const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 20);
 
   // SEO JSON-LD
   const jsonLd = useMemo(() => JSON.stringify({
@@ -376,7 +376,7 @@ export default function DiscoverTab({
           <HorizontalCarousel title="Continue Watching" items={continueWatching} loadingKey="initial" />
           <HorizontalCarousel title="Trending Now" items={trending} loadingKey="initial" />
           <HorizontalCarousel title="New Releases This Week" items={newReleases} loadingKey="initial" />
-          {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 10)} loadingKey="initial" />}
+         {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 20)} loadingKey="initial" />}
 
           {/* Filters Panel */}
           <div className="mb-8 flex flex-wrap items-center gap-4">
