@@ -4,15 +4,14 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'image.tmdb.org',        // already had this for posters
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.watchmode.com',     // ← THIS IS THE MISSING LINE
+        hostname: 'image.tmdb.org',
+        pathname: '/t/p/**',
       },
     ],
+    // Optional but recommended for even better Lighthouse
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days cache for posters
   },
-  // (keep any other settings you already have)
 };
 
-module.exports = nextConfig;
+export default nextConfig;
