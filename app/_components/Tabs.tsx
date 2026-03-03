@@ -304,20 +304,6 @@ export default function Tabs() {
     color: 'from-indigo-500 to-purple-600'
   };
 };
-  
-  for (const [key, value] of Object.entries(logoMap)) {
-    if (name.includes(key)) {
-      return { logoUrl: value.url, initials: name.slice(0, 2).toUpperCase(), color: value.color };
-    }
-  }
-
-  // Final fallback
-  return {
-    logoUrl: null,
-    initials: name.slice(0, 2).toUpperCase(),
-    color: 'from-indigo-500 to-purple-600'
-  };
-};
   // Dynamic title
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
