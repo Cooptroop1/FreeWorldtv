@@ -37,7 +37,6 @@ const freeWorldwideServices = [
   { name: 'YouTube Premium Free Tier', officialUrl: 'https://www.youtube.com' },
   { name: 'Plex', officialUrl: 'https://www.plex.tv' },
   { name: 'PBS', officialUrl: 'https://www.pbs.org' },
-  { name: 'The Roku Channel', officialUrl: 'https://therokuchannel.roku.com' },
   { name: 'Syfy', officialUrl: 'https://www.syfy.com' },
   { name: '7plus', officialUrl: 'https://7plus.com.au' },
   { name: '9Now', officialUrl: 'https://www.9now.com.au' },
@@ -84,7 +83,6 @@ export default function Tabs() {
 
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
   // Favorites & custom links persistence
   useEffect(() => {
@@ -158,64 +156,60 @@ export default function Tabs() {
     fetchRelated();
   }, [selectedTitle]);
 
-  // Sources with 24-hour local cache (no repeated Watchmode calls)
-useEffect(() => {
-  if (!selectedTitle || tab !== 'discover') {
-    setSources([]);
-    setSourcesLoading(false);
-    return;
-  }
-
-  const fetchSources = async () => {
-    setSourcesLoading(true);
-
-    let watchmodeId = selectedTitle.id;
-    if (!watchmodeId && selectedTitle.tmdb_id) {
-      watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
-    }
-    if (!watchmodeId) {
+    // Sources with 24-hour local cache (works in ALL tabs: Discover + Top 10 + Favorites)
+  useEffect(() => {
+    if (!selectedTitle) {
       setSources([]);
       setSourcesLoading(false);
       return;
     }
 
-    // Cache key (unique per title + region)
-    const cacheKey = `sources_${watchmodeId}_${region}`;
-    const cached = localStorage.getItem(cacheKey);
-
-    if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000; // 24 hours
-      if (!isExpired) {
-        setSources(data);
-        setSourcesLoading(false);
-        return; // ← No API call!
+    const fetchSources = async () => {
+      setSourcesLoading(true);
+      let watchmodeId = selectedTitle.id;
+      if (!watchmodeId && selectedTitle.tmdb_id) {
+        watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
       }
-    }
+      if (!watchmodeId) {
+        setSources([]);
+        setSourcesLoading(false);
+        return;
+      }
 
-    // First time or expired → one-time API call
-    try {
-      const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
-      const json = await res.json();
-      const sourcesData = json.success ? json.freeSources || [] : [];
+      // Cache key (unique per title + region)
+      const cacheKey = `sources_${watchmodeId}_${region}`;
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000; // 24 hours
+        if (!isExpired) {
+          setSources(data);
+          setSourcesLoading(false);
+          return; // ← No API call!
+        }
+      }
 
-      // Save to our cache
-      localStorage.setItem(cacheKey, JSON.stringify({
-        data: sourcesData,
-        timestamp: Date.now()
-      }));
+      // First time or expired → one-time API call
+      try {
+        const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
+        const json = await res.json();
+        const sourcesData = json.success ? json.freeSources || [] : [];
+        // Save to our cache
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: sourcesData,
+          timestamp: Date.now()
+        }));
+        setSources(sourcesData);
+      } catch (err) {
+        console.error('Sources fetch error:', err);
+        setSources([]);
+      } finally {
+        setSourcesLoading(false);
+      }
+    };
 
-      setSources(sourcesData);
-    } catch (err) {
-      console.error('Sources fetch error:', err);
-      setSources([]);
-    } finally {
-      setSourcesLoading(false);
-    }
-  };
-
-  fetchSources();
-}, [selectedTitle, region, tab]);
+    fetchSources();
+  }, [selectedTitle, region]);
 
   // Video.js player
   useEffect(() => {
@@ -732,7 +726,7 @@ useEffect(() => {
                     <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
                       {title.poster_path ? (
                         <Image
-                          src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                          src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
                           alt={title.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -793,107 +787,6 @@ useEffect(() => {
             </div>
             <div data-vjs-player className="aspect-video bg-black">
               <video ref={videoRef} className="video-js vjs-big-play-centered vjs-fluid" playsInline />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SOURCES MODAL */}
-      {tab === 'discover' && selectedTitle && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
-            <div className="p-6 md:p-8">
-              <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl md:text-3xl font-bold pr-10">
-                  {selectedTitle.title} ({selectedTitle.year})
-                </h2>
-                <button onClick={() => { setSelectedTitle(null); setSources([]); }} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
-              </div>
-              {sourcesLoading ? (
-                <div className="text-center py-16 text-xl">Loading sources...</div>
-              ) : sources.length > 0 ? (
-                <div className="space-y-5">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <MonitorPlay size={22} /> Free Streaming Options
-                  </h3>
-                  {sources.map((source: any, idx: number) => {
-                    const { logoUrl, initials, color } = getProviderLogo(source.name);
-                    return (
-                      <a
-                        key={idx}
-                        href={source.web_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
-                      >
-                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
-                          {logoUrl ? (
-                            <img src={logoUrl} alt={source.name} className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                          ) : (
-                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
-                          <div className="text-gray-400 text-sm">Free with Ads {source.format && `• ${source.format}`}</div>
-                        </div>
-                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
-                      </a>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-16 text-gray-300 text-lg">
-                  No free sources available right now in {region}.<br />
-                  Availability changes frequently — try again later!
-                </div>
-              )}
-              {relatedTitles.length > 0 && (
-                <div className="mt-8 pt-8 border-t border-gray-700">
-                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Star className="text-yellow-400" size={20} /> More Like This
-                  </h3>
-                  <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
-                    {relatedTitles.map((rel: any) => (
-                      <div
-                        key={rel.id}
-                        onClick={() => {
-                          setSelectedTitle({
-                            id: rel.id,
-                            title: rel.title || rel.name,
-                            year: (rel.release_date || rel.first_air_date || '').slice(0, 4),
-                            tmdb_id: rel.id,
-                            tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
-                            poster_path: rel.poster_path
-                          });
-                        }}
-                        className="snap-start flex-shrink-0 w-28 cursor-pointer group"
-                      >
-                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
-                          {rel.poster_path ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w500${rel.poster_path}`}
-                              alt={rel.title || rel.name}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform"
-                              sizes="112px"
-                              quality={75}
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                              <Film className="w-8 h-8 text-gray-500" />
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
-                          {rel.title || rel.name}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -997,7 +890,106 @@ useEffect(() => {
           </div>
         </div>
       )}
-
+            {/* SOURCES MODAL - Works in ALL tabs now (Top 10 + Favorites + Discover) */}
+      {selectedTitle && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
+            <div className="p-6 md:p-8">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl md:text-3xl font-bold pr-10">
+                  {selectedTitle.title} ({selectedTitle.year})
+                </h2>
+                <button onClick={() => { setSelectedTitle(null); setSources([]); }} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
+              </div>
+              {sourcesLoading ? (
+                <div className="text-center py-16 text-xl">Loading sources...</div>
+              ) : sources.length > 0 ? (
+                <div className="space-y-5">
+                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                    <MonitorPlay size={22} /> Free Streaming Options
+                  </h3>
+                  {sources.map((source: any, idx: number) => {
+                    const { logoUrl, initials, color } = getProviderLogo(source.name);
+                    return (
+                      <a
+                        key={idx}
+                        href={source.web_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
+                      >
+                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
+                          {logoUrl ? (
+                            <img src={logoUrl} alt={source.name} className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
+                          <div className="text-gray-400 text-sm">Free with Ads {source.format && `• ${source.format}`}</div>
+                        </div>
+                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-16 text-gray-300 text-lg">
+                  No free sources available right now in {region}.<br />
+                  Availability changes frequently — try again later!
+                </div>
+              )}
+              {relatedTitles.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-700">
+                  <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Star className="text-yellow-400" size={20} /> More Like This
+                  </h3>
+                  <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
+                    {relatedTitles.map((rel: any) => (
+                      <div
+                        key={rel.id}
+                        onClick={() => {
+                          setSelectedTitle({
+                            id: rel.id,
+                            title: rel.title || rel.name,
+                            year: (rel.release_date || rel.first_air_date || '').slice(0, 4),
+                            tmdb_id: rel.id,
+                            tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
+                            poster_path: rel.poster_path
+                          });
+                        }}
+                        className="snap-start flex-shrink-0 w-28 cursor-pointer group"
+                      >
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
+                          {rel.poster_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
+                              alt={rel.title || rel.name}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform"
+                              sizes="112px"
+                              quality={75}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                              <Film className="w-8 h-8 text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
+                          {rel.title || rel.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
