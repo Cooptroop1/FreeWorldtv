@@ -357,7 +357,7 @@ export default function DiscoverTab({
                   fill
                   className="object-cover brightness-75"
                   priority
-                  quality={85}
+                  quality={90}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
@@ -524,16 +524,16 @@ export default function DiscoverTab({
                       aria-label={`View free sources for ${title.title} (${title.year})`}
                     >
                       <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                        {title.poster_path ? (
+                          {title.poster_path ? (
                           <Image
                             src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
                             alt={`${title.title} poster`}
                             fill
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                            quality={82}
+                            quality={75}
                             priority={index < 6}
-                            loading={index < 6 ? 'eager' : 'lazy'}
+                            loading={index < 6 ? "eager" : "lazy"}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
