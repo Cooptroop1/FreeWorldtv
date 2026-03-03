@@ -57,7 +57,7 @@ const genres = [
 ];
 
 export default function Tabs() {
-  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10'>('discover');
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium'>('discover');
   const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,6 +80,8 @@ export default function Tabs() {
   const [minRatingFilter, setMinRatingFilter] = useState(0);
   const [top10Titles, setTop10Titles] = useState<any[]>([]);
   const [top10Loading, setTop10Loading] = useState(false);
+  const [premiumTitles, setPremiumTitles] = useState<any[]>([]);
+  const [premiumLoading, setPremiumLoading] = useState(false);
 
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -254,6 +256,24 @@ export default function Tabs() {
     fetchTop10();
   }, [tab, region, contentType]);
 
+  // === PREMIUM (PAID/SUBSCRIPTION) TITLES TAB ===
+  useEffect(() => {
+    if (tab !== 'premium') return;
+    const fetchPremium = async () => {
+      setPremiumLoading(true);
+      try {
+        const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1`);
+        const json = await res.json();
+        setPremiumTitles(json.success && json.titles?.length ? json.titles.slice(0, 30) : staticFallbackTitles.slice(0, 20));
+      } catch {
+        setPremiumTitles(staticFallbackTitles.slice(0, 20));
+      }
+      setPremiumLoading(false);
+    };
+    fetchPremium();
+  }, [tab, region, contentType]);
+
+  // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
 useEffect(() => {
   if (!top10Titles?.length || !TMDB_READ_TOKEN || tab !== 'top10') return;
@@ -470,7 +490,7 @@ useEffect(() => {
           >
             <Heart size={20} /> Favorites ({favorites.length})
           </button>
-          <button
+                    <button
             role="tab"
             aria-selected={tab === 'top10'}
             onClick={() => setTab('top10')}
@@ -478,6 +498,15 @@ useEffect(() => {
             aria-current={tab === 'top10' ? 'page' : undefined}
           >
             <Star size={20} /> Top 10
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'premium'}
+            onClick={() => setTab('premium')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'premium' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'premium' ? 'page' : undefined}
+          >
+            💎 Premium
           </button>
         </div>
       </header>
