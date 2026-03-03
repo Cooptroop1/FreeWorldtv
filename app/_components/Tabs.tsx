@@ -933,12 +933,12 @@ useEffect(() => {
                         rel="noopener noreferrer"
                         className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                       >
-                        <div className="w-28 h-28 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
+                         <div className="w-28 h-28 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
                           {logoUrl ? (
                             <img 
                               src={logoUrl} 
                               alt={source.name} 
-                              className="w-full h-full object-contain px-0 py-3" 
+                              className="w-full h-full object-contain" 
                               onError={(e) => { e.currentTarget.style.display = 'none'; }} 
                             />
                           ) : (
