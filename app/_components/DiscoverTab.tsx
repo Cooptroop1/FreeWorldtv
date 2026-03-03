@@ -283,14 +283,14 @@ export default function DiscoverTab({
                   aria-label={`View details for ${item.title} (${item.year})`}
                 >
                   <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
-                    {item.poster_path ? (
+                      {item.poster_path ? (
                       <Image
                         src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                         alt={`${item.title} poster`}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 768px) 50vw, 20vw"
-                        quality={82}
+                        sizes="160px"
+                        quality={75}
                         loading="lazy"
                       />
                     ) : (
