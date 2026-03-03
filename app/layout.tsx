@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
+import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: 'FreeStream World - Free Movies, TV Shows & Live TV (Legal)',
@@ -73,12 +74,13 @@ export default function RootLayout({
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
       
-        {/* AdSense global script */}
-        <script
+                {/* AdSense global script — deferred for Lighthouse */}
+        <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
           crossOrigin="anonymous"
-        ></script>
+          strategy="lazyOnload"
+        />
 
         {/* Structured Data - Organization + WebSite */}
         <script
