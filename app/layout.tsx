@@ -73,14 +73,6 @@ export default function RootLayout({
       <head>
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
-      
-                {/* AdSense global script — deferred for Lighthouse */}
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
-          crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
 
         {/* Structured Data - Organization + WebSite */}
         <script
@@ -142,6 +134,13 @@ export default function RootLayout({
 
         <SpeedInsights />
         <Analytics />
+                {/* Google AdSense — lazy loaded at bottom (no more data-nscript warning) */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
+          crossOrigin="anonymous"
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   );
