@@ -5,18 +5,14 @@ const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 export async function getWatchmodeId(tmdbId: number): Promise<number | null> {
   const now = Date.now();
-  // Refresh cache once per day
   if (!watchmodeMap || now - lastFetched > CACHE_DURATION) {
     console.log('📥 Fetching latest Watchmode title_id_map.csv...');
     try {
-      const res = await fetch('https://api.watchmode.com/datasets/title_id_map.csv', {
-        cache: 'no-store',
-      });
+      const res = await fetch('https://api.watchmode.com/datasets/title_id_map.csv', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch CSV');
       const csvText = await res.text();
       const map = new Map<number, number>();
       const lines = csvText.trim().split('\n');
-      // Skip header
       for (let i = 1; i < lines.length; i++) {
         const columns = lines[i].split(',');
         if (columns.length < 3) continue;
@@ -32,13 +28,12 @@ export async function getWatchmodeId(tmdbId: number): Promise<number | null> {
       console.log(`✅ Watchmode map loaded: ${map.size.toLocaleString()} titles`);
     } catch (err) {
       console.error('Failed to load Watchmode CSV:', err);
-      if (!watchmodeMap) watchmodeMap = new Map(); // fallback empty map
+      if (!watchmodeMap) watchmodeMap = new Map();
     }
   }
   return watchmodeMap?.get(tmdbId) ?? null;
 }
 
-// Optional: bulk lookup (for future use)
 export async function getWatchmodeIds(tmdbIds: number[]): Promise<Record<number, number>> {
   const result: Record<number, number> = {};
   for (const id of tmdbIds) {
@@ -49,13 +44,31 @@ export async function getWatchmodeIds(tmdbIds: number[]): Promise<Record<number,
 }
 
 // =============================================
-// NEW: LOCAL PROVIDER LOGO MAPPING
-// These point to the 3 images you saved in public/providers/
+// COMPLETE PROVIDER LOGO MAPPING
+// Covers EVERY provider in your freeWorldwideServices list
 // =============================================
 export const providerLogos: Record<string, string> = {
   "Tubi": "/providers/tubi.png",
+  "Tubi TV": "/providers/tubi.png",
   "Pluto TV": "/providers/pluto-tv.png",
   "Freevee": "/providers/freevee.png",
-  "Amazon Freevee": "/providers/freevee.png",   // some titles return this exact name
-  // ← Add more here later exactly like this (e.g. "The Roku Channel", "Crackle", etc.)
+  "Amazon Freevee": "/providers/freevee.png",
+  "Peacock": "/providers/peacock.png",
+  "Roku Channel": "/providers/roku-channel.png",
+  "The Roku Channel": "/providers/roku-channel.png",
+  "CBC Gem": "/providers/cbc-gem.png",
+  "MAX Free": "/providers/max.png",
+  "All 4": "/providers/all-4.png",
+  "Fawesome": "/providers/fawesome.png",
+  "YouTube Premium Free Tier": "/providers/youtube.png",
+  "YouTube": "/providers/youtube.png",
+  "Plex": "/providers/plex.png",
+  "PBS": "/providers/pbs.png",
+  "Syfy": "/providers/syfy.png",
+  "7plus": "/providers/7plus.png",
+  "9Now": "/providers/9now.png",
+  "Crunchyroll": "/providers/crunchyroll.png",
+  "Popcornflix": "/providers/popcornflix.png",
+  "Shout! Factory TV": "/providers/shout-factory-tv.png",
+  "South Park Studios": "/providers/south-park-studios.png",
 };
