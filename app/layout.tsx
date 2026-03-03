@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
-import Script from 'next/script';
 
 export const metadata: Metadata = {
   title: 'FreeStream World - Free Movies, TV Shows & Live TV (Legal)',
@@ -134,13 +133,12 @@ export default function RootLayout({
 
         <SpeedInsights />
         <Analytics />
-                {/* Google AdSense — lazy loaded at bottom (no more data-nscript warning) */}
-        <Script
+       {/* Google AdSense — plain script (removes data-nscript warning forever) */}
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
           crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
+        ></script>
       </body>
     </html>
   );
