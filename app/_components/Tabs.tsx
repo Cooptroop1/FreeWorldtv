@@ -537,7 +537,7 @@ useEffect(() => {
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                        quality={85}
+                        quality={75}
                         loading="lazy"
                       />
                     ) : (
@@ -737,7 +737,7 @@ useEffect(() => {
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
                           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                          quality={85}
+                          quality={75}
                           loading="lazy"
                         />
                       ) : (
@@ -877,7 +877,7 @@ useEffect(() => {
                               fill
                               className="object-cover group-hover:scale-105 transition-transform"
                               sizes="112px"
-                              quality={85}
+                              quality={75}
                               loading="lazy"
                             />
                           ) : (
