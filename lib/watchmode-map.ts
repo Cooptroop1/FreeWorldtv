@@ -45,7 +45,7 @@ export async function getWatchmodeIds(tmdbIds: number[]): Promise<Record<number,
 
 // =============================================
 // COMPLETE PROVIDER LOGO MAPPING
-// Includes EVERY provider you have logos for now
+// Includes EVERY provider we've added (Hoopla, The CW, FX, NBC, Kanopy, Adult Swim, Spectrum, Prime Video, etc.)
 // =============================================
 export const providerLogos: Record<string, string> = {
   "Tubi": "/providers/tubi.png",
@@ -71,4 +71,17 @@ export const providerLogos: Record<string, string> = {
   "Popcornflix": "/providers/popcornflix.png",
   "Shout! Factory TV": "/providers/shout-factory-tv.png",
   "South Park Studios": "/providers/south-park-studios.png",
+
+  // Newly added in this batch
+  "Hoopla": "/providers/hoopla.png",
+  "The CW": "/providers/the-cw.png",
+  "CW": "/providers/the-cw.png",
+  "FX": "/providers/fx.png",
+  "NBC": "/providers/nbc.png",
+  "Kanopy": "/providers/kanopy.png",
+  "Adult Swim": "/providers/adult-swim.png",
+  "Spectrum On Demand": "/providers/spectrum-on-demand.png",
+  "Spectrum": "/providers/spectrum-on-demand.png",
+  "Prime Video": "/providers/prime-video.png",
+  "Amazon Prime Video": "/providers/prime-video.png",
 };
