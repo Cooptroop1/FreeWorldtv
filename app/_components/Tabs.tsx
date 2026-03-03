@@ -600,6 +600,68 @@ useEffect(() => {
                 </div>
               ))}
             </div>
+                    )}
+        </section>
+      )}
+
+      {/* PREMIUM TAB — Paid / Subscription Titles */}
+      {tab === 'premium' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
+            <span className="text-purple-400">💎</span> Premium on Subscription
+          </h2>
+          <p className="text-yellow-400 mb-6 text-center text-sm">
+            Popular movies & TV shows available on Netflix, Disney+, Prime Video, Max, Paramount+ and more
+          </p>
+
+          {premiumLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-purple-500 mb-4" />
+              <p className="text-xl">Loading premium titles...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+              {premiumTitles.map((title: any, index: number) => (
+                <div
+                  key={title.id}
+                  onClick={() => setSelectedTitle(title)}
+                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                >
+                  <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                    {title.poster_path ? (
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                        alt={title.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+                        quality={75}
+                        priority={index < 3}
+                        loading={index < 3 ? "eager" : "lazy"}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-purple-300 transition-colors">
+                      {title.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm">
+                      {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                    </p>
+                    <button
+                      className="mt-4 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                    >
+                      View Sources
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </section>
       )}
