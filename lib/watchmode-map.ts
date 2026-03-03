@@ -72,7 +72,7 @@ export const providerLogos: Record<string, string> = {
   "Shout! Factory TV": "/providers/shout-factory-tv.png",
   "South Park Studios": "/providers/south-park-studios.png",
 
-  // Newly added in this batch
+  // Newly added in this batch (Hoopla, The CW, FX, NBC, Kanopy, Adult Swim, Spectrum, Prime Video, etc.)
   "Hoopla": "/providers/hoopla.png",
   "The CW": "/providers/the-cw.png",
   "CW": "/providers/the-cw.png",
@@ -84,4 +84,19 @@ export const providerLogos: Record<string, string> = {
   "Spectrum": "/providers/spectrum-on-demand.png",
   "Prime Video": "/providers/prime-video.png",
   "Amazon Prime Video": "/providers/prime-video.png",
+
+  // === UK CHANNELS + RECENT ADDITIONS (local logos) ===
+  "My5": "/providers/my5.png",
+  "my5": "/providers/my5.png",
+  "ITVX": "/providers/itvx.png",
+  "ITV Player": "/providers/itvx.png",
+  "ITV": "/providers/itvx.png",
+  "CBS": "/providers/cbs.png",
+  "UKTV Play": "/providers/uktv-play.png",
+  "UKTV": "/providers/uktv-play.png",
+  "BBC iPlayer": "/providers/bbc-iplayer.png",
+  "BBC": "/providers/bbc-iplayer.png",
+  "iPlayer": "/providers/bbc-iplayer.png",
+  "Rakuten TV": "/providers/rakuten-tv.png",
+  "Rakuten": "/providers/rakuten-tv.png",
 };
