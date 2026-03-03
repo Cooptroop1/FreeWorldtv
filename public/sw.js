@@ -1,20 +1,27 @@
-// public/sw.js - v5 (your original working version)
-const CACHE_NAME = 'freestreamworld-v5';
+// public/sw.js - v6 (safe version — won't break on missing files)
+const CACHE_NAME = 'freestreamworld-v6';
 const urlsToCache = [
   '/',
   '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/manifest.json',
-  '/globals.css'
+  '/manifest.json'
+  // /globals.css was removed — it doesn't exist as a static file in Next.js (it's bundled)
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Pre-caching static assets v5');
-        return cache.addAll(urlsToCache);
+        console.log('[SW] Pre-caching static assets v6');
+        // Safe version: one file failing won't crash the whole service worker
+        return Promise.allSettled(
+          urlsToCache.map(url =>
+            cache.add(url).catch(err => {
+              console.warn(`[SW] Could not cache ${url} (skipping):`, err.message);
+            })
+          )
+        );
       })
   );
 });
