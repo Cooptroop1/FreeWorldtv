@@ -158,7 +158,8 @@ export default function Tabs() {
     fetchRelated();
   }, [selectedTitle]);
 
-  useEffect(() => {
+  // Sources with 24-hour local cache (no repeated Watchmode calls)
+useEffect(() => {
   if (!selectedTitle || tab !== 'discover') {
     setSources([]);
     setSourcesLoading(false);
@@ -167,22 +168,44 @@ export default function Tabs() {
 
   const fetchSources = async () => {
     setSourcesLoading(true);
+
+    let watchmodeId = selectedTitle.id;
+    if (!watchmodeId && selectedTitle.tmdb_id) {
+      watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
+    }
+    if (!watchmodeId) {
+      setSources([]);
+      setSourcesLoading(false);
+      return;
+    }
+
+    // Cache key (unique per title + region)
+    const cacheKey = `sources_${watchmodeId}_${region}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000; // 24 hours
+      if (!isExpired) {
+        setSources(data);
+        setSourcesLoading(false);
+        return; // ← No API call!
+      }
+    }
+
+    // First time or expired → one-time API call
     try {
-      let watchmodeId = selectedTitle.id;
-
-      // NEW: If we only have a TMDB ID (e.g. from "More Like This" related titles), lookup Watchmode ID
-      if (!watchmodeId && selectedTitle.tmdb_id) {
-        watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
-      }
-
-      if (!watchmodeId) {
-        setSources([]);
-        return;
-      }
-
       const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
       const json = await res.json();
-      setSources(json.success ? json.freeSources || [] : []);
+      const sourcesData = json.success ? json.freeSources || [] : [];
+
+      // Save to our cache
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data: sourcesData,
+        timestamp: Date.now()
+      }));
+
+      setSources(sourcesData);
     } catch (err) {
       console.error('Sources fetch error:', err);
       setSources([]);
