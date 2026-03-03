@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
+import { kv } from '@vercel/kv';
 import { WatchmodeClient } from '@watchmode/api-client';
 
 const client = new WatchmodeClient({
   apiKey: process.env.WATCHMODE_API_KEY || '',
 });
-
-// Global in-memory cache (24 hours) - shared across all visitors
-const sourcesCache = new Map<string, { data: any; timestamp: number }>();
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -17,15 +15,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Missing title id' }, { status: 400 });
   }
 
-  const cacheKey = `${titleId}-${region}`;
+  const cacheKey = `sources:${titleId}:${region}`;
 
-  // ← Check cache first (this stops repeated calls)
-  const cached = sourcesCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
-    return NextResponse.json({
-      ...cached.data,
-      fromCache: true
-    });
+  // Check your existing Upstash KV first
+  const cached = await kv.get(cacheKey);
+  if (cached) {
+    return NextResponse.json({ ...cached, fromCache: true });
   }
 
   try {
@@ -47,11 +42,8 @@ export async function GET(request: Request) {
         : 'No free sources in this region'
     };
 
-    // Save to cache for everyone
-    sourcesCache.set(cacheKey, {
-      data: responseData,
-      timestamp: Date.now()
-    });
+    // Save to your existing Upstash KV for 24 hours
+    await kv.set(cacheKey, responseData, { ex: 86400 });
 
     return NextResponse.json(responseData);
   } catch (error: any) {
