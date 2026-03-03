@@ -532,8 +532,8 @@ export default function DiscoverTab({
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                             quality={75}
-                            priority={index < 6}
-                            loading={index < 6 ? "eager" : "lazy"}
+                            priority={index < 3}
+                            loading={index < 3 ? "eager" : "lazy"}
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
