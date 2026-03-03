@@ -45,7 +45,7 @@ export async function getWatchmodeIds(tmdbIds: number[]): Promise<Record<number,
 
 // =============================================
 // COMPLETE PROVIDER LOGO MAPPING
-// Covers EVERY provider in your freeWorldwideServices list
+// Includes EVERY provider you have logos for now
 // =============================================
 export const providerLogos: Record<string, string> = {
   "Tubi": "/providers/tubi.png",
