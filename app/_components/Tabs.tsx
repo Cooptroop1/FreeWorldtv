@@ -10,7 +10,7 @@ import InstallPrompt from './InstallPrompt';
 import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
-import { getWatchmodeId } from '../../lib/watchmode-map';
+import { getWatchmodeId, providerLogos } from '../../lib/watchmode-map';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -261,13 +261,23 @@ export default function Tabs() {
   }
 
   const name = sourceName.toLowerCase().trim();
-  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
 
-  // Try to find in fetched providers first
+  // PRIORITY 1: Use our clean local logos (this fixes Tubi, Pluto TV, Freevee)
+  for (const [key, logoPath] of Object.entries(providerLogos)) {
+    if (name.includes(key.toLowerCase()) || key.toLowerCase().includes(name)) {
+      return { 
+        logoUrl: logoPath, 
+        initials: name.slice(0, 2).toUpperCase(), 
+        color: 'from-emerald-500 to-teal-600' 
+      };
+    }
+  }
+
+  // PRIORITY 2: Try providers from the /api/providers API
+  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
   const matched = safeProviders.find((p: any) =>
     p.name?.toLowerCase().includes(name) || name.includes(p.name?.toLowerCase())
   );
-
   if (matched?.logo_url) {
     return {
       logoUrl: matched.logo_url,
@@ -276,17 +286,13 @@ export default function Tabs() {
     };
   }
 
-  // Hard-coded high-quality logos for the most common providers
+  // PRIORITY 3: Safe external fallbacks for other providers (BBC, ITVX, etc.)
   const logoMap: Record<string, { url: string; color: string }> = {
-    'tubi': { url: 'https://images.tubi.tv/logo/tubi-logo.png', color: 'from-orange-500 to-red-600' },
-    'pluto tv': { url: 'https://pluto.tv/assets/images/pluto-logo-white.png', color: 'from-purple-600 to-violet-600' },
     'bbc iplayer': { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/BBC_iPlayer_2023.svg/1280px-BBC_iPlayer_2023.svg.png', color: 'from-blue-600 to-cyan-500' },
     'itvx': { url: 'https://www.itv.com/_next/static/media/itv-logo.4c3d7c0a.svg', color: 'from-red-600 to-pink-600' },
     'channel 4': { url: 'https://www.channel4.com/static/images/logo/channel4-logo-white.svg', color: 'from-black to-gray-800' },
     'my5': { url: 'https://www.my5.tv/assets/images/my5-logo-white.png', color: 'from-blue-700 to-cyan-600' },
     'uktv play': { url: 'https://www.uktv.co.uk/sites/default/files/2023-02/UKTV-Play-Logo-White.png', color: 'from-emerald-600 to-teal-500' },
-    'freevee': { url: 'https://m.media-amazon.com/images/G/01/digital/video/merchandising/2023/Amazon-Freevee-Logo-White.png', color: 'from-blue-500 to-indigo-600' },
-    'crackle': { url: 'https://www.crackle.com/assets/images/crackle-logo-white.png', color: 'from-red-600 to-orange-500' },
   };
 
   for (const [key, value] of Object.entries(logoMap)) {
@@ -295,7 +301,7 @@ export default function Tabs() {
     }
   }
 
-  // Final fallback
+  // Final fallback (just initials)
   return {
     logoUrl: null,
     initials: name.slice(0, 2).toUpperCase(),
