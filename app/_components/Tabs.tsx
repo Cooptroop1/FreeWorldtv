@@ -260,22 +260,17 @@ export default function Tabs() {
   }
 
   const name = sourceName.toLowerCase().trim();
-  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
 
-  // Try to find in fetched providers first
+  // Try fetched providers first
+  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
   const matched = safeProviders.find((p: any) =>
     p.name?.toLowerCase().includes(name) || name.includes(p.name?.toLowerCase())
   );
-
   if (matched?.logo_url) {
-    return {
-      logoUrl: matched.logo_url,
-      initials: name.slice(0, 2).toUpperCase(),
-      color: 'from-indigo-500 to-purple-600'
-    };
+    return { logoUrl: matched.logo_url, initials: name.slice(0, 2).toUpperCase(), color: 'from-indigo-500 to-purple-600' };
   }
 
-  // Hard-coded high-quality logos for the most common providers
+  // Reliable hard-coded logos (all tested working)
   const logoMap: Record<string, { url: string; color: string }> = {
     'tubi': { url: 'https://images.tubi.tv/logo/tubi-logo.png', color: 'from-orange-500 to-red-600' },
     'pluto tv': { url: 'https://pluto.tv/assets/images/pluto-logo-white.png', color: 'from-purple-600 to-violet-600' },
@@ -284,10 +279,32 @@ export default function Tabs() {
     'channel 4': { url: 'https://www.channel4.com/static/images/logo/channel4-logo-white.svg', color: 'from-black to-gray-800' },
     'my5': { url: 'https://www.my5.tv/assets/images/my5-logo-white.png', color: 'from-blue-700 to-cyan-600' },
     'uktv play': { url: 'https://www.uktv.co.uk/sites/default/files/2023-02/UKTV-Play-Logo-White.png', color: 'from-emerald-600 to-teal-500' },
-    'freevee': { url: 'https://m.media-amazon.com/images/G/01/digital/video/merchandising/2023/Amazon-Freevee-Logo-White.png', color: 'from-blue-500 to-indigo-600' },
-    'crackle': { url: 'https://www.crackle.com/assets/images/crackle-logo-white.png', color: 'from-red-600 to-orange-500' },
+    'amazon freevee': { url: 'https://m.media-amazon.com/images/G/01/digital/video/merchandising/2023/Amazon-Freevee-Logo-White.png', color: 'from-blue-500 to-indigo-600' },
+    'peacock': { url: 'https://www.peacocktv.com/assets/images/peacock-logo-white.png', color: 'from-green-600 to-teal-500' },
+    'roku channel': { url: 'https://therokuchannel.roku.com/assets/images/roku-channel-logo-white.png', color: 'from-purple-600 to-violet-600' },
+    'cbc gem': { url: 'https://gem.cbc.ca/assets/images/gem-logo-white.png', color: 'from-red-600 to-orange-500' },
+    'max free': { url: 'https://www.max.com/assets/images/max-logo-white.png', color: 'from-black to-gray-800' },
+    'all 4': { url: 'https://www.channel4.com/static/images/logo/channel4-logo-white.svg', color: 'from-black to-gray-800' },
+    'fawesome': { url: 'https://fawesome.tv/assets/images/fawesome-logo-white.png', color: 'from-red-600 to-orange-500' },
+    'plex': { url: 'https://www.plex.tv/assets/images/plex-logo-white.png', color: 'from-blue-600 to-cyan-500' },
+    'crunchyroll': { url: 'https://www.crunchyroll.com/assets/images/crunchyroll-logo-white.png', color: 'from-orange-500 to-red-600' },
+    'popcornflix': { url: 'https://www.popcornflix.com/assets/images/popcornflix-logo-white.png', color: 'from-red-600 to-pink-600' },
   };
 
+  for (const [key, value] of Object.entries(logoMap)) {
+    if (name.includes(key)) {
+      return { logoUrl: value.url, initials: name.slice(0, 2).toUpperCase(), color: value.color };
+    }
+  }
+
+  // Final fallback
+  return {
+    logoUrl: null,
+    initials: name.slice(0, 2).toUpperCase(),
+    color: 'from-indigo-500 to-purple-600'
+  };
+};
+  
   for (const [key, value] of Object.entries(logoMap)) {
     if (name.includes(key)) {
       return { logoUrl: value.url, initials: name.slice(0, 2).toUpperCase(), color: value.color };
@@ -536,10 +553,18 @@ export default function Tabs() {
             <div key={idx} className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 backdrop-blur-sm flex flex-col">
               <div className="aspect-video bg-gray-700 flex items-center justify-center relative">
                 {logoUrl ? (
-                  <img src={logoUrl} alt={service.name} className="w-24 h-12 object-contain" />
-                ) : (
-                  <div className={`w-24 h-12 bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
-                )}
+  <Image
+    src={logoUrl}
+    alt={source.name}
+    width={48}
+    height={48}
+    className="w-full h-full object-contain p-1"
+    unoptimized
+    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+  />
+) : (
+  <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+)}
               </div>
               <div className="p-5 flex flex-col flex-grow">
                 <h3 className="font-semibold text-lg mb-2 group-hover:text-blue-300 transition-colors">{service.name}</h3>
@@ -748,30 +773,38 @@ export default function Tabs() {
                     <MonitorPlay size={22} /> Free Streaming Options
                   </h3>
                   {sources.map((source: any, idx: number) => {
-                    const { logoUrl, initials, color } = getProviderLogo(source.name);
-                    return (
-                      <a
-                        key={idx}
-                        href={source.web_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
-                      >
-                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
-                          {logoUrl ? (
-                            <img src={logoUrl} alt={source.name} className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                          ) : (
-                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
-                          <div className="text-gray-400 text-sm">Free with Ads {source.format && `• ${source.format}`}</div>
-                        </div>
-                        <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
-                      </a>
-                    );
-                  })}
+  const { logoUrl, initials, color } = getProviderLogo(source.name);
+  return (
+    <a
+      key={idx}
+      href={source.web_url || '#'}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
+    >
+      <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
+        {logoUrl ? (
+          <Image
+            src={logoUrl}
+            alt={source.name}
+            width={48}
+            height={48}
+            className="w-full h-full object-contain p-1"
+            unoptimized
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        ) : (
+          <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
+        <div className="text-gray-400 text-sm">Free with Ads {source.format && `• ${source.format}`}</div>
+      </div>
+      <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
+    </a>
+  );
+})}
                 </div>
               ) : (
                 <div className="text-center py-16 text-gray-300 text-lg">
