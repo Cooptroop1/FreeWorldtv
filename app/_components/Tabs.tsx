@@ -429,38 +429,51 @@ useEffect(() => {
           </button>
         </div>
 
-        {/* Tab buttons */}
-        <div className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4" role="tablist">
-          <button 
-            onClick={() => setTab('discover')} 
+                {/* Tab buttons — FIXED ARIA for 100 Accessibility */}
+        <div 
+          className="flex flex-wrap gap-4 md:gap-6 mb-8 border-b border-gray-700 pb-4" 
+          role="tablist"
+        >
+          <button
+            role="tab"
+            aria-selected={tab === 'discover'}
+            onClick={() => setTab('discover')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'discover' ? 'page' : undefined}
           >
             <Tv size={20} /> Discover
           </button>
-          <button 
-            onClick={() => setTab('live')} 
+          <button
+            role="tab"
+            aria-selected={tab === 'live'}
+            onClick={() => setTab('live')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'live' ? 'page' : undefined}
           >
             <Radio size={20} /> Live TV
           </button>
-          <button 
-            onClick={() => setTab('mylinks')} 
+          <button
+            role="tab"
+            aria-selected={tab === 'mylinks'}
+            onClick={() => setTab('mylinks')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'mylinks' ? 'page' : undefined}
           >
             <Plus size={20} /> My Links
           </button>
-          <button 
-            onClick={() => setTab('favorites')} 
+          <button
+            role="tab"
+            aria-selected={tab === 'favorites'}
+            onClick={() => setTab('favorites')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'favorites' ? 'page' : undefined}
           >
             <Heart size={20} /> Favorites ({favorites.length})
           </button>
-          <button 
-            onClick={() => setTab('top10')} 
+          <button
+            role="tab"
+            aria-selected={tab === 'top10'}
+            onClick={() => setTab('top10')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'top10' ? 'page' : undefined}
           >
