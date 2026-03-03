@@ -933,11 +933,16 @@ useEffect(() => {
                         rel="noopener noreferrer"
                         className="flex items-center gap-4 bg-gray-800/70 p-5 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                       >
-                        <div className="w-12 h-12 flex-shrink-0 bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center relative">
+                        <div className="w-24 h-24 flex-shrink-0 bg-gray-700 rounded-xl overflow-hidden flex items-center justify-center relative">
                           {logoUrl ? (
-                            <img src={logoUrl} alt={source.name} className="w-full h-full object-contain p-1" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                            <img 
+                              src={logoUrl} 
+                              alt={source.name} 
+                              className="w-full h-full object-contain p-3" 
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }} 
+                            />
                           ) : (
-                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-4xl shadow-inner`}>{initials}</div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
