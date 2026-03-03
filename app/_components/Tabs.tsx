@@ -530,7 +530,7 @@ useEffect(() => {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {top10Titles.map((title: any) => (
+                            {top10Titles.map((title: any, index: number) => (
                 <div
                   key={title.id}
                   onClick={() => setSelectedTitle(title)}
@@ -543,9 +543,10 @@ useEffect(() => {
                         alt={title.title}
                         fill
                         className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                         quality={75}
-                        loading="lazy"
+                        priority={index < 3}
+                        loading={index < 3 ? "eager" : "lazy"}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
@@ -727,7 +728,7 @@ useEffect(() => {
           <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos.</p>
           {favorites.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {favorites.map((title: any) => {
+                            {favorites.map((title: any, index: number) => {
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                 const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
                 return (
@@ -743,9 +744,10 @@ useEffect(() => {
                           alt={title.title}
                           fill
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                           quality={75}
-                          loading="lazy"
+                          priority={index < 3}
+                          loading={index < 3 ? "eager" : "lazy"}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -976,20 +978,20 @@ useEffect(() => {
                       >
                         <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
                           {rel.poster_path ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
-                              alt={rel.title || rel.name}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform"
-                              sizes="112px"
-                              quality={75}
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                              <Film className="w-8 h-8 text-gray-500" />
-                            </div>
-                          )}
+  <Image
+    src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
+    alt={rel.title || rel.name}
+    fill
+    className="object-cover group-hover:scale-105 transition-transform"
+    sizes="112px"
+    quality={75}
+    loading="lazy"
+  />
+) : (
+  <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+    <Film className="w-8 h-8 text-gray-500" />
+  </div>
+)}
                         </div>
                         <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
                           {rel.title || rel.name}
