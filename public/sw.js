@@ -1,11 +1,9 @@
-// public/sw.js - v7 (Clean + Safe - no more warning)
-const CACHE_NAME = 'freestreamworld-v7';
+// public/sw.js - v8 (Stable & Error-Free)
+const CACHE_NAME = 'freestreamworld-v8';
 
+// Only cache the absolute essentials (icons are cached on first use instead)
 const urlsToCache = [
   '/',
-  '/logo.png',
-  '/icon-192.png',
-  '/icon-512.png',
   '/manifest.json'
 ];
 
@@ -13,11 +11,8 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Pre-caching static assets v7');
+        console.log('[SW] Pre-caching static assets v8');
         return cache.addAll(urlsToCache);
-      })
-      .catch((err) => {
-        console.warn('[SW] Some assets failed to cache (continuing anyway):', err);
       })
   );
 });
@@ -37,7 +32,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Your original excellent logic (Network-First for APIs + Stale-While-Revalidate)
+// Your original excellent logic (kept exactly as you had it)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -56,6 +51,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Stale-While-Revalidate for everything else
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
