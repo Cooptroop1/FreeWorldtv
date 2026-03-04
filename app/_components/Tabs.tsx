@@ -1129,7 +1129,10 @@ useEffect(() => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
-                          <div className="text-gray-400 text-sm">Free with Ads {source.format && `• ${source.format}`}</div>
+                          <div className="text-gray-400 text-sm">
+                             {tab === 'premium' ? 'Subscription' : 'Free with Ads'} 
+                             {source.format && ` • ${source.format}`}
+                         </div>
                         </div>
                         <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
                       </a>
