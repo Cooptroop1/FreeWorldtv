@@ -256,15 +256,16 @@ export default function Tabs() {
     fetchTop10();
   }, [tab, region, contentType]);
 
-  // === PREMIUM (PAID/SUBSCRIPTION) TITLES TAB ===
+    // === PREMIUM (PAID/SUBSCRIPTION) TITLES TAB ===
   useEffect(() => {
     if (tab !== 'premium') return;
     const fetchPremium = async () => {
       setPremiumLoading(true);
       try {
-        const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1`);
+        const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1&paid=true`);
         const json = await res.json();
-        setPremiumTitles(json.success && json.titles?.length ? json.titles.slice(0, 30) : staticFallbackTitles.slice(0, 20));
+        let titles = json.success && json.titles?.length ? json.titles.slice(0, 30) : staticFallbackTitles.slice(0, 20);
+        setPremiumTitles(titles);
       } catch {
         setPremiumTitles(staticFallbackTitles.slice(0, 20));
       }
@@ -272,6 +273,43 @@ export default function Tabs() {
     };
     fetchPremium();
   }, [tab, region, contentType]);
+
+  // === POSTER FETCHING FOR PREMIUM TAB ===
+  useEffect(() => {
+    if (!premiumTitles?.length || !TMDB_READ_TOKEN || tab !== 'premium') return;
+
+    const titlesNeedingPoster = premiumTitles.filter((title: any) =>
+      title.tmdb_id && (!title.poster_path)
+    );
+
+    if (titlesNeedingPoster.length === 0) return;
+
+    const fetchPosters = async () => {
+      const batch = titlesNeedingPoster.slice(0, 8);
+      const updates = await Promise.all(
+        batch.map(async (title: any) => {
+          const endpoint = title.type === 'tv_series' ? 'tv' : 'movie';
+          try {
+            const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
+              headers: {
+                accept: 'application/json',
+                Authorization: `Bearer ${TMDB_READ_TOKEN}`,
+              },
+            });
+            if (!res.ok) throw new Error();
+            const json = await res.json();
+            return { ...title, poster_path: json.poster_path };
+          } catch {
+            return title;
+          }
+        })
+      );
+      setPremiumTitles(prev =>
+        prev.map(title => updates.find((u: any) => u.id === title.id) || title)
+      );
+    };
+    fetchPosters();
+  }, [premiumTitles, tab, TMDB_READ_TOKEN]);
 
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
