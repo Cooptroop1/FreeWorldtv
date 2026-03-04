@@ -196,9 +196,13 @@ export default function Tabs() {
 
       // First time or expired → one-time API call
       try {
-        const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
+        const isPremium = tab === 'premium';
+        const paidParam = isPremium ? '&paid=true' : '';
+        const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}${paidParam}`);
         const json = await res.json();
-        const sourcesData = json.success ? json.freeSources || [] : [];
+        const sourcesData = json.success 
+          ? (isPremium ? (json.paidSources || json.sources || []) : (json.freeSources || [])) 
+          : [];
         // Save to our cache
         localStorage.setItem(cacheKey, JSON.stringify({
           data: sourcesData,
@@ -1094,11 +1098,12 @@ useEffect(() => {
                 <button onClick={() => { setSelectedTitle(null); setSources([]); }} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
               </div>
               {sourcesLoading ? (
-                <div className="text-center py-16 text-xl">Loading sources...</div>
+              <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : sources.length > 0 ? (
                 <div className="space-y-5">
                   <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <MonitorPlay size={22} /> Free Streaming Options
+                    <MonitorPlay size={22} /> 
+                    {tab === 'premium' ? 'Premium / Subscription Sources' : 'Free Streaming Options'}
                   </h3>
                   {sources.map((source: any, idx: number) => {
                     const { logoUrl, initials, color } = getProviderLogo(source.name);
@@ -1132,9 +1137,11 @@ useEffect(() => {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-16 text-gray-300 text-lg">
-                  No free sources available right now in {region}.<br />
-                  Availability changes frequently — try again later!
+                  <div className="text-center py-16 text-gray-300 text-lg">
+                  {tab === 'premium' 
+                    ? `No subscription sources found in ${region} right now.` 
+                    : `No free sources available right now in ${region}.`}
+                  <br />Availability changes frequently — try again later!
                 </div>
               )}
               {relatedTitles.length > 0 && (
