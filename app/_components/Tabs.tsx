@@ -196,7 +196,7 @@ export default function Tabs() {
 
       // First time or expired → one-time API call
       try {
-        const isPremium = tab === 'premium';
+        const isPremium = tab === 'premium' || selectedTitle?.fromPremium === true;
         const paidParam = isPremium ? '&paid=true' : '';
         const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}${paidParam}`);
         const json = await res.json();
@@ -1153,7 +1153,7 @@ useEffect(() => {
                     <Star className="text-yellow-400" size={20} /> More Like This
                   </h3>
                   <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
-                    {relatedTitles.map((rel: any) => (
+                                        {relatedTitles.map((rel: any) => (
                       <div
                         key={rel.id}
                         onClick={() => {
@@ -1163,27 +1163,28 @@ useEffect(() => {
                             year: (rel.release_date || rel.first_air_date || '').slice(0, 4),
                             tmdb_id: rel.id,
                             tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
-                            poster_path: rel.poster_path
+                            poster_path: rel.poster_path,
+                            fromPremium: tab === 'premium'
                           });
                         }}
                         className="snap-start flex-shrink-0 w-28 cursor-pointer group"
                       >
                         <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
                           {rel.poster_path ? (
-  <Image
-    src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
-    alt={rel.title || rel.name}
-    fill
-    className="object-cover group-hover:scale-105 transition-transform"
-    sizes="112px"
-    quality={75}
-    loading="lazy"
-  />
-) : (
-  <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-    <Film className="w-8 h-8 text-gray-500" />
-  </div>
-)}
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
+                              alt={rel.title || rel.name}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform"
+                              sizes="112px"
+                              quality={75}
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                              <Film className="w-8 h-8 text-gray-500" />
+                            </div>
+                          )}
                         </div>
                         <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
                           {rel.title || rel.name}
