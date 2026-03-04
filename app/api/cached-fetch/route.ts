@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const types = searchParams.get('types') || 'movie,tv_series';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
+  const paid = searchParams.get('paid') === 'true';
 
   // === AUTO-REFRESH: First visitor after 24h triggers full snapshot ===
   try {
@@ -27,10 +28,10 @@ export async function GET(request: NextRequest) {
     console.error('Auto-refresh check failed (continuing):', e);
   }
 
-  // === FAST PATH: Use full catalog snapshot if available (kept from your old file) ===
+    // === FAST PATH: Use full catalog snapshot if available (kept from your old file) ===
   try {
     const fullCatalog = await kv.get('full_free_catalog');
-    if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres) {
+    if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres && !paid) {
       const start = (page - 1) * 48;
       const pagedTitles = fullCatalog.slice(start, start + 48);
       return NextResponse.json({
@@ -45,9 +46,8 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     console.error('Full catalog read failed (continuing):', e);
   }
-
   // === Regular cache for search or filtered results ===
-  const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}`;
+  const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
   const cacheTTL = query ? 1800 : 86400;
 
   try {
@@ -57,12 +57,13 @@ export async function GET(request: NextRequest) {
     console.error('KV read failed (continuing):', e);
   }
 
-  // === Normal Watchmode API call ===
+    // === Normal Watchmode API call ===
   let apiUrl = '';
   if (query) {
     apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
   } else {
-    apiUrl = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
+    const sourceType = paid ? 'sub' : 'free';
+    apiUrl = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=${sourceType}&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
     if (genres) apiUrl += `&genres=${genres}`;
   }
 
