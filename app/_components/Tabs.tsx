@@ -82,6 +82,9 @@ export default function Tabs() {
   const [top10Loading, setTop10Loading] = useState(false);
   const [premiumTitles, setPremiumTitles] = useState<any[]>([]);
   const [premiumLoading, setPremiumLoading] = useState(false);
+  const [premiumPage, setPremiumPage] = useState(1);
+  const [premiumHasMore, setPremiumHasMore] = useState(true);
+  const [premiumLoadingMore, setPremiumLoadingMore] = useState(false);
 
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -256,18 +259,22 @@ export default function Tabs() {
     fetchTop10();
   }, [tab, region, contentType]);
 
-    // === PREMIUM (PAID/SUBSCRIPTION) TITLES TAB ===
+      // === PREMIUM (PAID/SUBSCRIPTION) TITLES TAB ===
   useEffect(() => {
     if (tab !== 'premium') return;
     const fetchPremium = async () => {
       setPremiumLoading(true);
+      setPremiumPage(1);
+      setPremiumHasMore(true);
       try {
         const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1&paid=true`);
         const json = await res.json();
-        let titles = json.success && json.titles?.length ? json.titles.slice(0, 30) : staticFallbackTitles.slice(0, 20);
+        let titles = json.success && json.titles?.length ? json.titles : staticFallbackTitles.slice(0, 20);
         setPremiumTitles(titles);
+        setPremiumHasMore(titles.length >= 48);
       } catch {
         setPremiumTitles(staticFallbackTitles.slice(0, 20));
+        setPremiumHasMore(false);
       }
       setPremiumLoading(false);
     };
@@ -310,8 +317,41 @@ export default function Tabs() {
     };
     fetchPosters();
   }, [premiumTitles, tab, TMDB_READ_TOKEN]);
+    // === INFINITE SCROLL FOR PREMIUM TAB ===
+  const loadMorePremium = async () => {
+    if (premiumLoadingMore || !premiumHasMore) return;
+    setPremiumLoadingMore(true);
+    try {
+      const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${premiumPage + 1}&paid=true`);
+      const json = await res.json();
+      const newTitles = json.success && json.titles?.length ? json.titles : [];
+      setPremiumTitles(prev => [...prev, ...newTitles]);
+      setPremiumPage(prev => prev + 1);
+      setPremiumHasMore(newTitles.length >= 48);
+    } catch {
+      setPremiumHasMore(false);
+    } finally {
+      setPremiumLoadingMore(false);
+    }
+  };
 
-  // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
+  useEffect(() => {
+    if (tab !== 'premium') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && premiumHasMore && !premiumLoadingMore) {
+          loadMorePremium();
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    const sentinel = document.getElementById('premium-sentinel');
+    if (sentinel) observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType]);
+
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
 useEffect(() => {
   if (!top10Titles?.length || !TMDB_READ_TOKEN || tab !== 'top10') return;
@@ -642,7 +682,7 @@ useEffect(() => {
         </section>
       )}
 
-      {/* PREMIUM TAB — Paid / Subscription Titles */}
+            {/* PREMIUM TAB — Paid / Subscription Titles (with infinite scroll) */}
       {tab === 'premium' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -658,48 +698,56 @@ useEffect(() => {
               <p className="text-xl">Loading premium titles...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {premiumTitles.map((title: any, index: number) => (
-                <div
-                  key={title.id}
-                  onClick={() => setSelectedTitle(title)}
-                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
-                >
-                  <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                    {title.poster_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
-                        alt={title.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
-                        quality={75}
-                        priority={index < 3}
-                        loading={index < 3 ? "eager" : "lazy"}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                      </div>
-                    )}
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+                {premiumTitles.map((title: any, index: number) => (
+                  <div
+                    key={title.id}
+                    onClick={() => setSelectedTitle(title)}
+                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
+                  >
+                    <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                      {title.poster_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                          alt={title.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+                          quality={75}
+                          priority={index < 3}
+                          loading={index < 3 ? "eager" : "lazy"}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-purple-300 transition-colors">
+                        {title.title}
+                      </h3>
+                      <p className="text-gray-400 text-sm">
+                        {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                      </p>
+                      <button
+                        className="mt-4 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                        onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                      >
+                        View Sources
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-purple-300 transition-colors">
-                      {title.title}
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
-                    </p>
-                    <button
-                      className="mt-4 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
-                      onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
-                    >
-                      View Sources
-                    </button>
-                  </div>
+                ))}
+              </div>
+
+              {premiumHasMore && (
+                <div id="premium-sentinel" className="h-20 flex items-center justify-center mt-12">
+                  {premiumLoadingMore && <Loader2 className="w-8 h-8 animate-spin text-purple-500" />}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </section>
       )}
