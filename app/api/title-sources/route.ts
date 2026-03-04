@@ -35,20 +35,20 @@ export async function GET(request: Request) {
     if (paid) {
       // Paid / Subscription sources only (Netflix, Disney+, Prime Video, Max, etc.)
       sourcesData = result.data?.filter((source: any) =>
-        source.type === 'sub' || 
+        source.type === 'sub' ||
         source.subscription === true ||
         (source.price && source.price > 0)
       ) || [];
-      message = sourcesData.length > 0 
-        ? `${sourcesData.length} subscription options found!` 
+      message = sourcesData.length > 0
+        ? `${sourcesData.length} subscription options found!`
         : 'No subscription sources available in this region right now';
     } else {
       // Free sources only (original behavior)
       sourcesData = result.data?.filter((source: any) =>
         source.type === 'free' || source.price === 0 || source.free_with_ads === true
       ) || [];
-      message = sourcesData.length > 0 
-        ? `${sourcesData.length} free options found!` 
+      message = sourcesData.length > 0
+        ? `${sourcesData.length} free options found!`
         : 'No free sources available in this region right now';
     }
 
@@ -74,3 +74,4 @@ export async function GET(request: Request) {
       error: error.message
     }, { status: 500 });
   }
+}
