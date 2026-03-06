@@ -69,9 +69,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
+            <head>
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
+        
+        {/* Dynamic Canonical URL (fixes "Page with redirect" and duplicate content issues) */}
+        <link rel="canonical" href={`https://freestreamworld.com${typeof window !== 'undefined' ? window.location.pathname : ''}`} />
 
         {/* Structured Data - Organization + WebSite */}
         <script
@@ -102,7 +105,6 @@ export default function RootLayout({
             })
           }}
         />
-
         {/* Service Worker Registration */}
         <script
           dangerouslySetInnerHTML={{
