@@ -70,56 +70,56 @@ export default function RootLayout({
   return (
     <html lang="en">
             <head>
-        {/* Google Site Verification */}
-        <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
-        
-        {/* Dynamic Canonical URL (fixes "Page with redirect" and duplicate content issues) */}
-        <link rel="canonical" href={`https://freestreamworld.com${typeof window !== 'undefined' ? window.location.pathname : ''}`} />
+  {/* Google Site Verification */}
+  <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
+  
+  {/* Dynamic Canonical URL – fixes redirect & indexing issues */}
+  <link rel="canonical" href={`https://freestreamworld.com${typeof window !== 'undefined' ? window.location.pathname : ''}`} />
 
-        {/* Structured Data - Organization + WebSite */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@graph": [
-                {
-                  "@type": "Organization",
-                  "name": "FreeStream World",
-                  "url": "https://freestreamworld.com",
-                  "logo": "https://freestreamworld.com/logo.png",
-                  "description": "100% legal free streaming discovery site",
-                  "sameAs": ["https://freestreamworld.com"]
-                },
-                {
-                  "@type": "WebSite",
-                  "name": "FreeStream World",
-                  "url": "https://freestreamworld.com",
-                  "potentialAction": {
-                    "@type": "SearchAction",
-                    "target": "https://freestreamworld.com/?search={search_term_string}",
-                    "query-input": "required name=search_term_string"
-                  }
-                }
-              ]
-            })
-          }}
-        />
-        {/* Service Worker Registration */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker registered with scope:', reg.scope))
-                    .catch(err => console.log('Service Worker registration failed:', err));
-                });
-              }
-            `,
-          }}
-        />
-      </head>
+  {/* Structured Data - Organization + WebSite */}
+  <script
+    type="application/ld+json"
+    dangerouslySetInnerHTML={{
+      __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "name": "FreeStream World",
+            "url": "https://freestreamworld.com",
+            "logo": "https://freestreamworld.com/logo.png",
+            "description": "100% legal free streaming discovery site",
+            "sameAs": ["https://freestreamworld.com"]
+          },
+          {
+            "@type": "WebSite",
+            "name": "FreeStream World",
+            "url": "https://freestreamworld.com",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": "https://freestreamworld.com/?search={search_term_string}",
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      })
+    }}
+  />
+  {/* Service Worker Registration */}
+  <script
+    dangerouslySetInnerHTML={{
+      __html: `
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then(reg => console.log('Service Worker registered with scope:', reg.scope))
+              .catch(err => console.log('Service Worker registration failed:', err));
+          });
+        }
+      `,
+    }}
+  />
+</head>
       <body className="antialiased">
         {/* Skip to main content - Accessibility boost */}
         <a
