@@ -1360,7 +1360,6 @@ useEffect(() => {
                     : `No free sources available right now in ${region}.`}
                 </div>
               )}
-              )}
 
               {trailers.length > 0 && (
                 <div className="mt-12">
