@@ -362,8 +362,8 @@ export default function Tabs() {
     fetchPosters();
   }, [premiumTitles, tab, TMDB_READ_TOKEN]);
     // === INFINITE SCROLL FOR PREMIUM TAB ===
-  const loadMorePremium = async () => {
-    if (premiumLoadingMore || !premiumHasMore) return;
+    const loadMorePremium = async () => {
+    if (premiumLoadingMore || !premiumHasMore || pauseInfiniteScroll) return;
     setPremiumLoadingMore(true);
     try {
       const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${premiumPage + 1}&paid=true`);
@@ -1350,18 +1350,19 @@ useEffect(() => {
           </div>
         </div>
       )}
-           {/* Legal Info Button — scrolls to TRUE bottom + 25-second full pause (no new videos) */}
+                 {/* Legal Info Button — TRUE bottom + 30-second hard pause (spinner stops, no new videos) */}
       <button
         onClick={() => {
           const footer = document.getElementById('footer');
           if (footer) {
             footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             setPauseInfiniteScroll(true);
+            setPremiumHasMore(false);   // ← extra safety to stop the circle
 
-            // Auto resume scrolling after 25 seconds
             setTimeout(() => {
               setPauseInfiniteScroll(false);
-            }, 25000);
+              setPremiumHasMore(true);   // resume normal scrolling
+            }, 30000);
           }
         }}
         className="fixed bottom-24 right-8 z-[75] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
