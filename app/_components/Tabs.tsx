@@ -1366,22 +1366,22 @@ useEffect(() => {
           </div>
         </div>
       )}
-                 {/* Legal Info Button — TRUE bottom + 30-second hard pause (spinner stops, no new videos) */}
+                       {/* Legal Info Button — now UNDER the blue Up button */}
       <button
         onClick={() => {
           const footer = document.getElementById('footer');
           if (footer) {
             footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
             setPauseInfiniteScroll(true);
-            setPremiumHasMore(false);   // ← extra safety to stop the circle
+            setPremiumHasMore(false);
 
             setTimeout(() => {
               setPauseInfiniteScroll(false);
-              setPremiumHasMore(true);   // resume normal scrolling
+              setPremiumHasMore(true);
             }, 30000);
           }
         }}
-        className="fixed bottom-24 right-8 z-[75] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
+        className="fixed bottom-8 right-8 z-[75] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
         aria-label="Go to legal information"
       >
         📜 Legal Info
