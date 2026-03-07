@@ -86,6 +86,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [premiumHasMore, setPremiumHasMore] = useState(true);
   const [premiumLoadingMore, setPremiumLoadingMore] = useState(false);
   const [pauseInfiniteScroll, setPauseInfiniteScroll] = useState(false);
+  const [showPauseToast, setShowPauseToast] = useState(false);
   const [tmdbDetails, setTmdbDetails] = useState<any>(null);
   const [trailers, setTrailers] = useState<any[]>([]);
   const [cast, setCast] = useState<any[]>([]);
@@ -1399,27 +1400,51 @@ useEffect(() => {
           </div>
         </div>
       )}
-                       {/* Legal Info Button — now UNDER the blue Up button */}
-      <button
-        onClick={() => {
-          const footer = document.getElementById('footer');
-          if (footer) {
-            footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setPauseInfiniteScroll(true);
-            setPremiumHasMore(false);
+                       {/* Floating Buttons Stack: Back to Top + Legal Info */}
+<div className="fixed bottom-6 right-6 z-[75] flex flex-col gap-3 items-end">
+  {/* Back to Top Button */}
+  <button
+    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+    aria-label="Back to top"
+  >
+    ↑
+  </button>
 
-            setTimeout(() => {
-              setPauseInfiniteScroll(false);
-              setPremiumHasMore(true);
-            }, 30000);
-          }
-        }}
-        className="fixed bottom-8 right-8 z-[75] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
-        aria-label="Go to legal information"
-      >
-        📜 Legal Info
-        <ChevronDown size={18} />
-      </button>
+  {/* Legal Info Button */}
+  <button
+    onClick={() => {
+      const footer = document.getElementById('footer');
+      if (footer) {
+        footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Pause infinite scroll + show toast
+        setPauseInfiniteScroll(true);
+        setPremiumHasMore(false);
+        setShowPauseToast(true);
+
+        setTimeout(() => {
+          setPauseInfiniteScroll(false);
+          setPremiumHasMore(true);
+          setShowPauseToast(false);
+        }, 30000);
+      }
+    }}
+    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+    aria-label="Legal information"
+  >
+    📜 Legal Info
+    <ChevronDown size={18} />
+  </button>
+</div>
+
+{/* Pause Toast */}
+{showPauseToast && (
+  <div className="fixed bottom-28 right-6 z-[80] bg-gray-900 border border-blue-500 text-blue-400 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in">
+    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
+    Scroll paused for 30 seconds (legal review)
+  </div>
+)}
         <footer id="footer" className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
