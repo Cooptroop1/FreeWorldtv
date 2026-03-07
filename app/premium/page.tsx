@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import MainApp from '../../_components/MainApp';
+import MainApp from '../_components/MainApp';
 
 export const metadata: Metadata = {
   title: 'Premium Free Titles | FreeStream World',
