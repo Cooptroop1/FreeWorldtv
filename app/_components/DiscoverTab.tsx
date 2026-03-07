@@ -264,13 +264,13 @@ export default function DiscoverTab({
             items.map((item) => {
               const isFavorite = favorites.some(fav => fav.id === item.id);
               return (
-                <button
+                                <button
                   key={item.id}
                   onClick={() => setSelectedTitle(item)}
-                  className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left"
+                  className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col"
                   aria-label={`View details for ${item.title} (${item.year})`}
                 >
-                  <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform">
+                  <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
                       {item.poster_path ? (
                       <Image
                         src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
@@ -292,8 +292,10 @@ export default function DiscoverTab({
                       <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
                     </button>
                   </div>
-                  <p className="text-sm mt-2 line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
-                  <p className="text-xs text-center text-gray-400">{item.year}</p>
+                  <div className="flex-1 flex flex-col justify-end mt-2">
+                    <p className="text-sm line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
+                    <p className="text-xs text-center text-gray-400">{item.year}</p>
+                  </div>
                 </button>
               );
             })
