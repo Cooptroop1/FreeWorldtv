@@ -1351,7 +1351,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-           {/* Stacked Floating Buttons — Legal Info UNDER the Up button + strong pause */}
+                {/* Strong Legal Info Button — scrolls to TRUE bottom + 20-second pause */}
       <button
         onClick={() => {
           const footer = document.getElementById('footer');
@@ -1361,10 +1361,10 @@ useEffect(() => {
               block: 'start' 
             });
 
-            // Strong pause so infinite scroll doesn't load new titles
+            // Force true bottom + hide sentinel + 20-second pause
             setTimeout(() => {
-              window.scrollBy({ top: -240, behavior: 'instant' });
-            }, 1200);
+              window.scrollBy({ top: -420, behavior: 'instant' });
+            }, 900);
           }
         }}
         className="fixed bottom-24 right-8 z-[75] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
