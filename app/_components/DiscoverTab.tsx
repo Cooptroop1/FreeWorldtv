@@ -516,7 +516,7 @@ export default function DiscoverTab({
                   const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
 
-                  return (
+                                    return (
                     <button
                       key={title.id}
                       onClick={() => setSelectedTitle(title)}
@@ -524,7 +524,7 @@ export default function DiscoverTab({
                       aria-label={`View free sources for ${title.title} (${title.year})`}
                     >
                       <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                          {title.poster_path ? (
+                        {title.poster_path ? (
                           <Image
                             src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
                             alt={`${title.title} poster`}
@@ -538,24 +538,32 @@ export default function DiscoverTab({
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
                         )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
-                          aria-label={isFavorite ? `Remove ${title.title} from favorites` : `Add ${title.title} to favorites`}
-                          className="absolute top-2 right-2 p-2 rounded-full bg-gray-900/70 hover:bg-gray-900/90 transition-colors"
-                        >
-                          <Heart size={20} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white hover:text-red-400'} />
-                        </button>
+
+                        {/* Hover overlay — exactly like Top 10 */}
+                        <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
+                            className="text-white hover:text-red-500 transition-colors"
+                          >
+                            <Heart size={28} className={isFavorite ? "fill-red-500" : ""} />
+                          </button>
+                          <div className="flex gap-4">
+                            <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }} className="text-white hover:text-blue-400 text-xl">📋</button>
+                            <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="text-white hover:text-blue-400 text-xl">𝕏</button>
+                            <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="text-white hover:text-blue-400 text-xl">📘</button>
+                            <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }} className="text-white hover:text-blue-400 text-xl">💬</button>
+                          </div>
+                        </div>
                       </div>
                       <div className="p-4">
                         <h4 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">{title.title}</h4>
                         <p className="text-gray-400 text-sm">{title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}</p>
-                        <div className="flex gap-2 mt-3">
-                          <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Copy link">📋 Copy</button>
-                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Share on X">𝕏</button>
-                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Share on Facebook">📘</button>
-                          <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }} className="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-1.5 rounded transition-colors" aria-label="Share on WhatsApp">💬</button>
-                        </div>
-                        <button className="mt-3 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all" onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}>View Free Sources</button>
+                        <button
+                          className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                          onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
+                        >
+                          View Free Sources
+                        </button>
                       </div>
                     </button>
                   );
