@@ -1279,7 +1279,7 @@ useEffect(() => {
                         }}
                         className="snap-start flex-shrink-0 w-28 cursor-pointer group"
                       >
-                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md">
+                          <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-gray-800 to-gray-700">
                           {rel.poster_path ? (
                             <Image
                               src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
@@ -1290,9 +1290,14 @@ useEffect(() => {
                               quality={75}
                             />
                           ) : (
-                            <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-                              <Film className="w-8 h-8 text-gray-500" />
-                            </div>
+                            <>
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Film className="w-16 h-16 text-gray-400" />
+                              </div>
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/70 px-2 py-1 text-[10px] text-center line-clamp-2">
+                                {rel.title || rel.name}
+                              </div>
+                            </>
                           )}
                         </div>
                         <p className="text-xs mt-2 line-clamp-2 text-center group-hover:text-blue-300 transition-colors">
