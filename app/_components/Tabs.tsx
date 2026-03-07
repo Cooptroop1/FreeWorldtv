@@ -1139,9 +1139,11 @@ useEffect(() => {
           }}
         >
           <div 
-            className="bg-gray-900/95 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}   {/* ← prevents closing when clicking inside */}
-          >
+        {/* This stops the modal from closing when clicking inside the content box */}
+        <div 
+          className="bg-gray-900/95 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700 shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
             <div className="p-6 md:p-8">
               <div className="flex justify-between items-start mb-6">
                 <div>
