@@ -1351,20 +1351,23 @@ useEffect(() => {
           </div>
         </div>
       )}
-     {/* Stacked Floating Buttons — Legal Info UNDER the blue Up button + 20-second pause */}
+           {/* Stacked Floating Buttons — Legal Info UNDER the Up button + strong pause */}
       <button
         onClick={() => {
           const footer = document.getElementById('footer');
           if (footer) {
-            footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            footer.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start' 
+            });
 
-            // Small upward nudge + 20-second pause so infinite scroll doesn't load new titles
+            // Strong pause so infinite scroll doesn't load new titles
             setTimeout(() => {
-              window.scrollBy({ top: -140, behavior: 'smooth' });
-            }, 800);
+              window.scrollBy({ top: -240, behavior: 'instant' });
+            }, 1200);
           }
         }}
-        className="fixed bottom-8 right-8 z-[70] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
+        className="fixed bottom-24 right-8 z-[75] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
         aria-label="Go to legal information"
       >
         📜 Legal Info
