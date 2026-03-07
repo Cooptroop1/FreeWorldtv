@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import MainApp from '../_components/MainApp';
+export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
   title: 'My Favorites | FreeStream World',
