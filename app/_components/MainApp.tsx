@@ -64,6 +64,8 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedTitle, setSelectedTitle] = useState<any>(null);
   const [sources, setSources] = useState<any[]>([]);
+  const [paidSources, setPaidSources] = useState<any[]>([]);
+  const [freeSources, setFreeSources] = useState<any[]>([]);
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [selectedChannel, setSelectedChannel] = useState<any>(null);
   const [relatedTitles, setRelatedTitles] = useState<any[]>([]);
@@ -244,10 +246,11 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     fetchRichData();
   }, [selectedTitle]);
 
-      // === SOURCES WITH 24h CACHE + LAST UPDATED TIMESTAMP (now shows FREE + PAID in Premium) ===
+      // === SOURCES WITH 24h CACHE + LAST UPDATED TIMESTAMP (SPLIT VERSION) ===
 useEffect(() => {
   if (!selectedTitle) {
-    setSources([]);
+    setPaidSources([]);
+    setFreeSources([]);
     setSourcesLoading(false);
     setSourcesLastUpdated('');
     return;
@@ -260,7 +263,8 @@ useEffect(() => {
       watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
     }
     if (!watchmodeId) {
-      setSources([]);
+      setPaidSources([]);
+      setFreeSources([]);
       setSourcesLoading(false);
       return;
     }
@@ -271,7 +275,8 @@ useEffect(() => {
       const { data, timestamp } = JSON.parse(cached);
       const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000;
       if (!isExpired) {
-        setSources(data);
+        setPaidSources(data.paid || []);
+        setFreeSources(data.free || []);
         setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
         setSourcesLoading(false);
         return;
@@ -281,38 +286,36 @@ useEffect(() => {
     try {
       const isPremium = selectedTitle.fromPremium === true || tab === 'premium';
 
-      // Always fetch BOTH free and paid sources for Premium titles
-      let freeSources: any[] = [];
-      let paidSources: any[] = [];
-
       // 1. Free sources
       const freeRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
       const freeJson = await freeRes.json();
-      freeSources = freeJson.success ? (freeJson.freeSources || freeJson.sources || []) : [];
+      const freeData = freeJson.success ? (freeJson.freeSources || freeJson.sources || []) : [];
 
-      // 2. Paid sources (only if this is a Premium title)
+      // 2. Paid sources (only for Premium tab)
+      let paidData: any[] = [];
       if (isPremium) {
         const paidRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}&paid=true`);
         const paidJson = await paidRes.json();
-        paidSources = paidJson.success ? (paidJson.paidSources || paidJson.sources || []) : [];
+        paidData = paidJson.success ? (paidJson.paidSources || paidJson.sources || []) : [];
       }
-
-      // Combine: paid first, then free
-      const combinedSources = [...paidSources, ...freeSources];
 
       const timestamp = Date.now();
-      localStorage.setItem(cacheKey, JSON.stringify({ data: combinedSources, timestamp }));
-      setSources(combinedSources);
+      localStorage.setItem(cacheKey, JSON.stringify({ paid: paidData, free: freeData, timestamp }));
+
+      setPaidSources(paidData);
+      setFreeSources(freeData);
       setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
-      } catch (err) {
-        console.error('Sources fetch error:', err);
-        setSources([]);
-      } finally {
-        setSourcesLoading(false);
-      }
-    };
-    fetchSources();
-  }, [selectedTitle, region, tab]);
+    } catch (err) {
+      console.error('Sources fetch error:', err);
+      setPaidSources([]);
+      setFreeSources([]);
+    } finally {
+      setSourcesLoading(false);
+    }
+  };
+
+  fetchSources();
+}, [selectedTitle, region, tab]);
 
   // Video.js player
   useEffect(() => {
@@ -1274,49 +1277,89 @@ useEffect(() => {
                   </p>
                 </div>
               )}
-              {sourcesLoading ? (
+                            {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
-              ) : sources.length > 0 ? (
-                <div className="space-y-5">
-                  <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                   <MonitorPlay size={22} />
-                     {selectedTitle.fromPremium || tab === 'premium' ? '💎 Premium Sources' : 'Free Streaming Options'}
-                 </h3>
-                  {sources.map((source: any, idx: number) => {
-                    const { logoUrl, initials, color } = getProviderLogo(source.name);
-                    return (
-                      <a
-                        key={idx}
-                        href={source.web_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
-                      >
-                        <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
-                          {logoUrl ? (
-                            <img src={logoUrl} alt={source.name} className="max-w-[85%] max-h-[85%] object-contain" />
-                          ) : (
-                            <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
-                          <div className="text-gray-400 text-xs">
-                            {selectedTitle.fromPremium || tab === 'premium' ? 'Subscription' : 'Free with Ads'}
-                            {source.format && ` • ${source.format}`}
-                          </div>
-                        </div>
-                        <div className="text-blue-400 text-xs font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
-                      </a>
-                    );
-                  })}
+              ) : paidSources.length > 0 || freeSources.length > 0 ? (
+                <div className="space-y-8">
+                  {/* 💎 PREMIUM SOURCES */}
+                  {paidSources.length > 0 && (
+                    <>
+                      <h3 className="text-xl font-semibold flex items-center gap-2">
+                        💎 Premium / Subscription Sources
+                      </h3>
+                      <div className="space-y-3">
+                        {paidSources.map((source: any, idx: number) => {
+                          const { logoUrl, initials, color } = getProviderLogo(source.name);
+                          return (
+                            <a
+                              key={idx}
+                              href={source.web_url || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
+                            >
+                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
+                                {logoUrl ? (
+                                  <img src={logoUrl} alt={source.name} className="max-w-[85%] max-h-[85%] object-contain" />
+                                ) : (
+                                  <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
+                                <div className="text-gray-400 text-xs">Subscription{source.format && ` • ${source.format}`}</div>
+                              </div>
+                              <div className="text-blue-400 text-xs font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {/* 🎁 ALSO FREE ON */}
+                  {freeSources.length > 0 && (
+                    <>
+                      <h3 className="text-xl font-semibold flex items-center gap-2">
+                        🎁 Also Free On
+                      </h3>
+                      <div className="space-y-3">
+                        {freeSources.map((source: any, idx: number) => {
+                          const { logoUrl, initials, color } = getProviderLogo(source.name);
+                          return (
+                            <a
+                              key={idx}
+                              href={source.web_url || '#'}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
+                            >
+                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
+                                {logoUrl ? (
+                                  <img src={logoUrl} alt={source.name} className="max-w-[85%] max-h-[85%] object-contain" />
+                                ) : (
+                                  <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
+                                <div className="text-gray-400 text-xs">Free with Ads{source.format && ` • ${source.format}`}</div>
+                              </div>
+                              <div className="text-blue-400 text-xs font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-16 text-gray-300 text-lg">
                   {selectedTitle.fromPremium || tab === 'premium'
-                    ? `No subscription sources found in ${region} right now.`
+                    ? `No sources found in ${region} right now.`
                     : `No free sources available right now in ${region}.`}
                 </div>
+              )}
               )}
 
               {trailers.length > 0 && (
