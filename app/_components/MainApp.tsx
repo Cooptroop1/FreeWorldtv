@@ -10,6 +10,7 @@ import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
 import { getWatchmodeId, providerLogos } from '../../lib/watchmode-map';
+import { usePathname, useRouter } from 'next/navigation';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -55,7 +56,7 @@ const genres = [
   { id: 53, name: 'Thriller' }, { id: 10752, name: 'War' }, { id: 37, name: 'Western' },
 ];
 
-export default function Tabs() {
+export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' }) {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium'>('discover');
   const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
@@ -91,6 +92,39 @@ export default function Tabs() {
   const [sourcesLastUpdated, setSourcesLastUpdated] = useState<string>('');
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+    // === CLEAN URL SUPPORT WITH NEXT.JS ROUTER ===
+  const pathname = usePathname();
+  const router = useRouter();
+
+  const getTabFromPath = (path: string) => {
+    switch (path) {
+      case '/discover': return 'discover';
+      case '/live-tv': return 'live';
+      case '/my-links': return 'mylinks';
+      case '/favorites': return 'favorites';
+      case '/top-10': return 'top10';
+      case '/premium': return 'premium';
+      default: return defaultTab;
+    }
+  };
+
+  const handleTabChange = (newTab: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium') => {
+    let newPath = '/discover';
+    if (newTab === 'live') newPath = '/live-tv';
+    else if (newTab === 'mylinks') newPath = '/my-links';
+    else if (newTab === 'top10') newPath = '/top-10';
+    else if (newTab === 'favorites') newPath = '/favorites';
+    else if (newTab === 'premium') newPath = '/premium';
+
+    setTab(newTab);
+    router.push(newPath, { scroll: false });
+  };
+
+  // Sync with browser back/forward buttons
+  useEffect(() => {
+    const newTab = getTabFromPath(pathname);
+    if (newTab !== tab) setTab(newTab);
+  }, [pathname]);
 
   // Favorites & custom links persistence
   useEffect(() => {
@@ -577,7 +611,7 @@ useEffect(() => {
           <button
             role="tab"
             aria-selected={tab === 'discover'}
-            onClick={() => setTab('discover')}
+            onClick={() => handleTabChange('discover')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'discover' ? 'border-b-4 border-blue-500 text-blue-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'discover' ? 'page' : undefined}
           >
@@ -586,7 +620,7 @@ useEffect(() => {
           <button
             role="tab"
             aria-selected={tab === 'live'}
-            onClick={() => setTab('live')}
+            onClick={() => handleTabChange('live')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'live' ? 'border-b-4 border-green-500 text-green-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'live' ? 'page' : undefined}
           >
@@ -595,7 +629,7 @@ useEffect(() => {
           <button
             role="tab"
             aria-selected={tab === 'mylinks'}
-            onClick={() => setTab('mylinks')}
+            onClick={() => handleTabChange('mylinks')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'mylinks' ? 'page' : undefined}
           >
@@ -604,7 +638,7 @@ useEffect(() => {
           <button
             role="tab"
             aria-selected={tab === 'favorites'}
-            onClick={() => setTab('favorites')}
+            onClick={() => handleTabChange('favorites')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'favorites' ? 'page' : undefined}
           >
@@ -613,7 +647,7 @@ useEffect(() => {
                     <button
             role="tab"
             aria-selected={tab === 'top10'}
-            onClick={() => setTab('top10')}
+            onClick={() => handleTabChange('top10')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'top10' ? 'border-b-4 border-yellow-500 text-yellow-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'top10' ? 'page' : undefined}
           >
@@ -622,7 +656,7 @@ useEffect(() => {
           <button
             role="tab"
             aria-selected={tab === 'premium'}
-            onClick={() => setTab('premium')}
+            onClick={() => handleTabChange('premium')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'premium' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'premium' ? 'page' : undefined}
           >
