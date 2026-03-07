@@ -300,11 +300,10 @@ useEffect(() => {
       // Combine: paid first, then free
       const combinedSources = [...paidSources, ...freeSources];
 
-        const timestamp = Date.now();
-        localStorage.setItem(cacheKey, JSON.stringify({ data: sourcesData, timestamp }));
-
-        setSources(sourcesData);
-        setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
+      const timestamp = Date.now();
+      localStorage.setItem(cacheKey, JSON.stringify({ data: combinedSources, timestamp }));
+      setSources(combinedSources);
+      setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
       } catch (err) {
         console.error('Sources fetch error:', err);
         setSources([]);
