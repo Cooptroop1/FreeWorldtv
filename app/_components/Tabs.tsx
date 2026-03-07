@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { Tv, Film, Radio, MonitorPlay, ChevronRight, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
+import { Tv, Film, Radio, MonitorPlay, ChevronRight, ChevronDown, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
@@ -1351,7 +1351,21 @@ useEffect(() => {
           </div>
         </div>
       )}
-      <footer className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
+      {/* Floating Legal Info Button - jumps to footer without loading more content */}
+      <button
+        onClick={() => {
+          document.getElementById('footer')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }}
+        className="fixed bottom-8 right-8 z-[70] bg-gray-900 hover:bg-gray-800 border border-gray-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
+        aria-label="Go to legal information"
+      >
+        📜 Legal Info
+        <ChevronDown size={18} />
+      </button>
+        <footer id="footer" className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
           <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> |
