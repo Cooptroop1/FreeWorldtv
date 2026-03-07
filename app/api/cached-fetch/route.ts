@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     console.error('Full catalog read failed (continuing):', e);
   }
   // === Regular cache for search or filtered results ===
-  const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
+  const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid-v2' : 'free'}`;
   const cacheTTL = query ? 1800 : 86400;
 
   try {
@@ -79,9 +79,7 @@ export async function GET(request: NextRequest) {
       totalPages: Math.max(1, Math.ceil((raw.total_results || raw.total_pages || titles.length) / 48)),
       message: query 
         ? `Free results for "${query}"` 
-        : (paid 
-            ? `Popular premium titles in ${region}` 
-            : `Popular free titles in ${region}`),
+        : (paid ? `Popular subscription titles in ${region}` : `Popular free titles in ${region}`),
       fromCache: false,
       isPaid: paid
     };
