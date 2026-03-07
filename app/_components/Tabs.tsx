@@ -1126,7 +1126,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-                                    {/* RICH SOURCES MODAL — Click outside to close */}
+                                          {/* RICH SOURCES MODAL — Click outside to close */}
       {selectedTitle && (
         <div 
           className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
@@ -1139,11 +1139,9 @@ useEffect(() => {
           }}
         >
           <div 
-        {/* This stops the modal from closing when clicking inside the content box */}
-        <div 
-          className="bg-gray-900/95 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700 shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
-        >
+            className="bg-gray-900/95 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-6 md:p-8">
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -1172,7 +1170,6 @@ useEffect(() => {
                 </button>
               </div>
 
-              {/* Last updated */}
               {sourcesLastUpdated && (
                 <p className="text-xs text-gray-500 mb-6">Sources last updated: {sourcesLastUpdated}</p>
               )}
@@ -1222,7 +1219,6 @@ useEffect(() => {
                 </div>
               )}
 
-              {/* MULTIPLE TRAILERS */}
               {trailers.length > 0 && (
                 <div className="mt-12">
                   <h3 className="text-xl font-bold mb-4">🎬 Trailers</h3>
@@ -1243,7 +1239,6 @@ useEffect(() => {
                 </div>
               )}
 
-              {/* BETTER CAST PHOTOS */}
               {cast.length > 0 && (
                 <div className="mt-12">
                   <h3 className="text-xl font-bold mb-4">Cast</h3>
@@ -1270,7 +1265,6 @@ useEffect(() => {
                 </div>
               )}
 
-              {/* More Like This */}
               {relatedTitles.length > 0 && (
                 <div className="mt-12 pt-8 border-t border-gray-700">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
