@@ -87,6 +87,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [premiumLoadingMore, setPremiumLoadingMore] = useState(false);
   const [pauseInfiniteScroll, setPauseInfiniteScroll] = useState(false);
   const [showPauseToast, setShowPauseToast] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [tmdbDetails, setTmdbDetails] = useState<any>(null);
   const [trailers, setTrailers] = useState<any[]>([]);
   const [cast, setCast] = useState<any[]>([]);
@@ -127,6 +128,14 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     if (newTab !== tab) setTab(newTab);
   }, [pathname]);
 
+    // Show Back to Top only after scrolling down
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   // Favorites & custom links persistence
   useEffect(() => {
     const saved = localStorage.getItem('favorites');
@@ -1400,25 +1409,26 @@ useEffect(() => {
           </div>
         </div>
       )}
-                       {/* Floating Buttons Stack: Back to Top + Legal Info */}
+                       {/* Floating Buttons Stack (↑ only shows after scrolling) */}
 <div className="fixed bottom-6 right-6 z-[75] flex flex-col gap-3 items-end">
-  {/* Back to Top Button */}
-  <button
-    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-    aria-label="Back to top"
-  >
-    ↑
-  </button>
+  {/* Back to Top Button - appears only after scrolling down */}
+  {showBackToTop && (
+    <button
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center text-3xl transition-all hover:scale-105 active:scale-95"
+      aria-label="Back to top"
+    >
+      ↑
+    </button>
+  )}
 
-  {/* Legal Info Button */}
+  {/* Legal Info Button - always visible */}
   <button
     onClick={() => {
       const footer = document.getElementById('footer');
       if (footer) {
         footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
         
-        // Pause infinite scroll + show toast
         setPauseInfiniteScroll(true);
         setPremiumHasMore(false);
         setShowPauseToast(true);
