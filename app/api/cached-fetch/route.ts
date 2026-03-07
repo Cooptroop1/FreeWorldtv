@@ -1,3 +1,4 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     console.error('Full catalog read failed (continuing):', e);
   }
   // === Regular cache for search or filtered results ===
-  const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid-v2' : 'free'}`;
+  const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
   const cacheTTL = query ? 1800 : 86400;
 
   try {
@@ -71,17 +72,14 @@ export async function GET(request: NextRequest) {
     const res = await fetch(apiUrl, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Watchmode ${res.status}`);
     const raw = await res.json();
-   
     const titles = raw.titles || raw.results || [];
+
     const normalized = {
       titles,
       region,
       totalPages: Math.max(1, Math.ceil((raw.total_results || raw.total_pages || titles.length) / 48)),
-      message: query 
-        ? `Free results for "${query}"` 
-        : (paid ? `Popular subscription titles in ${region}` : `Popular free titles in ${region}`),
+      message: query ? `Free results for "${query}"` : `Popular free titles in ${region}`,
       fromCache: false,
-      isPaid: paid
     };
 
     await kv.set(cacheKey, normalized, { ex: cacheTTL });
