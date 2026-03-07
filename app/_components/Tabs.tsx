@@ -85,6 +85,7 @@ export default function Tabs() {
   const [premiumPage, setPremiumPage] = useState(1);
   const [premiumHasMore, setPremiumHasMore] = useState(true);
   const [premiumLoadingMore, setPremiumLoadingMore] = useState(false);
+  const [pauseInfiniteScroll, setPauseInfiniteScroll] = useState(false);
   const [tmdbDetails, setTmdbDetails] = useState<any>(null);
   const [trailers, setTrailers] = useState<any[]>([]);
   const [cast, setCast] = useState<any[]>([]);
@@ -379,22 +380,20 @@ export default function Tabs() {
     }
   };
 
-  useEffect(() => {
+    useEffect(() => {
     if (tab !== 'premium') return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && premiumHasMore && !premiumLoadingMore) {
+        if (entries[0].isIntersecting && premiumHasMore && !premiumLoadingMore && !pauseInfiniteScroll) {
           loadMorePremium();
         }
       },
       { threshold: 0.5 }
     );
-
     const sentinel = document.getElementById('premium-sentinel');
     if (sentinel) observer.observe(sentinel);
-
     return () => observer.disconnect();
-  }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType]);
+  }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType, pauseInfiniteScroll]);
 
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
 useEffect(() => {
@@ -1351,20 +1350,18 @@ useEffect(() => {
           </div>
         </div>
       )}
-                {/* Strong Legal Info Button — scrolls to TRUE bottom + 20-second pause */}
+           {/* Legal Info Button — scrolls to TRUE bottom + 25-second full pause (no new videos) */}
       <button
         onClick={() => {
           const footer = document.getElementById('footer');
           if (footer) {
-            footer.scrollIntoView({ 
-              behavior: 'smooth', 
-              block: 'start' 
-            });
+            footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setPauseInfiniteScroll(true);
 
-            // Force true bottom + hide sentinel + 20-second pause
+            // Auto resume scrolling after 25 seconds
             setTimeout(() => {
-              window.scrollBy({ top: -420, behavior: 'instant' });
-            }, 900);
+              setPauseInfiniteScroll(false);
+            }, 25000);
           }
         }}
         className="fixed bottom-24 right-8 z-[75] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
