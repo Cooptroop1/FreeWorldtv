@@ -614,7 +614,7 @@ export default function DiscoverTab({
         <button
           onClick={scrollToTop}
           aria-label="Scroll back to top"
-          className="fixed bottom-8 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
+          className="fixed bottom-24 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
         >
           <ArrowUp size={24} />
         </button>
