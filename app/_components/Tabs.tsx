@@ -1143,9 +1143,8 @@ useEffect(() => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 md:p-8">
-              <div className="flex justify-between items-start mb-6">
+               <div className="flex justify-between items-start mb-6">
                 <div>
-                                  <div>
                   <h2 className="text-2xl md:text-3xl font-bold pr-10">
                     {selectedTitle.title} ({selectedTitle.year})
                   </h2>
@@ -1195,7 +1194,15 @@ useEffect(() => {
               {sourcesLastUpdated && (
                 <p className="text-xs text-gray-500 mb-6">Sources last updated: {sourcesLastUpdated}</p>
               )}
-
+                            {/* Plot Overview */}
+              {tmdbDetails?.overview && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-2 text-gray-300">Story</h3>
+                  <p className="text-gray-400 leading-relaxed text-sm">
+                    {tmdbDetails.overview}
+                  </p>
+                </div>
+              )}
               {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : sources.length > 0 ? (
