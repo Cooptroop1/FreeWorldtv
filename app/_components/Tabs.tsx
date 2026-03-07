@@ -1126,10 +1126,22 @@ useEffect(() => {
           </div>
         </div>
       )}
-                  {/* RICH SOURCES MODAL */}
+                                    {/* RICH SOURCES MODAL — Click outside to close */}
       {selectedTitle && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900/95 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700 shadow-2xl">
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm"
+          onClick={() => {
+            setSelectedTitle(null);
+            setSources([]);
+            setTmdbDetails(null);
+            setTrailers([]);
+            setCast([]);
+          }}
+        >
+          <div 
+            className="bg-gray-900/95 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}   {/* ← prevents closing when clicking inside */}
+          >
             <div className="p-6 md:p-8">
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -1144,14 +1156,14 @@ useEffect(() => {
                     </div>
                   )}
                 </div>
-                <button 
-                  onClick={() => { 
-                    setSelectedTitle(null); 
-                    setSources([]); 
+                <button
+                  onClick={() => {
+                    setSelectedTitle(null);
+                    setSources([]);
                     setTmdbDetails(null);
                     setTrailers([]);
                     setCast([]);
-                  }} 
+                  }}
                   className="text-gray-400 hover:text-white text-4xl leading-none"
                 >
                   ×
@@ -1171,7 +1183,7 @@ useEffect(() => {
                     <MonitorPlay size={22} />
                     {selectedTitle.fromPremium || tab === 'premium' ? '💎 Premium / Subscription Sources' : 'Free Streaming Options'}
                   </h3>
-                                    {sources.map((source: any, idx: number) => {
+                  {sources.map((source: any, idx: number) => {
                     const { logoUrl, initials, color } = getProviderLogo(source.name);
                     return (
                       <a
@@ -1279,7 +1291,7 @@ useEffect(() => {
                         }}
                         className="snap-start flex-shrink-0 w-28 cursor-pointer group"
                       >
-                          <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-gray-800 to-gray-700">
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-gray-800 to-gray-700">
                           {rel.poster_path ? (
                             <Image
                               src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
