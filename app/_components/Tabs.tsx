@@ -1351,7 +1351,7 @@ useEffect(() => {
           </div>
         </div>
       )}
-      {/* Floating Legal Info Button - jumps to footer without loading more content */}
+            {/* Stacked Floating Buttons — Back to Top (blue) on top, Legal Info directly under it */}
       <button
         onClick={() => {
           document.getElementById('footer')?.scrollIntoView({
@@ -1359,7 +1359,7 @@ useEffect(() => {
             block: 'start'
           });
         }}
-        className="fixed bottom-8 right-8 z-[70] bg-gray-900 hover:bg-gray-800 border border-gray-600 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
+        className="fixed bottom-24 right-8 z-[70] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105"
         aria-label="Go to legal information"
       >
         📜 Legal Info
