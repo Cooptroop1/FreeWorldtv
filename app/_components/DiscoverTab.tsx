@@ -516,7 +516,7 @@ export default function DiscoverTab({
                   const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
 
-                                    return (
+                                                      return (
                     <button
                       key={title.id}
                       onClick={() => setSelectedTitle(title)}
@@ -539,19 +539,44 @@ export default function DiscoverTab({
                           <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
                         )}
 
-                        {/* Hover overlay — exactly like Top 10 */}
+                        {/* Hover overlay — now fully accessible */}
                         <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3">
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
-                            className="text-white hover:text-red-500 transition-colors"
+                            aria-label={isFavorite ? `Remove ${title.title} from favorites` : `Add ${title.title} to favorites`}
+                            className="text-white hover:text-red-500 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
                           >
                             <Heart size={28} className={isFavorite ? "fill-red-500" : ""} />
                           </button>
-                          <div className="flex gap-4">
-                            <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }} className="text-white hover:text-blue-400 text-xl">📋</button>
-                            <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="text-white hover:text-blue-400 text-xl">𝕏</button>
-                            <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }} className="text-white hover:text-blue-400 text-xl">📘</button>
-                            <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }} className="text-white hover:text-blue-400 text-xl">💬</button>
+                          <div className="flex gap-5">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
+                              aria-label="Copy link"
+                              className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
+                            >
+                              📋
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                              aria-label="Share on X"
+                              className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
+                            >
+                              𝕏
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
+                              aria-label="Share on Facebook"
+                              className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
+                            >
+                              📘
+                            </button>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
+                              aria-label="Share on WhatsApp"
+                              className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
+                            >
+                              💬
+                            </button>
                           </div>
                         </div>
                       </div>
