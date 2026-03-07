@@ -1,5 +1,11 @@
-import MainApp from '../components/MainApp';
+import type { Metadata } from 'next';
+import MainApp from '../../_components/MainApp';
+
+export const metadata: Metadata = {
+  title: 'My Links | FreeStream World',
+  description: 'Your saved direct links to free streaming content.',
+};
 
 export default function MyLinksPage() {
-  return <MainApp defaultTab="my-links" />;
+  return <MainApp defaultTab="mylinks" />;
 }
