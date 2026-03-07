@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import MainApp from '../../_components/MainApp';
-
+import MainApp from '../_components/MainApp';
 export const metadata: Metadata = {
   title: 'My Links | FreeStream World',
   description: 'Your saved direct links to free streaming content.',
