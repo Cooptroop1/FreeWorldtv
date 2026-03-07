@@ -681,7 +681,7 @@ useEffect(() => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
                             {top10Titles.map((title: any, index: number) => (
-                <div
+                                <div
                   key={title.id}
                   onClick={() => setSelectedTitle(title)}
                   className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
@@ -703,6 +703,22 @@ useEffect(() => {
                         <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
                       </div>
                     )}
+
+                    {/* Hover overlay with share buttons */}
+                    <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}
+                        className="text-white hover:text-red-500 transition-colors"
+                      >
+                        <Heart size={28} className={favorites.some(f => f.id === title.id) ? "fill-red-500" : ""} />
+                      </button>
+                      <div className="flex gap-4">
+                        <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(`https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`); alert('Link copied!'); }} className="text-white hover:text-blue-400">📋</button>
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out "${title.title}" on FreeStream World!`)}&url=${encodeURIComponent(`https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`)}`, '_blank'); }} className="text-white hover:text-blue-400">𝕏</button>
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`)}`, '_blank'); }} className="text-white hover:text-blue-400">📘</button>
+                        <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Check out "${title.title}" on FreeStream World! https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`)}`, '_blank'); }} className="text-white hover:text-blue-400">💬</button>
+                      </div>
+                    </div>
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">
