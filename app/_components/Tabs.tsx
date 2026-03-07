@@ -1145,14 +1145,36 @@ useEffect(() => {
             <div className="p-6 md:p-8">
               <div className="flex justify-between items-start mb-6">
                 <div>
+                                  <div>
                   <h2 className="text-2xl md:text-3xl font-bold pr-10">
                     {selectedTitle.title} ({selectedTitle.year})
                   </h2>
+
+                  {/* TMDB Score */}
                   {tmdbDetails?.vote_average && (
                     <div className="flex items-center gap-2 mt-2">
                       <Star className="text-yellow-400" fill="currentColor" size={22} />
                       <span className="text-3xl font-bold text-yellow-400">{tmdbDetails.vote_average.toFixed(1)}</span>
                       <span className="text-gray-400">/ 10 • TMDB</span>
+                    </div>
+                  )}
+
+                  {/* Runtime + Seasons */}
+                  {(tmdbDetails?.runtime || tmdbDetails?.number_of_seasons) && (
+                    <div className="flex gap-4 mt-3 text-sm text-gray-400">
+                      {tmdbDetails.runtime && <div>⏱️ {tmdbDetails.runtime} min</div>}
+                      {tmdbDetails.number_of_seasons && <div>📺 {tmdbDetails.number_of_seasons} Season{tmdbDetails.number_of_seasons > 1 ? 's' : ''}</div>}
+                    </div>
+                  )}
+
+                  {/* Genres */}
+                  {tmdbDetails?.genres?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {tmdbDetails.genres.slice(0, 5).map((g: any) => (
+                        <span key={g.id} className="text-xs bg-gray-800 px-3 py-1 rounded-full text-gray-300">
+                          {g.name}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
