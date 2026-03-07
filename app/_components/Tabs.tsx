@@ -85,7 +85,10 @@ export default function Tabs() {
   const [premiumPage, setPremiumPage] = useState(1);
   const [premiumHasMore, setPremiumHasMore] = useState(true);
   const [premiumLoadingMore, setPremiumLoadingMore] = useState(false);
-
+  const [tmdbDetails, setTmdbDetails] = useState<any>(null);
+  const [trailers, setTrailers] = useState<any[]>([]);
+  const [cast, setCast] = useState<any[]>([]);
+  const [sourcesLastUpdated, setSourcesLastUpdated] = useState<string>('');
   const playerRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -161,14 +164,50 @@ export default function Tabs() {
     fetchRelated();
   }, [selectedTitle]);
 
-    // Sources with 24-hour local cache (works in ALL tabs: Discover + Top 10 + Favorites)
+    // === RICH TMDB DATA (score + multiple trailers + cast) ===
+  useEffect(() => {
+    if (!selectedTitle?.tmdb_id || !TMDB_READ_TOKEN) {
+      setTmdbDetails(null);
+      setTrailers([]);
+      setCast([]);
+      return;
+    }
+
+    const fetchRichData = async () => {
+      const type = selectedTitle.tmdb_type === 'movie' || selectedTitle.type === 'movie' ? 'movie' : 'tv';
+      try {
+        const res = await fetch(
+          `https://api.themoviedb.org/3/${type}/${selectedTitle.tmdb_id}?append_to_response=videos,credits&language=en-US`,
+          { headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` } }
+        );
+        const data = await res.json();
+
+        setTmdbDetails(data);
+
+        // Multiple trailers (YouTube only)
+        const youtubeTrailers = data.videos?.results?.filter(
+          (v: any) => v.site === 'YouTube' && (v.type === 'Trailer' || v.type === 'Teaser')
+        ) || [];
+        setTrailers(youtubeTrailers.slice(0, 3));
+
+        // Cast (top 8 with photos)
+        setCast(data.credits?.cast?.slice(0, 8) || []);
+      } catch (err) {
+        console.error('TMDB rich data error:', err);
+      }
+    };
+
+    fetchRichData();
+  }, [selectedTitle]);
+
+      // === SOURCES WITH 24h CACHE + LAST UPDATED TIMESTAMP ===
   useEffect(() => {
     if (!selectedTitle) {
       setSources([]);
       setSourcesLoading(false);
+      setSourcesLastUpdated('');
       return;
     }
-
     const fetchSources = async () => {
       setSourcesLoading(true);
       let watchmodeId = selectedTitle.id;
@@ -181,34 +220,33 @@ export default function Tabs() {
         return;
       }
 
-      // Cache key (unique per title + region)
       const cacheKey = `sources_${watchmodeId}_${region}`;
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
-        const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000; // 24 hours
+        const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000;
         if (!isExpired) {
           setSources(data);
+          setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
           setSourcesLoading(false);
-          return; // ← No API call!
+          return;
         }
       }
 
-      // First time or expired → one-time API call
       try {
-        const isPremium = tab === 'premium' || selectedTitle?.fromPremium === true;
+        const isPremium = selectedTitle.fromPremium === true || tab === 'premium';
         const paidParam = isPremium ? '&paid=true' : '';
         const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}${paidParam}`);
         const json = await res.json();
-        const sourcesData = json.success 
-          ? (isPremium ? (json.paidSources || json.sources || []) : (json.freeSources || [])) 
+        const sourcesData = json.success
+          ? (isPremium ? (json.paidSources || json.sources || []) : (json.freeSources || []))
           : [];
-        // Save to our cache
-        localStorage.setItem(cacheKey, JSON.stringify({
-          data: sourcesData,
-          timestamp: Date.now()
-        }));
+
+        const timestamp = Date.now();
+        localStorage.setItem(cacheKey, JSON.stringify({ data: sourcesData, timestamp }));
+
         setSources(sourcesData);
+        setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
       } catch (err) {
         console.error('Sources fetch error:', err);
         setSources([]);
@@ -216,9 +254,8 @@ export default function Tabs() {
         setSourcesLoading(false);
       }
     };
-
     fetchSources();
-  }, [selectedTitle, region]);
+  }, [selectedTitle, region, tab]);
 
   // Video.js player
   useEffect(() => {
@@ -274,10 +311,12 @@ export default function Tabs() {
         const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1&paid=true`);
         const json = await res.json();
         let titles = json.success && json.titles?.length ? json.titles : staticFallbackTitles.slice(0, 20);
+        // === PREMIUM SAFETY: force flag + no free titles ever ===
+        titles = titles.map((t: any) => ({ ...t, fromPremium: true }));
         setPremiumTitles(titles);
         setPremiumHasMore(titles.length >= 48);
-      } catch {
-        setPremiumTitles(staticFallbackTitles.slice(0, 20));
+        } catch {
+        setPremiumTitles(staticFallbackTitles.slice(0, 20).map(t => ({ ...t, fromPremium: true })));
         setPremiumHasMore(false);
       }
       setPremiumLoading(false);
@@ -329,9 +368,10 @@ export default function Tabs() {
       const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${premiumPage + 1}&paid=true`);
       const json = await res.json();
       const newTitles = json.success && json.titles?.length ? json.titles : [];
-      setPremiumTitles(prev => [...prev, ...newTitles]);
+      const enrichedNewTitles = newTitles.map((t: any) => ({ ...t, fromPremium: true }));
+      setPremiumTitles(prev => [...prev, ...enrichedNewTitles]);
       setPremiumPage(prev => prev + 1);
-      setPremiumHasMore(newTitles.length >= 48);
+      setPremiumHasMore(enrichedNewTitles.length >= 48);
     } catch {
       setPremiumHasMore(false);
     } finally {
@@ -1086,24 +1126,50 @@ useEffect(() => {
           </div>
         </div>
       )}
-            {/* SOURCES MODAL - Works in ALL tabs now (Top 10 + Favorites + Discover) */}
+                  {/* RICH SOURCES MODAL */}
       {selectedTitle && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-gray-900/95 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
+          <div className="bg-gray-900/95 rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border border-gray-700 shadow-2xl">
             <div className="p-6 md:p-8">
               <div className="flex justify-between items-start mb-6">
-                <h2 className="text-2xl md:text-3xl font-bold pr-10">
-                  {selectedTitle.title} ({selectedTitle.year})
-                </h2>
-                <button onClick={() => { setSelectedTitle(null); setSources([]); }} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold pr-10">
+                    {selectedTitle.title} ({selectedTitle.year})
+                  </h2>
+                  {tmdbDetails?.vote_average && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Star className="text-yellow-400" fill="currentColor" size={22} />
+                      <span className="text-3xl font-bold text-yellow-400">{tmdbDetails.vote_average.toFixed(1)}</span>
+                      <span className="text-gray-400">/ 10 • TMDB</span>
+                    </div>
+                  )}
+                </div>
+                <button 
+                  onClick={() => { 
+                    setSelectedTitle(null); 
+                    setSources([]); 
+                    setTmdbDetails(null);
+                    setTrailers([]);
+                    setCast([]);
+                  }} 
+                  className="text-gray-400 hover:text-white text-4xl leading-none"
+                >
+                  ×
+                </button>
               </div>
+
+              {/* Last updated */}
+              {sourcesLastUpdated && (
+                <p className="text-xs text-gray-500 mb-6">Sources last updated: {sourcesLastUpdated}</p>
+              )}
+
               {sourcesLoading ? (
-              <div className="text-center py-16 text-xl">Loading sources...</div>
+                <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : sources.length > 0 ? (
                 <div className="space-y-5">
                   <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <MonitorPlay size={22} /> 
-                    {tab === 'premium' ? 'Premium / Subscription Sources' : 'Free Streaming Options'}
+                    <MonitorPlay size={22} />
+                    {selectedTitle.fromPremium || tab === 'premium' ? '💎 Premium / Subscription Sources' : 'Free Streaming Options'}
                   </h3>
                   {sources.map((source: any, idx: number) => {
                     const { logoUrl, initials, color } = getProviderLogo(source.name);
@@ -1117,12 +1183,7 @@ useEffect(() => {
                       >
                         <div className="w-28 h-28 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
                           {logoUrl ? (
-                            <img 
-                              src={logoUrl} 
-                              alt={source.name} 
-                              className="max-w-[90%] max-h-[90%] object-contain" 
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }} 
-                            />
+                            <img src={logoUrl} alt={source.name} className="max-w-[90%] max-h-[90%] object-contain" />
                           ) : (
                             <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-5xl shadow-inner`}>{initials}</div>
                           )}
@@ -1130,9 +1191,9 @@ useEffect(() => {
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-lg group-hover:text-blue-400 transition-colors">{source.name}</div>
                           <div className="text-gray-400 text-sm">
-                             {tab === 'premium' ? 'Subscription' : 'Free with Ads'} 
-                             {source.format && ` • ${source.format}`}
-                         </div>
+                            {selectedTitle.fromPremium || tab === 'premium' ? 'Subscription' : 'Free with Ads'}
+                            {source.format && ` • ${source.format}`}
+                          </div>
                         </div>
                         <div className="text-blue-400 text-sm font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
                       </a>
@@ -1140,20 +1201,69 @@ useEffect(() => {
                   })}
                 </div>
               ) : (
-                  <div className="text-center py-16 text-gray-300 text-lg">
-                  {tab === 'premium' 
-                    ? `No subscription sources found in ${region} right now.` 
+                <div className="text-center py-16 text-gray-300 text-lg">
+                  {selectedTitle.fromPremium || tab === 'premium'
+                    ? `No subscription sources found in ${region} right now.`
                     : `No free sources available right now in ${region}.`}
-                  <br />Availability changes frequently — try again later!
                 </div>
               )}
+
+              {/* MULTIPLE TRAILERS */}
+              {trailers.length > 0 && (
+                <div className="mt-12">
+                  <h3 className="text-xl font-bold mb-4">🎬 Trailers</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {trailers.map((trailer, i) => (
+                      <div key={i} className="aspect-video bg-black rounded-xl overflow-hidden border border-gray-700">
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          src={`https://www.youtube.com/embed/${trailer.key}`}
+                          title={trailer.name}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* BETTER CAST PHOTOS */}
+              {cast.length > 0 && (
+                <div className="mt-12">
+                  <h3 className="text-xl font-bold mb-4">Cast</h3>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6">
+                    {cast.map((actor: any) => (
+                      <div key={actor.id} className="text-center group">
+                        <div className="relative aspect-square rounded-full overflow-hidden mx-auto border-2 border-gray-700 group-hover:border-blue-500 transition-all">
+                          {actor.profile_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                              alt={actor.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-700 flex items-center justify-center text-4xl">👤</div>
+                          )}
+                        </div>
+                        <p className="text-sm mt-3 font-medium line-clamp-2">{actor.name}</p>
+                        <p className="text-xs text-gray-500 line-clamp-1">{actor.character}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* More Like This */}
               {relatedTitles.length > 0 && (
-                <div className="mt-8 pt-8 border-t border-gray-700">
+                <div className="mt-12 pt-8 border-t border-gray-700">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
                     <Star className="text-yellow-400" size={20} /> More Like This
                   </h3>
                   <div className="flex gap-4 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
-                                        {relatedTitles.map((rel: any) => (
+                    {relatedTitles.map((rel: any) => (
                       <div
                         key={rel.id}
                         onClick={() => {
@@ -1164,7 +1274,7 @@ useEffect(() => {
                             tmdb_id: rel.id,
                             tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
                             poster_path: rel.poster_path,
-                            fromPremium: tab === 'premium'
+                            fromPremium: selectedTitle.fromPremium
                           });
                         }}
                         className="snap-start flex-shrink-0 w-28 cursor-pointer group"
@@ -1178,7 +1288,6 @@ useEffect(() => {
                               className="object-cover group-hover:scale-105 transition-transform"
                               sizes="112px"
                               quality={75}
-                              loading="lazy"
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-700 flex items-center justify-center">
