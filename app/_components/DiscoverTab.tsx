@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { Film, Loader2, MonitorPlay, Heart, Filter, X, ArrowUp } from 'lucide-react';
+import { Film, Loader2, MonitorPlay, Heart, Filter, X } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 
 interface DiscoverTabProps {
@@ -57,7 +57,6 @@ export default function DiscoverTab({
   const [page, setPage] = useState(1);
   const [selectedGenre, setSelectedGenre] = useState('');
   const [isUsingFallback, setIsUsingFallback] = useState(false);
-  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -82,18 +81,7 @@ export default function DiscoverTab({
       setHasMore(true);
     }
   }, [debouncedSearch]);
-
-  // Back to Top visibility
-  useEffect(() => {
-    const handleScroll = () => setShowBackToTop(window.scrollY > 600);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
+  
   // Initial fetch
   useEffect(() => {
     const fetchData = async () => {
@@ -607,17 +595,6 @@ export default function DiscoverTab({
             {!hasMore && <p className="text-center text-gray-400 py-12">End of results • Try a different search or filter</p>}
           </div>
         </section>
-      )}
-
-      {/* Floating Back to Top Button */}
-      {showBackToTop && (
-        <button
-          onClick={scrollToTop}
-          aria-label="Scroll back to top"
-          className="fixed bottom-24 right-8 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-2xl transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-blue-300"
-        >
-          <ArrowUp size={24} />
-        </button>
       )}
     </>
   );
