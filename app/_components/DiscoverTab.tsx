@@ -507,13 +507,13 @@ export default function DiscoverTab({
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
 
                                                       return (
-                    <button
+                                        <button
                       key={title.id}
                       onClick={() => setSelectedTitle(title)}
-                      className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative text-left"
+                      className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative flex flex-col h-full text-left"
                       aria-label={`View free sources for ${title.title} (${title.year})`}
                     >
-                      <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
+                      <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden flex-shrink-0">
                         {title.poster_path ? (
                           <Image
                             src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
@@ -528,7 +528,6 @@ export default function DiscoverTab({
                         ) : (
                           <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
                         )}
-
                         {/* Hover overlay — now fully accessible */}
                         <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3">
                           <button
@@ -539,28 +538,28 @@ export default function DiscoverTab({
                             <Heart size={28} className={isFavorite ? "fill-red-500" : ""} />
                           </button>
                           <div className="flex gap-5">
-                            <button 
+                            <button
                               onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); alert('Link copied!'); }}
                               aria-label="Copy link"
                               className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
                             >
                               📋
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }}
                               aria-label="Share on X"
                               className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
                             >
                               𝕏
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => { e.stopPropagation(); window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank'); }}
                               aria-label="Share on Facebook"
                               className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
                             >
                               📘
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank'); }}
                               aria-label="Share on WhatsApp"
                               className="text-white hover:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-2xl"
@@ -570,11 +569,11 @@ export default function DiscoverTab({
                           </div>
                         </div>
                       </div>
-                      <div className="p-4">
+                      <div className="p-4 flex-1 flex flex-col justify-end">
                         <h4 className="font-semibold text-lg line-clamp-2 mb-1 group-hover:text-blue-300 transition-colors">{title.title}</h4>
                         <p className="text-gray-400 text-sm">{title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}</p>
                         <button
-                          className="mt-4 w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
+                          className="mt-auto w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-2 rounded-lg font-medium transition-all"
                           onClick={(e) => { e.stopPropagation(); setSelectedTitle(title); }}
                         >
                           View Free Sources
