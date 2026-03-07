@@ -244,47 +244,77 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     fetchRichData();
   }, [selectedTitle]);
 
-      // === SOURCES WITH 24h CACHE + LAST UPDATED TIMESTAMP ===
-  useEffect(() => {
-    if (!selectedTitle) {
+      // === SOURCES WITH 24h CACHE + LAST UPDATED TIMESTAMP (now shows FREE + PAID in Premium) ===
+useEffect(() => {
+  if (!selectedTitle) {
+    setSources([]);
+    setSourcesLoading(false);
+    setSourcesLastUpdated('');
+    return;
+  }
+
+  const fetchSources = async () => {
+    setSourcesLoading(true);
+    let watchmodeId = selectedTitle.id;
+    if (!watchmodeId && selectedTitle.tmdb_id) {
+      watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
+    }
+    if (!watchmodeId) {
       setSources([]);
       setSourcesLoading(false);
-      setSourcesLastUpdated('');
       return;
     }
-    const fetchSources = async () => {
-      setSourcesLoading(true);
-      let watchmodeId = selectedTitle.id;
-      if (!watchmodeId && selectedTitle.tmdb_id) {
-        watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
-      }
-      if (!watchmodeId) {
-        setSources([]);
+
+    const cacheKey = `sources_${watchmodeId}_${region}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000;
+      if (!isExpired) {
+        setSources(data);
+        setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
         setSourcesLoading(false);
         return;
       }
+    }
 
-      const cacheKey = `sources_${watchmodeId}_${region}`;
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached);
-        const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000;
-        if (!isExpired) {
-          setSources(data);
-          setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
-          setSourcesLoading(false);
-          return;
-        }
+    try {
+      const isPremium = selectedTitle.fromPremium === true || tab === 'premium';
+
+      // Always fetch BOTH free and paid sources for Premium titles
+      let freeSources: any[] = [];
+      let paidSources: any[] = [];
+
+      // 1. Free sources
+      const freeRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
+      const freeJson = await freeRes.json();
+      freeSources = freeJson.success ? (freeJson.freeSources || freeJson.sources || []) : [];
+
+      // 2. Paid sources (only if this is a Premium title)
+      if (isPremium) {
+        const paidRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}&paid=true`);
+        const paidJson = await paidRes.json();
+        paidSources = paidJson.success ? (paidJson.paidSources || paidJson.sources || []) : [];
       }
 
-      try {
-        const isPremium = selectedTitle.fromPremium === true || tab === 'premium';
-        const paidParam = isPremium ? '&paid=true' : '';
-        const res = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}${paidParam}`);
-        const json = await res.json();
-        const sourcesData = json.success
-          ? (isPremium ? (json.paidSources || json.sources || []) : (json.freeSources || []))
-          : [];
+      // Combine: paid first, then free
+      const combinedSources = [...paidSources, ...freeSources];
+
+      const timestamp = Date.now();
+      localStorage.setItem(cacheKey, JSON.stringify({ data: combinedSources, timestamp }));
+
+      setSources(combinedSources);
+      setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
+    } catch (err) {
+      console.error('Sources fetch error:', err);
+      setSources([]);
+    } finally {
+      setSourcesLoading(false);
+    }
+  };
+
+  fetchSources();
+}, [selectedTitle, region, tab]);
 
         const timestamp = Date.now();
         localStorage.setItem(cacheKey, JSON.stringify({ data: sourcesData, timestamp }));
@@ -1266,9 +1296,9 @@ useEffect(() => {
               ) : sources.length > 0 ? (
                 <div className="space-y-5">
                   <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                    <MonitorPlay size={22} />
-                    {selectedTitle.fromPremium || tab === 'premium' ? '💎 Premium / Subscription Sources' : 'Free Streaming Options'}
-                  </h3>
+                   <MonitorPlay size={22} />
+                     {selectedTitle.fromPremium || tab === 'premium' ? '💎 Premium Sources' : 'Free Streaming Options'}
+                 </h3>
                   {sources.map((source: any, idx: number) => {
                     const { logoUrl, initials, color } = getProviderLogo(source.name);
                     return (
