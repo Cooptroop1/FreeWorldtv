@@ -8,23 +8,16 @@ interface GlobalSearchProps {
   setSearchQuery: (query: string) => void;
   onTitleSelect: (title: any) => void;
   region: string;
-  contentType: string;
 }
 
-export default function GlobalSearch({ 
-  searchQuery, 
-  setSearchQuery, 
-  onTitleSelect, 
-  region, 
-  contentType 
-}: GlobalSearchProps) {
+export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelect, region }: GlobalSearchProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Live autocomplete (debounced) — respects TV Shows switch
+  // Live autocomplete (debounced)
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
@@ -37,7 +30,7 @@ export default function GlobalSearch({
       setShowDropdown(true);
       try {
         const res = await fetch(
-          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&region=${region}&page=1&types=${encodeURIComponent(contentType)}`
+          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&region=${region}&page=1`
         );
         const json = await res.json();
         if (json.success && Array.isArray(json.titles)) {
@@ -52,7 +45,7 @@ export default function GlobalSearch({
       }
     }, 320);
     return () => clearTimeout(timer);
-  }, [searchQuery, region, contentType]);
+  }, [searchQuery, region]);
 
   // Click outside → close dropdown
   useEffect(() => {
@@ -92,6 +85,7 @@ export default function GlobalSearch({
           role="combobox"
           aria-expanded={showDropdown}
           aria-controls="search-suggestions"
+          aria-activedescendant=""
           placeholder="Search free movies & shows (min 3 letters)"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -129,22 +123,21 @@ export default function GlobalSearch({
                 onClick={() => handleSelect(title)}
                 className="flex items-center gap-4 px-5 py-3 hover:bg-gray-800 cursor-pointer transition-colors group"
               >
-                <div className="relative w-12 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-gray-700 bg-gray-800">
-                  <Image
-                    src={title.poster_path 
-                      ? `https://image.tmdb.org/t/p/w200${title.poster_path}` 
-                      : '/fallback-poster.jpg'}   // ← fallback (create this file or use any placeholder)
-                    alt={`${title.title} poster`}
-                    fill
-                    className="object-cover"
-                    sizes="48px"
-                    loading="lazy"
-                    quality={75}
-                    onError={(e) => {
-                      // Silent fallback if TMDB image is missing
-                      (e.target as HTMLImageElement).src = '/fallback-poster.jpg';
-                    }}
-                  />
+                <div className="relative w-12 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-gray-700">
+                  {title.poster_path ? (
+                    <Image
+                      src={`https://image.tmdb.org/t/p/w200${title.poster_path}`}
+                      alt={`${title.title} poster`}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                      <Search size={18} className="text-gray-600" />
+                    </div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white group-hover:text-blue-400 transition-colors line-clamp-1">
