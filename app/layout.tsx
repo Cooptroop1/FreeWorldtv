@@ -4,9 +4,9 @@ import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'FreeStream World - Free Movies, TV Shows & Live TV (Legal)',
-  description: 'Discover 100% legal free streaming movies, TV shows and live UK TV channels. No sign-up needed. Powered by Watchmode & TMDB.',
-  keywords: ['free streaming', 'legal free movies', 'free TV shows', 'tubi', 'pluto tv', 'bbc iplayer', 'free live tv', 'watch free movies'],
+  title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio (Legal)',
+  description: '100% legal free movies, TV shows, live channels and 50,000+ worldwide radio stations. Direct links to Tubi, Pluto TV, BBC iPlayer, ITVX and more. No sign-up needed.',
+  keywords: ['free streaming', 'legal free movies', 'free TV shows', 'tubi', 'pluto tv', 'bbc iplayer', 'free live tv', 'free radio', 'internet radio', 'live radio stations', 'worldwide radio'],
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
     title: 'FreeStream World',
   },
   openGraph: {
-    title: 'FreeStream World - Free Legal Movies & TV Shows',
-    description: 'Watch completely free movies, TV shows & live TV legally from Tubi, Pluto TV, BBC iPlayer and more. No signup. No fees.',
+    title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio',
+    description: 'Watch completely free movies, TV shows, live TV and 50,000+ radio stations legally. No signup. No fees.',
     url: 'https://freestreamworld.com',
     siteName: 'FreeStream World',
     images: [
@@ -43,15 +43,14 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'FreeStream World - Watch Free Movies & TV Legally',
-    description: '100% legal free streaming. Thousands of movies, shows & live channels. No signup needed.',
+    title: 'FreeStream World - Watch Free Movies, TV & Radio Legally',
+    description: '100% legal free streaming including movies, live TV and worldwide radio stations.',
     images: ['https://freestreamworld.com/og-image.jpg'],
   },
   robots: {
     index: true,
     follow: true,
   },
-  
 };
 
 export const viewport: Viewport = {
@@ -70,8 +69,6 @@ export default function RootLayout({
             <head>
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
-
-        {/* Dynamic Canonical – now handled correctly in Tabs.tsx */}
         {/* Structured Data */}
         <script
           type="application/ld+json"
@@ -84,7 +81,7 @@ export default function RootLayout({
                   "name": "FreeStream World",
                   "url": "https://freestreamworld.com",
                   "logo": "https://freestreamworld.com/logo.png",
-                  "description": "100% legal free streaming discovery site",
+                  "description": "100% legal free streaming discovery site with movies, live TV and radio",
                 },
                 {
                   "@type": "WebSite",
@@ -100,7 +97,6 @@ export default function RootLayout({
             })
           }}
         />
-
         {/* Service Worker */}
         <script
           dangerouslySetInnerHTML={{
@@ -127,7 +123,7 @@ export default function RootLayout({
         </main>
         <SpeedInsights />
         <Analytics />
-        
+       
         {/* Google AdSense */}
         <script
           async
