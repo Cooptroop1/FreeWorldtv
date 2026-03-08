@@ -1,4 +1,5 @@
 
+
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     console.error('Auto-refresh check failed (continuing):', e);
   }
 
-  // === FAST PATH: Use full catalog snapshot if available ===
+    // === FAST PATH: Use full catalog snapshot if available (kept from your old file) ===
   try {
     const fullCatalog = await kv.get('full_free_catalog');
     if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres && !paid) {
@@ -47,10 +48,10 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     console.error('Full catalog read failed (continuing):', e);
   }
-
   // === Regular cache for search or filtered results ===
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
   const cacheTTL = query ? 1800 : 86400;
+
   try {
     const cached = await kv.get(cacheKey);
     if (cached) return NextResponse.json({ success: true, ...cached, fromCache: true });
@@ -58,12 +59,10 @@ export async function GET(request: NextRequest) {
     console.error('KV read failed (continuing):', e);
   }
 
-    // === Normal Watchmode API call (FIXED for search + TV shows) ===
+    // === Normal Watchmode API call ===
   let apiUrl = '';
   if (query) {
-    // Convert tv_series → tv for the search endpoint (Watchmode requirement)
-    const searchTypes = types.includes('tv_series') ? 'tv' : types;
-    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&types=${searchTypes}&page=${page}&limit=48`;
+    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
   } else {
     const sourceType = paid ? 'sub' : 'free';
     apiUrl = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=${sourceType}&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
@@ -75,6 +74,7 @@ export async function GET(request: NextRequest) {
     if (!res.ok) throw new Error(`Watchmode ${res.status}`);
     const raw = await res.json();
     const titles = raw.titles || raw.results || [];
+
     const normalized = {
       titles,
       region,
@@ -82,6 +82,7 @@ export async function GET(request: NextRequest) {
       message: query ? `Free results for "${query}"` : `Popular free titles in ${region}`,
       fromCache: false,
     };
+
     await kv.set(cacheKey, normalized, { ex: cacheTTL });
     return NextResponse.json({ success: true, ...normalized });
   } catch (error) {
