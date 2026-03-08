@@ -427,7 +427,7 @@ useEffect(() => {
     };
     fetchPosters();
   }, [premiumTitles, tab, TMDB_READ_TOKEN]);
-        // === INFINITE SCROLL FOR PREMIUM TAB (fixed) ===
+            // === INFINITE SCROLL FOR PREMIUM TAB ===
     const loadMorePremium = async () => {
       if (premiumLoadingMore || !premiumHasMore) return;
       setPremiumLoadingMore(true);
@@ -446,9 +446,8 @@ useEffect(() => {
       }
     };
 
-    useEffect(() => {
+        useEffect(() => {
       if (tab !== 'premium') return;
-
       const observer = new IntersectionObserver(
         (entries) => {
           if (entries[0].isIntersecting && premiumHasMore && !premiumLoadingMore) {
@@ -457,10 +456,8 @@ useEffect(() => {
         },
         { threshold: 0.5 }
       );
-
       const sentinel = document.getElementById('premium-sentinel');
       if (sentinel) observer.observe(sentinel);
-
       return () => observer.disconnect();
     }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType]);
 
