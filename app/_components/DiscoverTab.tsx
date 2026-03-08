@@ -342,12 +342,12 @@ export default function DiscoverTab({
             <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden" role="img" aria-label={`${filteredTitles[0].title} hero background`}>
               {filteredTitles[0].poster_path ? (
                 <Image
-                  src={`https://image.tmdb.org/t/p/w1280${filteredTitles[0].poster_path}`}
+                  src={`https://image.tmdb.org/t/p/w780${filteredTitles[0].poster_path}`}
                   alt={`${filteredTitles[0].title} hero`}
                   fill
                   className="object-cover brightness-75"
                   priority
-                  quality={90}
+                  quality={75}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
