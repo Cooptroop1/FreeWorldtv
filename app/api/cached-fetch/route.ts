@@ -13,56 +13,38 @@ export async function GET(request: NextRequest) {
   const genres = searchParams.get('genres') || '';
   const paid = searchParams.get('paid') === 'true';
 
-  // === AUTO-REFRESH: First visitor after 24h triggers full snapshot ===
+  // === AUTO-REFRESH ===
   try {
     const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
     const now = Date.now();
     if (now - lastFullRefresh > 24 * 60 * 60 * 1000 && !query && !genres) {
-      console.log('🕒 24h expired → first visitor triggering full snapshot in background...');
       const host = request.headers.get('host');
-      fetch(`https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}`, {
-        cache: 'no-store'
-      }).catch(() => {});
+      fetch(`https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}`, { cache: 'no-store' }).catch(() => {});
     }
-  } catch (e) {
-    console.error('Auto-refresh check failed (continuing):', e);
-  }
+  } catch (e) {}
 
-  // === FAST PATH: Use full catalog snapshot if available ===
+  // === FULL CATALOG CACHE ===
   try {
     const fullCatalog = await kv.get('full_free_catalog');
     if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres && !paid) {
       const start = (page - 1) * 48;
       const pagedTitles = fullCatalog.slice(start, start + 48);
-      return NextResponse.json({
-        success: true,
-        titles: pagedTitles,
-        region,
-        totalPages: Math.ceil(fullCatalog.length / 48),
-        fromCache: true,
-        message: 'Loaded from full catalog cache'
-      });
+      return NextResponse.json({ success: true, titles: pagedTitles, region, totalPages: Math.ceil(fullCatalog.length / 48), fromCache: true });
     }
-  } catch (e) {
-    console.error('Full catalog read failed (continuing):', e);
-  }
+  } catch (e) {}
 
-  // === Regular cache for search or filtered results ===
+  // === REGULAR CACHE ===
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
-  const cacheTTL = query ? 1800 : 86400;
   try {
     const cached = await kv.get(cacheKey);
     if (cached) return NextResponse.json({ success: true, ...cached, fromCache: true });
-  } catch (e) {
-    console.error('KV read failed (continuing):', e);
-  }
+  } catch (e) {}
 
-  // === Normal Watchmode API call (FINAL FIX for search + TV shows) ===
+  // === WATCHMODE API CALL — FIXED & SIMPLIFIED ===
   let apiUrl = '';
   if (query) {
-    // Search always looks in BOTH movies + TV (best UX — users expect to find "Bones" instantly)
-    // We ignore the types switch for the search bar (main Discover grid still respects it)
-    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&types=movie,tv&page=${page}&limit=48`;
+    // Search bar now ALWAYS searches BOTH movies + TV (best UX — finds "Bones" instantly)
+    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
   } else {
     const sourceType = paid ? 'sub' : 'free';
     apiUrl = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=${sourceType}&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
@@ -74,14 +56,16 @@ export async function GET(request: NextRequest) {
     if (!res.ok) throw new Error(`Watchmode ${res.status}`);
     const raw = await res.json();
     const titles = raw.titles || raw.results || [];
+    
     const normalized = {
       titles,
       region,
       totalPages: Math.max(1, Math.ceil((raw.total_results || raw.total_pages || titles.length) / 48)),
-      message: query ? `Free results for "${query}"` : `Popular free titles in ${region}`,
+      message: query ? `Results for "${query}"` : `Popular titles in ${region}`,
       fromCache: false,
     };
-    await kv.set(cacheKey, normalized, { ex: cacheTTL });
+
+    await kv.set(cacheKey, normalized, { ex: query ? 1800 : 86400 });
     return NextResponse.json({ success: true, ...normalized });
   } catch (error) {
     console.error('Watchmode fetch error:', error);
