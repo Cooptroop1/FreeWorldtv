@@ -5,12 +5,15 @@ import { useState, useEffect, useRef } from 'react';
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showBanner, setShowBanner] = useState(false);
-  
-  // Prevent duplicate listeners and remember across route changes
   const hasShownRef = useRef(false);
 
   useEffect(() => {
-    // Check if we've already shown it this session (hard refresh resets it)
+    // Never show again if user already installed it (even after closing browser)
+    if (localStorage.getItem('pwaInstalled') === 'true') {
+      return;
+    }
+
+    // Don't spam in the same session if they clicked "Later"
     if (sessionStorage.getItem('pwaPromptShown') === 'true') {
       return;
     }
@@ -19,34 +22,34 @@ export default function InstallPrompt() {
       e.preventDefault();
       setDeferredPrompt(e);
       
-      // Show only once per session
       if (!hasShownRef.current) {
         hasShownRef.current = true;
         setShowBanner(true);
-        sessionStorage.setItem('pwaPromptShown', 'true');
       }
     };
 
-    // Add listener only once
     window.addEventListener('beforeinstallprompt', handler);
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
+    
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
+    
     if (outcome === 'accepted') {
-      setShowBanner(false);
+      localStorage.setItem('pwaInstalled', 'true'); // Never show again — ever
     }
+    
+    setShowBanner(false);
     setDeferredPrompt(null);
   };
 
   const handleLater = () => {
     setShowBanner(false);
+    sessionStorage.setItem('pwaPromptShown', 'true');
   };
 
   if (!showBanner) return null;
