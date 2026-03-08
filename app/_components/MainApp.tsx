@@ -427,39 +427,42 @@ useEffect(() => {
     };
     fetchPosters();
   }, [premiumTitles, tab, TMDB_READ_TOKEN]);
-    // === INFINITE SCROLL FOR PREMIUM TAB ===
+        // === INFINITE SCROLL FOR PREMIUM TAB (fixed) ===
     const loadMorePremium = async () => {
-    if (premiumLoadingMore || !premiumHasMore || pauseInfiniteScroll) return;
-    setPremiumLoadingMore(true);
-    try {
-      const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${premiumPage + 1}&paid=true`);
-      const json = await res.json();
-      const newTitles = json.success && json.titles?.length ? json.titles : [];
-      const enrichedNewTitles = newTitles.map((t: any) => ({ ...t, fromPremium: true }));
-      setPremiumTitles(prev => [...prev, ...enrichedNewTitles]);
-      setPremiumPage(prev => prev + 1);
-      setPremiumHasMore(enrichedNewTitles.length >= 48);
-    } catch {
-      setPremiumHasMore(false);
-    } finally {
-      setPremiumLoadingMore(false);
-    }
-  };
+      if (premiumLoadingMore || !premiumHasMore) return;
+      setPremiumLoadingMore(true);
+      try {
+        const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${premiumPage + 1}&paid=true`);
+        const json = await res.json();
+        const newTitles = json.success && json.titles?.length ? json.titles : [];
+        const enrichedNewTitles = newTitles.map((t: any) => ({ ...t, fromPremium: true }));
+        setPremiumTitles(prev => [...prev, ...enrichedNewTitles]);
+        setPremiumPage(prev => prev + 1);
+        setPremiumHasMore(enrichedNewTitles.length >= 48);
+      } catch {
+        setPremiumHasMore(false);
+      } finally {
+        setPremiumLoadingMore(false);
+      }
+    };
 
     useEffect(() => {
-    if (tab !== 'premium') return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && premiumHasMore && !premiumLoadingMore && !pauseInfiniteScroll) {
-          loadMorePremium();
-        }
-      },
-      { threshold: 0.5 }
-    );
-    const sentinel = document.getElementById('premium-sentinel');
-    if (sentinel) observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType, pauseInfiniteScroll]);
+      if (tab !== 'premium') return;
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && premiumHasMore && !premiumLoadingMore) {
+            loadMorePremium();
+          }
+        },
+        { threshold: 0.5 }
+      );
+
+      const sentinel = document.getElementById('premium-sentinel');
+      if (sentinel) observer.observe(sentinel);
+
+      return () => observer.disconnect();
+    }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType]);
 
             // === RADIO STATIONS (search + country filter — safe & separate) ===
   useEffect(() => {
