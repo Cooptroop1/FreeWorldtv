@@ -56,8 +56,8 @@ const genres = [
   { id: 53, name: 'Thriller' }, { id: 10752, name: 'War' }, { id: 37, name: 'Western' },
 ];
 
-export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' }) {
-  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium'>('discover');
+export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' }) {
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio'>(defaultTab);
   const [region, setRegion] = useState('US');
   const [contentType, setContentType] = useState('movie,tv_series');
   const [searchQuery, setSearchQuery] = useState('');
@@ -86,6 +86,10 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [premiumLoading, setPremiumLoading] = useState(false);
   const [premiumPage, setPremiumPage] = useState(1);
   const [premiumHasMore, setPremiumHasMore] = useState(true);
+    // === RADIO SECTION (new, doesn't touch anything else) ===
+  const [radioStations, setRadioStations] = useState<any[]>([]);
+  const [radioLoading, setRadioLoading] = useState(false);
+  const [selectedRadio, setSelectedRadio] = useState<any>(null);
   const [premiumLoadingMore, setPremiumLoadingMore] = useState(false);
   const [pauseInfiniteScroll, setPauseInfiniteScroll] = useState(false);
   const [showPauseToast, setShowPauseToast] = useState(false);
@@ -100,7 +104,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const pathname = usePathname();
   const router = useRouter();
 
-  const getTabFromPath = (path: string) => {
+    const getTabFromPath = (path: string) => {
     switch (path) {
       case '/discover': return 'discover';
       case '/live-tv': return 'live';
@@ -108,18 +112,19 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
       case '/favorites': return 'favorites';
       case '/top-10': return 'top10';
       case '/premium': return 'premium';
+      case '/radio': return 'radio';           // ← new
       default: return defaultTab;
     }
   };
 
-  const handleTabChange = (newTab: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium') => {
+    const handleTabChange = (newTab: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio') => {
     let newPath = '/discover';
     if (newTab === 'live') newPath = '/live-tv';
     else if (newTab === 'mylinks') newPath = '/my-links';
     else if (newTab === 'top10') newPath = '/top-10';
     else if (newTab === 'favorites') newPath = '/favorites';
     else if (newTab === 'premium') newPath = '/premium';
-
+    else if (newTab === 'radio') newPath = '/radio';   // ← new
     setTab(newTab);
     router.push(newPath, { scroll: false });
   };
@@ -454,6 +459,30 @@ useEffect(() => {
     return () => observer.disconnect();
   }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType, pauseInfiniteScroll]);
 
+    // === RADIO STATIONS (50,000+ worldwide — safe & separate) ===
+  useEffect(() => {
+    if (tab !== 'radio') {
+      setRadioStations([]);
+      return;
+    }
+    const fetchRadio = async () => {
+      setRadioLoading(true);
+      try {
+        const res = await fetch(
+          'https://api.radio-browser.info/json/stations/search?limit=100&order=votes&reverse=true&hidebroken=true'
+        );
+        const data = await res.json();
+        setRadioStations(Array.isArray(data) ? data.slice(0, 100) : []);
+      } catch (err) {
+        console.error('Radio fetch error:', err);
+        setRadioStations([]);
+      } finally {
+        setRadioLoading(false);
+      }
+    };
+    fetchRadio();
+  }, [tab]);
+
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
 useEffect(() => {
   if (!top10Titles?.length || !TMDB_READ_TOKEN || tab !== 'top10') return;
@@ -684,6 +713,15 @@ const deduplicateSources = (sources: any[]) => {
           </button>
           <button
             role="tab"
+            aria-selected={tab === 'radio'}
+            onClick={() => handleTabChange('radio')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'radio' ? 'border-b-4 border-orange-500 text-orange-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'radio' ? 'page' : undefined}
+          >
+            📻 Radio
+          </button>
+          <button
+            role="tab"
             aria-selected={tab === 'mylinks'}
             onClick={() => handleTabChange('mylinks')}
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'mylinks' ? 'border-b-4 border-purple-500 text-purple-400' : 'text-gray-400 hover:text-white'}`}
@@ -900,6 +938,56 @@ const deduplicateSources = (sources: any[]) => {
         </section>
       )}
 
+            {/* RADIO TAB — 50,000+ worldwide stations (completely separate) */}
+      {tab === 'radio' && (
+        <section className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+            📻 Worldwide Radio
+          </h2>
+          <p className="text-yellow-400 mb-6 text-center text-sm">50,000+ real stations • Free • Legal • No sign-up</p>
+          
+          {radioLoading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="w-10 h-10 animate-spin text-orange-500 mb-4" />
+              <p className="text-xl">Loading stations...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+              {radioStations.map((station: any, index: number) => (
+                <div
+                  key={index}
+                  onClick={() => setSelectedRadio(station)}
+                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm flex flex-col"
+                >
+                  <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
+                    {station.favicon ? (
+                      <img 
+                        src={station.favicon} 
+                        alt={station.name} 
+                        className="w-20 h-20 object-contain" 
+                      />
+                    ) : (
+                      <Radio className="w-16 h-16 text-orange-500 group-hover:text-orange-400 transition-colors" />
+                    )}
+                  </div>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-orange-300 transition-colors">
+                      {station.name}
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4 line-clamp-1">
+                      {station.country || 'Worldwide'} • {station.tags ? station.tags.split(',').slice(0,2).join(' • ') : 'Music'}
+                    </p>
+                    <button className="mt-auto w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-3 rounded-lg font-medium transition-all">
+                      Play Live Radio
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+      
       {/* LIVE TV TAB — IMPROVED WITH WATCHMODE FREE SERVICES */}
 {tab === 'live' && (
   <section className="max-w-7xl mx-auto">
@@ -1132,6 +1220,36 @@ const deduplicateSources = (sources: any[]) => {
         </div>
       )}
 
+            {/* RADIO PLAYER MODAL (simple audio — doesn't touch video player) */}
+      {selectedRadio && (
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
+            <div className="flex justify-between items-center p-5 border-b border-gray-800">
+              <h2 className="text-2xl font-bold flex items-center gap-3">
+                📻 {selectedRadio.name}
+              </h2>
+              <button onClick={() => setSelectedRadio(null)} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
+            </div>
+            <div className="p-8">
+              {selectedRadio.favicon && (
+                <div className="mx-auto mb-6 w-24 h-24 bg-gray-800 rounded-2xl flex items-center justify-center overflow-hidden">
+                  <img src={selectedRadio.favicon} alt={selectedRadio.name} className="max-w-full max-h-full object-contain" />
+                </div>
+              )}
+              <audio
+                controls
+                autoPlay
+                className="w-full"
+                src={selectedRadio.url_resolved || selectedRadio.url}
+              />
+              <p className="text-center text-gray-400 text-sm mt-4">
+                {selectedRadio.country} • {selectedRadio.tags || 'Live Radio'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* FILTERS MODAL — NOW FULLY ACCESSIBLE */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
