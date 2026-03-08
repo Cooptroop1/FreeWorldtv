@@ -57,12 +57,12 @@ export async function GET(request: NextRequest) {
     console.error('KV read failed (continuing):', e);
   }
 
-    // === Normal Watchmode API call (FIXED for search + TV shows) ===
+  // === Normal Watchmode API call (FINAL FIX for search + TV shows) ===
   let apiUrl = '';
   if (query) {
-    // Convert tv_series → tv for the search endpoint (Watchmode requirement)
-    const searchTypes = types.includes('tv_series') ? 'tv' : types;
-    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&types=${searchTypes}&page=${page}&limit=48`;
+    // Search always looks in BOTH movies + TV (best UX — users expect to find "Bones" instantly)
+    // We ignore the types switch for the search bar (main Discover grid still respects it)
+    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&types=movie,tv&page=${page}&limit=48`;
   } else {
     const sourceType = paid ? 'sub' : 'free';
     apiUrl = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=${sourceType}&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
