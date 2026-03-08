@@ -57,11 +57,12 @@ export async function GET(request: NextRequest) {
     console.error('KV read failed (continuing):', e);
   }
 
-  // === Normal Watchmode API call (FIXED for search + TV shows) ===
+    // === Normal Watchmode API call (FIXED for search + TV shows) ===
   let apiUrl = '';
   if (query) {
-    // FIXED: Now respects movie / tv_series switch when searching
-    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&types=${types}&page=${page}&limit=48`;
+    // Convert tv_series → tv for the search endpoint (Watchmode requirement)
+    const searchTypes = types.includes('tv_series') ? 'tv' : types;
+    apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&types=${searchTypes}&page=${page}&limit=48`;
   } else {
     const sourceType = paid ? 'sub' : 'free';
     apiUrl = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=${sourceType}&regions=${region}&types=${types}&sort_by=popularity_desc&page=${page}&limit=48`;
