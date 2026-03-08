@@ -6,14 +6,14 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET || 'FreeStreamWorld2026';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('query')?.trim().toLowerCase();
+  const query = searchParams.get('query')?.trim();
   const region = (searchParams.get('region') || 'US').toUpperCase();
   const types = searchParams.get('types') || 'movie,tv_series';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
   const paid = searchParams.get('paid') === 'true';
 
-  // === AUTO-REFRESH (kept) ===
+  // === AUTO-REFRESH ===
   try {
     const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
     const now = Date.now();
@@ -23,30 +23,44 @@ export async function GET(request: NextRequest) {
     }
   } catch (e) {}
 
-  // === SEARCH: Use snapshot + in-memory filter (THIS IS THE FIX) ===
+  // === REAL NEW RELEASES: compare today vs yesterday ===
+  let newReleases: any[] = [];
+  try {
+    const todaySnapshot = await kv.get<any[]>('full_free_catalog');
+    const yesterdaySnapshot = await kv.get<any[]>('full_free_catalog_yesterday');
+
+    if (Array.isArray(todaySnapshot) && Array.isArray(yesterdaySnapshot)) {
+      const yesterdayIds = new Set(yesterdaySnapshot.map(t => t.id));
+      newReleases = todaySnapshot
+        .filter(t => !yesterdayIds.has(t.id))
+        .slice(0, 20);
+    }
+  } catch (e) {
+    console.error('New releases comparison failed:', e);
+  }
+
+  // === SEARCH: use snapshot first ===
   if (query) {
     try {
       const fullCatalog = await kv.get<any[]>('full_free_catalog');
       if (Array.isArray(fullCatalog) && fullCatalog.length > 0) {
         const filtered = fullCatalog
-          .filter(t => t.title?.toLowerCase().includes(query))
+          .filter(t => t.title?.toLowerCase().includes(query.toLowerCase()))
           .slice(0, 48);
-
         return NextResponse.json({
           success: true,
           titles: filtered,
+          newReleases,
           region,
           totalPages: 1,
           fromCache: true,
           message: `Snapshot search for "${query}"`
         });
       }
-    } catch (e) {
-      console.error('Snapshot search failed:', e);
-    }
+    } catch (e) {}
   }
 
-  // === FAST PATH: Full catalog for normal browsing ===
+  // === FAST PATH: full catalog for normal browsing ===
   try {
     const fullCatalog = await kv.get('full_free_catalog');
     if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres && !paid) {
@@ -55,6 +69,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         titles: pagedTitles,
+        newReleases,
         region,
         totalPages: Math.ceil(fullCatalog.length / 48),
         fromCache: true
@@ -62,14 +77,14 @@ export async function GET(request: NextRequest) {
     }
   } catch (e) {}
 
-  // === Regular cache & fallback (kept) ===
+  // === Regular cache & fallback ===
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
   try {
     const cached = await kv.get(cacheKey);
     if (cached) return NextResponse.json({ success: true, ...cached, fromCache: true });
   } catch (e) {}
 
-  // === Only call live API as last resort (for sources/links we already cache) ===
+  // === Live API fallback (only for sources/links) ===
   let apiUrl = '';
   if (query) {
     apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
@@ -86,6 +101,7 @@ export async function GET(request: NextRequest) {
     const titles = raw.titles || raw.results || [];
     const normalized = {
       titles,
+      newReleases,
       region,
       totalPages: Math.max(1, Math.ceil((raw.total_results || raw.total_pages || titles.length) / 48)),
       message: query ? `Results for "${query}"` : `Popular titles in ${region}`,
