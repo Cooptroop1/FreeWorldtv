@@ -1,4 +1,4 @@
-// public/sw.js - v6 (safe version — won't break on missing files)
+ // public/sw.js - v6 (safe version — won't break on missing files)
 const CACHE_NAME = 'freestreamworld-v6';
 const urlsToCache = [
   '/',
