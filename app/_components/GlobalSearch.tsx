@@ -8,16 +8,23 @@ interface GlobalSearchProps {
   setSearchQuery: (query: string) => void;
   onTitleSelect: (title: any) => void;
   region: string;
+  contentType: string;          // ← NEW: respects Movies / TV Shows switch
 }
 
-export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelect, region }: GlobalSearchProps) {
+export default function GlobalSearch({ 
+  searchQuery, 
+  setSearchQuery, 
+  onTitleSelect, 
+  region, 
+  contentType 
+}: GlobalSearchProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Live autocomplete (debounced)
+  // Live autocomplete (debounced) — now respects contentType
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
@@ -30,7 +37,7 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
       setShowDropdown(true);
       try {
         const res = await fetch(
-          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&region=${region}&page=1`
+          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&region=${region}&page=1&types=${encodeURIComponent(contentType)}`
         );
         const json = await res.json();
         if (json.success && Array.isArray(json.titles)) {
@@ -45,7 +52,7 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
       }
     }, 320);
     return () => clearTimeout(timer);
-  }, [searchQuery, region]);
+  }, [searchQuery, region, contentType]);
 
   // Click outside → close dropdown
   useEffect(() => {
@@ -132,6 +139,7 @@ export default function GlobalSearch({ searchQuery, setSearchQuery, onTitleSelec
                       className="object-cover"
                       sizes="48px"
                       loading="lazy"
+                      quality={75}
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-800 flex items-center justify-center">
