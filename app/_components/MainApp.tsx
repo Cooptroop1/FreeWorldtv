@@ -90,6 +90,8 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [radioStations, setRadioStations] = useState<any[]>([]);
   const [radioLoading, setRadioLoading] = useState(false);
   const [selectedRadio, setSelectedRadio] = useState<any>(null);
+  const [radioSearch, setRadioSearch] = useState('');
+  const [radioCountryCode, setRadioCountryCode] = useState('');
   const [premiumLoadingMore, setPremiumLoadingMore] = useState(false);
   const [pauseInfiniteScroll, setPauseInfiniteScroll] = useState(false);
   const [showPauseToast, setShowPauseToast] = useState(false);
@@ -459,7 +461,7 @@ useEffect(() => {
     return () => observer.disconnect();
   }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType, pauseInfiniteScroll]);
 
-        // === RADIO STATIONS (50,000+ worldwide — safe & separate) ===
+            // === RADIO STATIONS (search + country filter — safe & separate) ===
   useEffect(() => {
     if (tab !== 'radio') {
       setRadioStations([]);
@@ -468,15 +470,20 @@ useEffect(() => {
     const fetchRadio = async () => {
       setRadioLoading(true);
       try {
-        // More reliable mirror server (the main one sometimes flakes on Vercel)
-        const res = await fetch(
-          'https://de1.api.radio-browser.info/json/stations/search?limit=80&order=votes&reverse=true&hidebroken=true'
-        );
+        let url = 'https://de1.api.radio-browser.info/json/stations/search?limit=120&order=votes&reverse=true&hidebroken=true';
+        
+        if (radioSearch.trim()) {
+          url += `&name=${encodeURIComponent(radioSearch.trim())}`;
+        }
+        if (radioCountryCode) {
+          url += `&countrycode=${radioCountryCode}`;
+        }
+
+        const res = await fetch(url);
         const data = await res.json();
 
-        // Use real data if it works, otherwise show 8 nice fallback stations
         if (Array.isArray(data) && data.length > 0) {
-          setRadioStations(data.slice(0, 80));
+          setRadioStations(data);
         } else {
           setRadioStations([
             { name: "BBC Radio 1", country: "United Kingdom", favicon: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/BBC_Radio_1_2023.svg/1280px-BBC_Radio_1_2023.svg.png", url_resolved: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one" },
@@ -491,18 +498,13 @@ useEffect(() => {
         }
       } catch (err) {
         console.error('Radio fetch error:', err);
-        // Fallback stations if API completely fails
-        setRadioStations([
-          { name: "BBC Radio 1", country: "United Kingdom", favicon: "", url_resolved: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one" },
-          { name: "NPR", country: "United States", favicon: "", url_resolved: "https://npr-ice.streamguys1.com/live.mp3" },
-          { name: "Radio Paradise", country: "Worldwide", favicon: "", url_resolved: "https://stream.radioparadise.com/mp3-192" }
-        ]);
+        setRadioStations([]);
       } finally {
         setRadioLoading(false);
       }
     };
     fetchRadio();
-  }, [tab]);
+  }, [tab, radioSearch, radioCountryCode]);
 
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
 useEffect(() => {
@@ -959,20 +961,48 @@ const deduplicateSources = (sources: any[]) => {
         </section>
       )}
 
-            {/* RADIO TAB — 50,000+ worldwide stations (completely separate) */}
+                  {/* RADIO TAB — with search + country filter */}
       {tab === 'radio' && (
         <section className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+          <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
             📻 Worldwide Radio
           </h2>
           <p className="text-yellow-400 mb-6 text-center text-sm">50,000+ real stations • Free • Legal • No sign-up</p>
-          
+
+          {/* Search & Country Filter */}
+          <div className="flex flex-col md:flex-row gap-4 mb-8 max-w-md mx-auto">
+            <input
+              type="text"
+              placeholder="Search station name (e.g. Radio 1)"
+              value={radioSearch}
+              onChange={(e) => setRadioSearch(e.target.value)}
+              className="flex-1 bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            <select
+              value={radioCountryCode}
+              onChange={(e) => setRadioCountryCode(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="">🌍 All Countries</option>
+              <option value="GB">🇬🇧 United Kingdom</option>
+              <option value="US">🇺🇸 United States</option>
+              <option value="AU">🇦🇺 Australia</option>
+              <option value="CA">🇨🇦 Canada</option>
+              <option value="DE">🇩🇪 Germany</option>
+              <option value="FR">🇫🇷 France</option>
+              <option value="IN">🇮🇳 India</option>
+              <option value="BR">🇧🇷 Brazil</option>
+              <option value="ES">🇪🇸 Spain</option>
+              <option value="IT">🇮🇹 Italy</option>
+            </select>
+          </div>
+
           {radioLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-orange-500 mb-4" />
               <p className="text-xl">Loading stations...</p>
             </div>
-          ) : (
+          ) : radioStations.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
               {radioStations.map((station: any, index: number) => (
                 <div
@@ -982,10 +1012,10 @@ const deduplicateSources = (sources: any[]) => {
                 >
                   <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
                     {station.favicon ? (
-                      <img 
-                        src={station.favicon} 
-                        alt={station.name} 
-                        className="w-20 h-20 object-contain" 
+                      <img
+                        src={station.favicon}
+                        alt={station.name}
+                        className="w-20 h-20 object-contain"
                       />
                     ) : (
                       <Radio className="w-16 h-16 text-orange-500 group-hover:text-orange-400 transition-colors" />
@@ -996,7 +1026,7 @@ const deduplicateSources = (sources: any[]) => {
                       {station.name}
                     </h3>
                     <p className="text-gray-400 text-sm mb-4 line-clamp-1">
-                      {station.country || 'Worldwide'} • {station.tags ? station.tags.split(',').slice(0,2).join(' • ') : 'Music'}
+                      {station.country || 'Worldwide'}
                     </p>
                     <button className="mt-auto w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-3 rounded-lg font-medium transition-all">
                       Play Live Radio
@@ -1004,6 +1034,10 @@ const deduplicateSources = (sources: any[]) => {
                   </div>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 text-xl text-gray-400">
+              No stations found. Try a different search or country.
             </div>
           )}
         </section>
