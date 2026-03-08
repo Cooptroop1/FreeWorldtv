@@ -1,22 +1,38 @@
 // app/_components/InstallPrompt.tsx
 'use client';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showBanner, setShowBanner] = useState(false);
+  
+  // Prevent duplicate listeners and remember across route changes
+  const hasShownRef = useRef(false);
 
   useEffect(() => {
+    // Check if we've already shown it this session (hard refresh resets it)
+    if (sessionStorage.getItem('pwaPromptShown') === 'true') {
+      return;
+    }
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setShowBanner(true);
+      
+      // Show only once per session
+      if (!hasShownRef.current) {
+        hasShownRef.current = true;
+        setShowBanner(true);
+        sessionStorage.setItem('pwaPromptShown', 'true');
+      }
     };
 
+    // Add listener only once
     window.addEventListener('beforeinstallprompt', handler);
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
   }, []);
 
   const handleInstall = async () => {
@@ -27,6 +43,10 @@ export default function InstallPrompt() {
       setShowBanner(false);
     }
     setDeferredPrompt(null);
+  };
+
+  const handleLater = () => {
+    setShowBanner(false);
   };
 
   if (!showBanner) return null;
@@ -42,7 +62,7 @@ export default function InstallPrompt() {
       </div>
       <div className="flex gap-3">
         <button
-          onClick={() => setShowBanner(false)}
+          onClick={handleLater}
           className="px-5 py-2 text-sm font-medium rounded-xl hover:bg-white/10 transition"
         >
           Later
