@@ -1,20 +1,20 @@
- // public/sw.js - v6 (safe version — won't break on missing files)
-const CACHE_NAME = 'freestreamworld-v6';
+// public/sw.js - v7 (faster activation + better assets)
+const CACHE_NAME = 'freestreamworld-v7';
+
 const urlsToCache = [
   '/',
   '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/manifest.json'
-  // /globals.css was removed — it doesn't exist as a static file in Next.js (it's bundled)
+  '/manifest.json',
+  '/og-image.jpg'   // for offline share previews
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Pre-caching static assets v6');
-        // Safe version: one file failing won't crash the whole service worker
+        console.log('[SW] Installing v7 - pre-caching assets');
         return Promise.allSettled(
           urlsToCache.map(url =>
             cache.add(url).catch(err => {
@@ -24,6 +24,7 @@ self.addEventListener('install', (event) => {
         );
       })
   );
+  self.skipWaiting(); // Activate immediately for faster updates
 });
 
 self.addEventListener('activate', (event) => {
@@ -37,14 +38,16 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
-// Network-First for APIs (stops scroll flicker & jump)
+// Network-First for APIs (critical for infinite scroll + sources modal)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
   const url = new URL(event.request.url);
+
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request)
@@ -57,6 +60,7 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+
   // Stale-While-Revalidate for everything else
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
