@@ -6,14 +6,14 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET || 'FreeStreamWorld2026';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('query')?.trim();
+  const query = searchParams.get('query')?.trim().toLowerCase();
   const region = (searchParams.get('region') || 'US').toUpperCase();
   const types = searchParams.get('types') || 'movie,tv_series';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const genres = searchParams.get('genres') || '';
   const paid = searchParams.get('paid') === 'true';
 
-  // === AUTO-REFRESH ===
+  // === AUTO-REFRESH (kept) ===
   try {
     const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
     const now = Date.now();
@@ -23,27 +23,55 @@ export async function GET(request: NextRequest) {
     }
   } catch (e) {}
 
-  // === FULL CATALOG CACHE ===
+  // === SEARCH: Use snapshot + in-memory filter (THIS IS THE FIX) ===
+  if (query) {
+    try {
+      const fullCatalog = await kv.get<any[]>('full_free_catalog');
+      if (Array.isArray(fullCatalog) && fullCatalog.length > 0) {
+        const filtered = fullCatalog
+          .filter(t => t.title?.toLowerCase().includes(query))
+          .slice(0, 48);
+
+        return NextResponse.json({
+          success: true,
+          titles: filtered,
+          region,
+          totalPages: 1,
+          fromCache: true,
+          message: `Snapshot search for "${query}"`
+        });
+      }
+    } catch (e) {
+      console.error('Snapshot search failed:', e);
+    }
+  }
+
+  // === FAST PATH: Full catalog for normal browsing ===
   try {
     const fullCatalog = await kv.get('full_free_catalog');
     if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres && !paid) {
       const start = (page - 1) * 48;
       const pagedTitles = fullCatalog.slice(start, start + 48);
-      return NextResponse.json({ success: true, titles: pagedTitles, region, totalPages: Math.ceil(fullCatalog.length / 48), fromCache: true });
+      return NextResponse.json({
+        success: true,
+        titles: pagedTitles,
+        region,
+        totalPages: Math.ceil(fullCatalog.length / 48),
+        fromCache: true
+      });
     }
   } catch (e) {}
 
-  // === REGULAR CACHE ===
+  // === Regular cache & fallback (kept) ===
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
   try {
     const cached = await kv.get(cacheKey);
     if (cached) return NextResponse.json({ success: true, ...cached, fromCache: true });
   } catch (e) {}
 
-  // === WATCHMODE API CALL — FIXED & SIMPLIFIED ===
+  // === Only call live API as last resort (for sources/links we already cache) ===
   let apiUrl = '';
   if (query) {
-    // Search bar now ALWAYS searches BOTH movies + TV (best UX — finds "Bones" instantly)
     apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
   } else {
     const sourceType = paid ? 'sub' : 'free';
@@ -56,7 +84,6 @@ export async function GET(request: NextRequest) {
     if (!res.ok) throw new Error(`Watchmode ${res.status}`);
     const raw = await res.json();
     const titles = raw.titles || raw.results || [];
-    
     const normalized = {
       titles,
       region,
@@ -64,11 +91,10 @@ export async function GET(request: NextRequest) {
       message: query ? `Results for "${query}"` : `Popular titles in ${region}`,
       fromCache: false,
     };
-
     await kv.set(cacheKey, normalized, { ex: query ? 1800 : 86400 });
     return NextResponse.json({ success: true, ...normalized });
   } catch (error) {
-    console.error('Watchmode fetch error:', error);
+    console.error('Watchmode fallback error:', error);
     return NextResponse.json({ success: false, error: 'Failed to load titles' });
   }
 }
