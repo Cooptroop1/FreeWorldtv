@@ -51,9 +51,7 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  alternates: {
-    canonical: 'https://freestreamworld.com',   // ← This is the correct way
-  },
+  
 };
 
 export const viewport: Viewport = {
@@ -69,11 +67,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <head>
+            <head>
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
 
-        {/* Structured Data - Organization + WebSite */}
+        {/* Dynamic Canonical – now handled correctly in Tabs.tsx */}
+        {/* Structured Data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -102,15 +101,13 @@ export default function RootLayout({
           }}
         />
 
-        {/* Service Worker Registration */}
+        {/* Service Worker */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker registered'))
-                    .catch(err => console.log('Service Worker registration failed:', err));
+                  navigator.serviceWorker.register('/sw.js');
                 });
               }
             `,
