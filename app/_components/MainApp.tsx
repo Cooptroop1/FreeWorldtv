@@ -564,6 +564,36 @@ useEffect(() => {
     color: 'from-indigo-500 to-purple-600'
   };
 };
+  // === DEDUPLICATE PREMIUM SOURCES — ONE PER PROVIDER + HD PREFERRED ===
+const deduplicateSources = (sources: any[]) => {
+  const map = new Map();
+
+  sources.forEach((source) => {
+    if (!source?.name) return;
+    const key = source.name.toLowerCase().trim();
+
+    const format = (source.format || '').toUpperCase();
+    let priority = 0;
+    if (format.includes('HD')) priority = 3;
+    else if (format.includes('SD')) priority = 2;
+    else if (format.includes('4K') || format.includes('UHD')) priority = 1;
+
+    const existing = map.get(key);
+    let existingPriority = 0;
+    if (existing) {
+      const exFormat = (existing.format || '').toUpperCase();
+      if (exFormat.includes('HD')) existingPriority = 3;
+      else if (exFormat.includes('SD')) existingPriority = 2;
+      else if (exFormat.includes('4K') || exFormat.includes('UHD')) existingPriority = 1;
+    }
+
+    if (!existing || priority > existingPriority) {
+      map.set(key, source);
+    }
+  });
+
+  return Array.from(map.values());
+};
   // Dynamic title
   useEffect(() => {
     let newTitle = 'FreeStream World - Free Movies, TV Shows & Live TV';
@@ -1281,14 +1311,14 @@ useEffect(() => {
                 <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : paidSources.length > 0 || freeSources.length > 0 ? (
                 <div className="space-y-8">
-                  {/* 💎 PREMIUM SOURCES */}
+                                    {/* 💎 PREMIUM SOURCES — deduplicated + HD only */}
                   {paidSources.length > 0 && (
                     <>
                       <h3 className="text-xl font-semibold flex items-center gap-2">
                         💎 Premium / Subscription Sources
                       </h3>
                       <div className="space-y-3">
-                        {paidSources.map((source: any, idx: number) => {
+                        {deduplicateSources(paidSources).map((source: any, idx: number) => {
                           const { logoUrl, initials, color } = getProviderLogo(source.name);
                           return (
                             <a
@@ -1307,7 +1337,9 @@ useEffect(() => {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
-                                <div className="text-gray-400 text-xs">Subscription{source.format && ` • ${source.format}`}</div>
+                                <div className="text-gray-400 text-xs">
+                                  Subscription{source.format && ` • ${source.format}`}
+                                </div>
                               </div>
                               <div className="text-blue-400 text-xs font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>
                             </a>
