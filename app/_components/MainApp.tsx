@@ -1703,7 +1703,7 @@ const deduplicateSources = (sources: any[]) => {
           setPauseInfiniteScroll(false);
           setPremiumHasMore(true);
           setShowPauseToast(false);
-        }, 30000);
+        }, 10000);
       }
     }}
     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
@@ -1718,7 +1718,7 @@ const deduplicateSources = (sources: any[]) => {
 {showPauseToast && (
   <div className="fixed bottom-28 right-6 z-[80] bg-gray-900 border border-blue-500 text-blue-400 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in">
     <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-    Scroll paused for 30 seconds (legal review)
+    Scroll paused for 10 seconds (legal review)
   </div>
 )}
         <footer id="footer" className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
