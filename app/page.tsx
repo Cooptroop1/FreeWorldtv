@@ -2,20 +2,20 @@ import type { Metadata, Viewport } from 'next';
 import MainApp from './_components/MainApp';
 
 export const metadata: Metadata = {
-  title: 'FreeStream World - Free Movies, TV Shows & Live TV',
-  description: '100% legal free movies, TV shows & live channels worldwide. No sign-up, no fees. Direct links to Tubi, Pluto TV, BBC iPlayer, ITVX, My5 and more.',
-  keywords: ['free streaming', 'free movies', 'free tv', 'bbc iplayer', 'itvx', 'tubi', 'pluto tv', 'legal streaming'],
+  title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio',
+  description: '100% legal free movies, TV shows, live channels and 50,000+ worldwide radio stations. Direct links to Tubi, Pluto TV, BBC iPlayer, ITVX and more. No sign-up needed.',
+  keywords: ['free streaming', 'free movies', 'free tv', 'bbc iplayer', 'itvx', 'tubi', 'pluto tv', 'legal streaming', 'free radio', 'internet radio', 'live radio stations'],
   authors: [{ name: 'FreeStream World' }],
   openGraph: {
-    title: 'FreeStream World - Free Movies, TV Shows & Live TV',
-    description: '100% legal free streaming. No sign-up. Direct links to official services.',
+    title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio',
+    description: '100% legal free streaming including movies, live TV and 50,000+ worldwide radio stations.',
     images: [{ url: '/logo.png', width: 1200, height: 630 }],
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'FreeStream World',
-    description: 'Free & legal movies, TV shows & live TV',
+    description: 'Free movies, TV, Live TV & Radio',
   },
 };
 
