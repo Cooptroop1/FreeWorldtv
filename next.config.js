@@ -9,10 +9,10 @@ const nextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
-    quality: 72,                    // ← This is the big one (cuts hero + posters 30–50%)
-    minimumCacheTTL: 60 * 60 * 24 * 30,
+    qualities: [75, 85],                    // ← Required in Next.js 16
+    minimumCacheTTL: 60 * 60 * 24 * 30,     // 30 days
 
-    // Better srcset breakpoints = smaller files for every screen size
+    // Smarter responsive sizes (cuts image sizes dramatically)
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
