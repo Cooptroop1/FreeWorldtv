@@ -459,7 +459,7 @@ useEffect(() => {
     return () => observer.disconnect();
   }, [tab, premiumHasMore, premiumLoadingMore, premiumPage, region, contentType, pauseInfiniteScroll]);
 
-    // === RADIO STATIONS (50,000+ worldwide — safe & separate) ===
+        // === RADIO STATIONS (50,000+ worldwide — safe & separate) ===
   useEffect(() => {
     if (tab !== 'radio') {
       setRadioStations([]);
@@ -468,14 +468,35 @@ useEffect(() => {
     const fetchRadio = async () => {
       setRadioLoading(true);
       try {
+        // More reliable mirror server (the main one sometimes flakes on Vercel)
         const res = await fetch(
-          'https://api.radio-browser.info/json/stations/search?limit=100&order=votes&reverse=true&hidebroken=true'
+          'https://de1.api.radio-browser.info/json/stations/search?limit=80&order=votes&reverse=true&hidebroken=true'
         );
         const data = await res.json();
-        setRadioStations(Array.isArray(data) ? data.slice(0, 100) : []);
+
+        // Use real data if it works, otherwise show 8 nice fallback stations
+        if (Array.isArray(data) && data.length > 0) {
+          setRadioStations(data.slice(0, 80));
+        } else {
+          setRadioStations([
+            { name: "BBC Radio 1", country: "United Kingdom", favicon: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/BBC_Radio_1_2023.svg/1280px-BBC_Radio_1_2023.svg.png", url_resolved: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one" },
+            { name: "NPR", country: "United States", favicon: "", url_resolved: "https://npr-ice.streamguys1.com/live.mp3" },
+            { name: "Radio Paradise", country: "Worldwide", favicon: "", url_resolved: "https://stream.radioparadise.com/mp3-192" },
+            { name: "France Inter", country: "France", favicon: "", url_resolved: "https://icecast.radiofrance.fr/franceinter-midfi.mp3" },
+            { name: "Triple J", country: "Australia", favicon: "", url_resolved: "https://live-triplej.abc.net.au/triplej.mp3" },
+            { name: "KIIS 106.5", country: "Australia", favicon: "", url_resolved: "https://live.kiis1065.com.au/kiis" },
+            { name: "Capital FM", country: "United Kingdom", favicon: "", url_resolved: "https://media-ssl.musicradio.com/Capital" },
+            { name: "Smooth Radio", country: "United Kingdom", favicon: "", url_resolved: "https://media-ssl.musicradio.com/SmoothUK" }
+          ]);
+        }
       } catch (err) {
         console.error('Radio fetch error:', err);
-        setRadioStations([]);
+        // Fallback stations if API completely fails
+        setRadioStations([
+          { name: "BBC Radio 1", country: "United Kingdom", favicon: "", url_resolved: "http://stream.live.vc.bbcmedia.co.uk/bbc_radio_one" },
+          { name: "NPR", country: "United States", favicon: "", url_resolved: "https://npr-ice.streamguys1.com/live.mp3" },
+          { name: "Radio Paradise", country: "Worldwide", favicon: "", url_resolved: "https://stream.radioparadise.com/mp3-192" }
+        ]);
       } finally {
         setRadioLoading(false);
       }
