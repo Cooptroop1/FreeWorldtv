@@ -681,7 +681,13 @@ const deduplicateSources = (sources: any[]) => {
 
         {/* SEARCH + REGION SELECTOR + BUTTONS */}
         <div className="flex flex-wrap gap-3 mb-8 items-center">
-          <GlobalSearch searchQuery={searchQuery} setSearchQuery={setSearchQuery} onTitleSelect={setSelectedTitle} region={region} />
+                  <GlobalSearch 
+          searchQuery={searchQuery} 
+          setSearchQuery={setSearchQuery} 
+          onTitleSelect={setSelectedTitle} 
+          region={region} 
+          contentType={contentType} 
+        />
 
           {/* REGION SELECTOR — NOW FULLY ACCESSIBLE */}
           <div className="flex flex-col">
