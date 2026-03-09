@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const seenPremium = new Set();
   let totalCalls = 0;
 
-  // === FREE TITLES (US only, safe) ===
+  // === FREE TITLES (US only) ===
   let page = 1;
   while (page <= 12) {
     const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     await new Promise(r => setTimeout(r, 400));
   }
 
-  // === PREMIUM TITLES (now also 12 pages so ~3k like free) ===
+  // === PREMIUM TITLES (~3000 like free) ===
   page = 1;
   while (page <= 12) {
     const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
@@ -48,19 +48,18 @@ export async function GET(request: Request) {
     await new Promise(r => setTimeout(r, 400));
   }
 
-  // === PROCESS TITLES (keep EVERY original field + ensure genres & poster) ===
+  // === PROCESS: Keep EVERY single field from Watchmode (no more lost year or anything) ===
   const processTitle = (t: any) => ({
-    ...t,                                   // ← THIS RESTORES ALL POSTERS & EVERYTHING
+    ...t,                                      // ← THIS KEEPS 100% OF THE ORIGINAL DATA (year, popularity, ratings, everything)
     poster: t.poster || t.image_url || null,
-    genre_names: t.genre_names || [],
-    genres: t.genres || [],
     title: t.title || t.name || "Unknown Title",
+    genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
   });
 
   const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
 
-  // === SAVE PREVIOUS SNAPSHOT (for New Releases) ===
+  // === SAVE PREVIOUS SNAPSHOT (for real New Releases) ===
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
     await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
@@ -78,6 +77,6 @@ export async function GET(request: Request) {
     freeTitles: processedFree.length,
     premiumTitles: processedPremium.length,
     callsUsed: totalCalls,
-    message: 'Both ~3000 titles with genres + posters fully restored!'
+    message: 'ALL original data preserved (year + everything) — no more losses!'
   });
 }
