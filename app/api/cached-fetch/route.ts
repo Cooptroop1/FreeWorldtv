@@ -7,9 +7,11 @@ export async function GET(request: NextRequest) {
   const paid = searchParams.get('paid') === 'true';
   const page = parseInt(searchParams.get('page') || '1', 10);
 
-  // FREE (Discover + Search) - uses snapshot
+  // FREE (Discover + Search)
   if (!paid) {
-    const catalog = await kv.get('full_free_catalog') || [];
+    const raw = await kv.get('full_free_catalog');
+    const catalog: any[] = Array.isArray(raw) ? raw : [];
+    
     if (query) {
       const filtered = catalog.filter((t: any) =>
         t.title?.toLowerCase().includes(query.toLowerCase())
@@ -26,11 +28,12 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // PREMIUM (now also cached!)
-  const catalog = await kv.get('full_premium_catalog') || [];
+  // PREMIUM (cached)
+  const rawPremium = await kv.get('full_premium_catalog');
+  const catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
   const start = (page - 1) * 48;
   return NextResponse.json({
     success: true,
-    titles: catalog.slice(start, start + 48)
+    titles: catalogPremium.slice(start, start + 48)
   });
 }
