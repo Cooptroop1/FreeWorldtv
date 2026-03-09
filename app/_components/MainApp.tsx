@@ -250,12 +250,13 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     fetchRichData();
   }, [selectedTitle]);
 
-      // === SOURCES WITH 24h SHARED CACHE (free + paid) ===
+      // === SOURCES WITH 24h SHARED CACHE — ONLY 1 CALL PER TITLE ===
 useEffect(() => {
   if (!selectedTitle) {
     setPaidSources([]);
     setFreeSources([]);
     setSourcesLoading(false);
+    setSourcesLastUpdated('');
     return;
   }
 
@@ -274,37 +275,23 @@ useEffect(() => {
     }
 
     const isPremium = selectedTitle.fromPremium === true || tab === 'premium';
-    const cacheKey = `sources_${watchmodeId}_${region}_${isPremium ? 'paid' : 'free'}`;
-
-    // Try cache first
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) {
-      const { paid, free } = JSON.parse(cached);
-      setPaidSources(paid || []);
-      setFreeSources(free || []);
-      setSourcesLoading(false);
-      return;
-    }
 
     try {
-      const freeRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
-      const freeJson = await freeRes.json();
-      const freeData = freeJson.success ? freeJson.sources || [] : [];
+      const res = await fetch(
+        `/api/title-sources?id=${watchmodeId}&region=${region}&paid=${isPremium}`
+      );
+      const json = await res.json();
 
-      let paidData: any[] = [];
-      if (isPremium) {
-        const paidRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}&paid=true`);
-        const paidJson = await paidRes.json();
-        paidData = paidJson.success ? paidJson.sources || [] : [];
+      if (json.success) {
+        setPaidSources(json.paidSources || (isPremium ? json.sources || [] : []));
+        setFreeSources(json.freeSources || (!isPremium ? json.sources || [] : []));
+        setSourcesLastUpdated(new Date().toISOString());
+      } else {
+        setPaidSources([]);
+        setFreeSources([]);
       }
-
-      // Save to localStorage as backup
-      localStorage.setItem(cacheKey, JSON.stringify({ paid: paidData, free: freeData }));
-
-      setPaidSources(paidData);
-      setFreeSources(freeData);
     } catch (err) {
-      console.error(err);
+      console.error('Sources fetch error:', err);
       setPaidSources([]);
       setFreeSources([]);
     } finally {
