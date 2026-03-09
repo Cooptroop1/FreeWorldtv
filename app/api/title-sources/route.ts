@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   const cacheKey = `sources:${titleId}:${region}:${paid ? 'paid' : 'free'}`;
 
-  // Check your existing Upstash KV first
+  // === 24h SHARED CACHE (first check) ===
   const cached = await kv.get(cacheKey);
   if (cached) {
     return NextResponse.json({ ...cached, fromCache: true });
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     let message = '';
 
     if (paid) {
-      // Paid / Subscription sources only (Netflix, Disney+, Prime Video, Max, etc.)
+      // Paid / Subscription sources only
       sourcesData = result.data?.filter((source: any) =>
         source.type === 'sub' ||
         source.subscription === true ||
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
         ? `${sourcesData.length} subscription options found!`
         : 'No subscription sources available in this region right now';
     } else {
-      // Free sources only (original behavior)
+      // Free sources only
       sourcesData = result.data?.filter((source: any) =>
         source.type === 'free' || source.price === 0 || source.free_with_ads === true
       ) || [];
@@ -58,12 +58,13 @@ export async function GET(request: Request) {
       allSources: result.data || [],
       freeSources: paid ? [] : sourcesData,
       paidSources: paid ? sourcesData : [],
-      sources: sourcesData, // used by the modal
+      sources: sourcesData,
       message,
-      isPaidTab: paid
+      isPaidTab: paid,
+      fromCache: false
     };
 
-    // Save to your existing Upstash KV for 24 hours
+    // Save to 24h KV cache (shared for everyone)
     await kv.set(cacheKey, responseData, { ex: 86400 });
 
     return NextResponse.json(responseData);
@@ -71,7 +72,7 @@ export async function GET(request: Request) {
     console.error('Title sources error:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error.message || 'Failed to fetch sources'
     }, { status: 500 });
   }
 }
