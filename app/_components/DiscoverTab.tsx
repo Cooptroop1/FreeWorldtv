@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { Film, Loader2, MonitorPlay, Heart, Filter, X } from 'lucide-react';
+import { Film, Loader2, MonitorPlay, Heart, Filter, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 
 interface DiscoverTabProps {
@@ -326,27 +326,76 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-  const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
-      const isLoading = loadingKey === 'initial' ? loading : loadingMore;
+    const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+    const isLoading = loadingKey === 'initial' ? loading : loadingMore;
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [showLeft, setShowLeft] = useState(false);
+    const [showRight, setShowRight] = useState(false);
+
+    // Update arrow visibility
+    const updateArrows = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      setShowLeft(el.scrollLeft > 20);
+      setShowRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
+    };
+
+    useEffect(() => {
+      const el = scrollRef.current;
+      if (!el) return;
+      el.addEventListener('scroll', updateArrows);
+      window.addEventListener('resize', updateArrows);
+      // Initial check
+      setTimeout(updateArrows, 100);
+      return () => {
+        el.removeEventListener('scroll', updateArrows);
+        window.removeEventListener('resize', updateArrows);
+      };
+    }, [items]);
+
+    const scrollLeft = () => {
+      scrollRef.current?.scrollBy({ left: -176, behavior: 'smooth' });
+    };
+
+    const scrollRight = () => {
+      scrollRef.current?.scrollBy({ left: 176, behavior: 'smooth' });
+    };
+
     return (
-      <section className="mb-10" aria-labelledby={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
+      <section className="mb-10 relative" aria-labelledby={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
         <h2 id={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`} className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
           {title} {isLoading && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
         </h2>
-        <div className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory scrollbar-hide">
-          {isLoading ? (
-            Array.from({ length: 8 }).map((_, i) => <SkeletonPoster key={i} />)
-          ) : items.length > 0 ? (
-            items.map((item) => {
-              const isFavorite = favorites.some(fav => fav.id === item.id);
-              return (
-                                <button
-                  key={item.id}
-                  onClick={() => setSelectedTitle(item)}
-                  className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col"
-                  aria-label={`View details for ${item.title} (${item.year})`}
-                >
-                  <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
+
+        <div className="relative group">
+          {/* Left Arrow */}
+          <button
+            onClick={scrollLeft}
+            className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full transition-all shadow-lg ${showLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            aria-label="Scroll left"
+          >
+            <ChevronLeft size={28} />
+          </button>
+
+          {/* Scroll Container */}
+          <div
+            ref={scrollRef}
+            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory scrollbar-hide"
+            onScroll={updateArrows}
+          >
+            {isLoading ? (
+              Array.from({ length: 8 }).map((_, i) => <SkeletonPoster key={i} />)
+            ) : items.length > 0 ? (
+              items.map((item) => {
+                const isFavorite = favorites.some(fav => fav.id === item.id);
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setSelectedTitle(item)}
+                    className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col"
+                    aria-label={`View details for ${item.title} (${item.year})`}
+                  >
+                    <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
                       {item.poster_path ? (
                         <Image
                           src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
@@ -359,27 +408,36 @@ export default function DiscoverTab({
                           onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                         />
                       ) : (
-                        // Grey skeleton while poster loads (exactly like main grid)
                         <div className="w-full h-full bg-zinc-800 animate-pulse" />
                       )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
-                      aria-label={isFavorite ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
-                      className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 transition-colors"
-                    >
-                      <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
-                    </button>
-                  </div>
-                  <div className="flex-1 flex flex-col justify-end mt-2">
-                    <p className="text-sm line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
-                    <p className="text-xs text-center text-gray-400">{item.year}</p>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <p className="text-gray-500 italic">No titles in this section yet</p>
-          )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
+                        aria-label={isFavorite ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
+                        className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-black/90 transition-colors"
+                      >
+                        <Heart size={18} className={isFavorite ? 'fill-red-500 text-red-500' : 'text-white'} />
+                      </button>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-end mt-2">
+                      <p className="text-sm line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
+                      <p className="text-xs text-center text-gray-400">{item.year}</p>
+                    </div>
+                  </button>
+                );
+              })
+            ) : (
+              <p className="text-gray-500 italic">No titles in this section yet</p>
+            )}
+          </div>
+
+          {/* Right Arrow */}
+          <button
+            onClick={scrollRight}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full transition-all shadow-lg ${showRight ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            aria-label="Scroll right"
+          >
+            <ChevronRight size={28} />
+          </button>
         </div>
       </section>
     );
