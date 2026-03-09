@@ -377,10 +377,11 @@ export default function DiscoverTab({
             <ChevronLeft size={28} />
           </button>
 
-          {/* Scroll Container */}
+        {/* Scroll Container — Scrollbar completely hidden (clean JustWatch look) */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory scrollbar-hide"
+            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             onScroll={updateArrows}
           >
             {isLoading ? (
