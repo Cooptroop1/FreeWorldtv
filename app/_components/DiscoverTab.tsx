@@ -186,13 +186,13 @@ export default function DiscoverTab({
     [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
   );
 
-  // Persistent poster cache — posters stay when switching Movies / TV / All
-// Fast for Movies Only (only loads visible page)
+  // FINAL Persistent poster cache — posters survive ALL filter changes (Movies / TV / All)
+// Movies load much faster + no disappearing
 useEffect(() => {
-  if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
+  if (!allTitles?.length || !TMDB_READ_TOKEN) return;
 
-  // Only process the currently visible page (first 48 titles)
-  const visibleTitles = filteredTitles.slice(0, 48);
+  // Only enrich titles that are currently visible in the current filter
+  const visibleTitles = filteredTitles.slice(0, 48); // only first page for speed
 
   const titlesNeedingPoster = visibleTitles.filter((title: any) =>
     title.tmdb_id && !title.poster_path && !posterCache.current.has(title.tmdb_id)
@@ -201,7 +201,7 @@ useEffect(() => {
   if (titlesNeedingPoster.length === 0) return;
 
   const fetchBatch = async () => {
-    const batch = titlesNeedingPoster.slice(0, 6); // small batches = feels fast
+    const batch = titlesNeedingPoster.slice(0, 5); // small batches = smooth feel
 
     const updates = await Promise.all(
       batch.map(async (title: any) => {
@@ -226,7 +226,7 @@ useEffect(() => {
   };
 
   fetchBatch();
-}, [filteredTitles, TMDB_READ_TOKEN]);
+}, [filteredTitles, allTitles, TMDB_READ_TOKEN]); // depends on both for persistence
 
     const trending = filteredTitles.slice(0, 20);
   const newReleases = filteredTitles.slice(20, 40);
