@@ -64,19 +64,18 @@ export async function GET(request: Request) {
 
     console.log(`✅ Fetched ${allProviders.length} providers`);
 
-    // Save the snapshot
     await kv.set('full_free_catalog', allTitles, { ex: 86400 });
     await kv.set('watchmode_providers', allProviders, { ex: 86400 });
     await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
 
-    console.log(`🎉 FINAL SUCCESS — ${allTitles.length} titles saved!`);
+    console.log(`🎉 SUCCESS — Saved ${allTitles.length} titles!`);
 
     return NextResponse.json({
       success: true,
       titleCount: allTitles.length,
       providerCount: allProviders.length,
       callsMade: totalCalls,
-      message: 'Snapshot is now filled with real titles!'
+      message: 'Snapshot is now filled!'
     });
 
   } catch (error: any) {
