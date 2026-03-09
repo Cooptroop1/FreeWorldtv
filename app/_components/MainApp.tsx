@@ -328,13 +328,14 @@ useEffect(() => {
     };
   }, [selectedChannel]);
 
-  // Top 10
+    // Real Top 10 (uses trending logic + respects Movies Only / TV Shows Only / All filter)
   useEffect(() => {
     if (tab !== 'top10') return;
     const fetchTop10 = async () => {
       setTop10Loading(true);
       try {
-        const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1`);
+        const typesParam = encodeURIComponent(contentType);
+        const res = await fetch(`/api/cached-fetch?types=${typesParam}&section=trending`);
         const json = await res.json();
         setTop10Titles(json.success && json.titles?.length ? json.titles.slice(0, 10) : staticFallbackTitles.slice(0, 10));
       } catch {
@@ -343,7 +344,7 @@ useEffect(() => {
       setTop10Loading(false);
     };
     fetchTop10();
-  }, [tab, region, contentType]);
+  }, [tab, contentType]);
 
             // === RADIO STATIONS (search + country filter — safe & separate) ===
   useEffect(() => {
