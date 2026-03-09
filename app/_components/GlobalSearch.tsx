@@ -24,6 +24,7 @@ export default function GlobalSearch({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const postersFetched = useRef(new Set<number>());
+  const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
   // 24h client cache
   const getCacheKey = (query: string) => `search_cache_${query.trim().toLowerCase()}_${region}_${contentType}`;
@@ -43,7 +44,7 @@ export default function GlobalSearch({
     localStorage.setItem(getCacheKey(query), JSON.stringify({ data: titles, timestamp: Date.now() }));
   };
 
-  // Live search from snapshot (no API calls)
+  // Search from snapshot + poster enrichment
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
@@ -53,7 +54,6 @@ export default function GlobalSearch({
         return;
       }
 
-      // Check client cache first
       const cached = getCachedSuggestions(trimmed);
       if (cached) {
         setSuggestions(cached.slice(0, 15));
@@ -69,11 +69,33 @@ export default function GlobalSearch({
         const json = await res.json();
         let results = json.success && Array.isArray(json.titles) ? json.titles : [];
 
-        // Show up to 15 results (instead of only 8)
-        setSuggestions(results.slice(0, 15));
+        // === AUTO-FILL POSTERS (same as main grid) ===
+        if (TMDB_READ_TOKEN && results.length > 0) {
+          const needsPoster = results.filter((t: any) => t.tmdb_id && !t.poster_path);
+          if (needsPoster.length > 0) {
+            const batch = needsPoster.slice(0, 8);
+            const updates = await Promise.all(
+              batch.map(async (title: any) => {
+                const type = title.type === 'tv_series' ? 'tv' : 'movie';
+                try {
+                  const tmdbRes = await fetch(
+                    `https://api.themoviedb.org/3/${type}/${title.tmdb_id}?language=en-US`,
+                    { headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` } }
+                  );
+                  const data = await tmdbRes.json();
+                  return { ...title, poster_path: data.poster_path };
+                } catch {
+                  return title;
+                }
+              })
+            );
+            results = results.map((t: any) => updates.find((u: any) => u.id === t.id) || t);
+          }
+        }
 
+        setSuggestions(results.slice(0, 15));
         if (results.length > 0) saveToCache(trimmed, results);
-      } catch {
+      } catch (err) {
         setSuggestions([]);
       } finally {
         setLoading(false);
@@ -81,7 +103,7 @@ export default function GlobalSearch({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, region, contentType]);
+  }, [searchQuery, region, contentType, TMDB_READ_TOKEN]);
 
   // Click outside
   useEffect(() => {
@@ -148,7 +170,10 @@ export default function GlobalSearch({
                     className="object-cover"
                     sizes="48px"
                     loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).src = '/fallback-poster.jpg'; }}
+                    quality={75}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/fallback-poster.jpg';
+                    }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
