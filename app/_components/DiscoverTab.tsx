@@ -248,18 +248,15 @@ export default function DiscoverTab({
   };
 
   const MovieCardSkeleton = () => (
-    <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg" aria-hidden="true">
-      <div className="relative aspect-[2/3] bg-zinc-800 animate-pulse" />
-      <div className="p-4">
-        <div className="h-6 bg-zinc-700 rounded animate-pulse mb-2 w-4/5" />
-        <div className="h-4 bg-zinc-700 rounded animate-pulse w-1/3" />
-        <div className="flex gap-2 mt-3">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="flex-1 h-7 bg-zinc-700 rounded animate-pulse" />)}
-        </div>
-        <div className="mt-3 h-10 bg-zinc-700 rounded-lg animate-pulse" />
-      </div>
+  <div className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg flex flex-col h-full" aria-hidden="true">
+    <div className="relative aspect-[2/3] bg-zinc-800 animate-pulse flex-shrink-0" />
+    <div className="p-4 flex-1 flex flex-col justify-end">
+      <div className="h-7 bg-zinc-700 rounded animate-pulse mb-3 w-11/12" />
+      <div className="h-4 bg-zinc-700 rounded animate-pulse w-1/2 mb-8" />
+      <div className="mt-auto h-11 bg-zinc-700 rounded-lg animate-pulse" />
     </div>
-  );
+  </div>
+);
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
@@ -511,16 +508,15 @@ export default function DiscoverTab({
 
             {/* MAIN GRID */}
             <div className="min-h-[600px] grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6" aria-labelledby="all-titles-heading">
-              {loading ? (
-                Array.from({ length: 18 }).map((_, i) => <MovieCardSkeleton key={i} />)
+                            {loading ? (
+                Array.from({ length: 30 }).map((_, i) => <MovieCardSkeleton key={i} />)
               ) : (
                 filteredTitles.map((title: any, index: number) => {
                   const isFavorite = favorites.some(fav => fav.id === title.id);
                   const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
-
-                                                      return (
-                                        <button
+                  return (
+                    <button
                       key={title.id}
                       onClick={() => setSelectedTitle(title)}
                       className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative flex flex-col h-full text-left"
@@ -539,7 +535,8 @@ export default function DiscoverTab({
                             loading={index < 3 ? "eager" : "lazy"}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" /></div>
+                          // ← This is the magic: grey skeleton while poster loads in background
+                          <div className="w-full h-full bg-zinc-800 animate-pulse" />
                         )}
                         {/* Hover overlay — now fully accessible */}
                         <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3">
