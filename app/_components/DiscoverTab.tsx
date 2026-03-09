@@ -60,7 +60,7 @@ export default function DiscoverTab({
   const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   const postersFetched = useRef(new Set<number>());
-  const posterCache = useRef(new Map());   // ← ADD THIS LINE
+  const posterCache = useRef(new Map());   // ← ADD THIS EXACT LINE
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const prevSearchRef = useRef(debouncedSearch);
@@ -171,12 +171,28 @@ export default function DiscoverTab({
     return () => observerRef.current?.disconnect();
   }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
 
+  // Filtered titles
+  const filteredTitles = useMemo(() =>
+    debouncedSearch
+      ? allTitles
+      : allTitles.filter((title: any) => {
+          const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
+          const year = parseInt(title.year || '0');
+          const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
+          const rating = title.vote_average || 0;
+          const matchesRating = rating >= minRatingFilter;
+          const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
+          return matchesGenres && matchesYear && matchesRating && matchesType;
+        }),
+    [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
+  );
+
     // Persistent poster cache — posters stay when switching Movies / TV / All
-  // Much faster + only loads visible page
+  // Fast loading + no disappearing when switching filters
   useEffect(() => {
     if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
 
-    // Only enrich the currently visible page (first 48 titles)
+    // Only process the currently visible page (first 48 titles)
     const visibleTitles = filteredTitles.slice(0, 48);
 
     const titlesNeedingPoster = visibleTitles.filter((title: any) =>
@@ -212,23 +228,6 @@ export default function DiscoverTab({
 
     fetchBatch();
   }, [filteredTitles, TMDB_READ_TOKEN]);
-
-  // Filtered titles
-  const filteredTitles = useMemo(() =>
-    debouncedSearch
-      ? allTitles
-      : allTitles.filter((title: any) => {
-          const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
-          const year = parseInt(title.year || '0');
-          const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
-          const rating = title.vote_average || 0;
-          const matchesRating = rating >= minRatingFilter;
-          const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
-          return matchesGenres && matchesYear && matchesRating && matchesType;
-        }),
-    [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
-  );
-
     const trending = filteredTitles.slice(0, 20);
   const newReleases = filteredTitles.slice(20, 40);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 20);
