@@ -204,6 +204,44 @@ export default function DiscoverTab({
     };
     fetchWithLimit();
   }, [allTitles, TMDB_READ_TOKEN]);
+    // Poster fetching for Trending & New Releases carousels (fixes black images)
+  useEffect(() => {
+    if (!TMDB_READ_TOKEN) return;
+
+    const carouselItems = [...trendingItems, ...newReleasesItems];
+    const titlesNeedingPoster = carouselItems.filter((title: any) =>
+      title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+    );
+
+    if (titlesNeedingPoster.length === 0) return;
+
+    const fetchWithLimit = async () => {
+      const batch = titlesNeedingPoster.slice(0, 6);
+      const updates = await Promise.all(
+        batch.map(async (title: any) => {
+          postersFetched.current.add(title.tmdb_id);
+          const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
+          try {
+            const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
+              headers: { accept: 'application/json', Authorization: `Bearer ${TMDB_READ_TOKEN}` },
+            });
+            if (!res.ok) throw new Error();
+            const json = await res.json();
+            return { ...title, poster_path: json.poster_path };
+          } catch {
+            return title;
+          }
+        })
+      );
+
+      // Update both carousels safely
+      setTrendingItems(prev => prev.map(title => updates.find((u: any) => u.id === title.id) || title));
+      setNewReleasesItems(prev => prev.map(title => updates.find((u: any) => u.id === title.id) || title));
+    };
+
+    fetchWithLimit();
+  }, [trendingItems, newReleasesItems, TMDB_READ_TOKEN]);
+  
   // Fetch REAL Trending and New Releases (respects Movies Only / TV Shows Only filter)
   useEffect(() => {
     const fetchCarousels = async () => {
