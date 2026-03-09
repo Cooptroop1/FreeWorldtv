@@ -50,6 +50,13 @@ export async function GET(request: Request) {
     await new Promise(r => setTimeout(r, 400));
   }
 
+    // === SAVE PREVIOUS SNAPSHOT (needed for real "New Releases This Week") ===
+  const oldFreeCatalog = await kv.get('full_free_catalog');
+  if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
+    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 }); // keep old snapshot 7 days
+  }
+
+  // Save the new snapshots
   await kv.set('full_free_catalog', freeTitles, { ex: 86400 });
   await kv.set('full_premium_catalog', premiumTitles, { ex: 86400 });
   await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
