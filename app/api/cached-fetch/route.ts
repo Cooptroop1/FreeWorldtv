@@ -13,55 +13,64 @@ export async function GET(request: NextRequest) {
   const genres = searchParams.get('genres') || '';
   const paid = searchParams.get('paid') === 'true';
 
-  // === AUTO-REFRESH: First visitor after 24h triggers full snapshot ===
+  // === AUTO-REFRESH trigger (unchanged) ===
   try {
     const lastFullRefresh = await kv.get<number>('lastFullRefresh') || 0;
     const now = Date.now();
     if (now - lastFullRefresh > 24 * 60 * 60 * 1000 && !query && !genres) {
-      console.log('🕒 24h expired → first visitor triggering full snapshot in background...');
       const host = request.headers.get('host');
-      fetch(`https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}`, {
-        cache: 'no-store'
-      }).catch(() => {});
+      fetch(`https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}`, { cache: 'no-store' }).catch(() => {});
     }
-  } catch (e) {
-    console.error('Auto-refresh check failed (continuing):', e);
-  }
+  } catch (e) {}
 
-  // === FAST PATH: Use full catalog snapshot (super fast for Discover tab) ===
+  // === LOAD THE BIG SNAPSHOT (this is what you wanted) ===
+  let fullCatalog: any[] = [];
   try {
-    const fullCatalog = await kv.get('full_free_catalog');
-    if (Array.isArray(fullCatalog) && fullCatalog.length > 0 && !query && !genres && !paid) {
-      const start = (page - 1) * 48;
-      const pagedTitles = fullCatalog.slice(start, start + 48);
-      return NextResponse.json({
-        success: true,
-        titles: pagedTitles,
-        region,
-        totalPages: Math.ceil(fullCatalog.length / 48),
-        fromCache: true,
-        message: 'Loaded from full catalog cache'
-      });
-    }
+    fullCatalog = (await kv.get('full_free_catalog')) || [];
   } catch (e) {
-    console.error('Full catalog read failed (continuing):', e);
+    console.error('Full catalog read failed:', e);
   }
 
-  // === 24h CACHE FOR EVERYTHING (search + lists + premium) ===
-  // This is the fix you asked for — searches now also last 24 hours
+  // === SEARCH MODE: Use the snapshot + simple title filter ===
+  if (query && fullCatalog.length > 0) {
+    const searchTerm = query.toLowerCase();
+    const filtered = fullCatalog
+      .filter((t: any) => t.title && t.title.toLowerCase().includes(searchTerm))
+      .slice((page - 1) * 48, page * 48);   // respect page & limit
+
+    return NextResponse.json({
+      success: true,
+      titles: filtered,
+      region,
+      totalPages: Math.ceil(fullCatalog.length / 48),
+      fromCache: true,
+      message: `Search results for "${query}" from 24h snapshot`
+    });
+  }
+
+  // === NORMAL MODE (no search): use snapshot paging (Discover tab) ===
+  if (fullCatalog.length > 0 && !query && !genres && !paid) {
+    const start = (page - 1) * 48;
+    const pagedTitles = fullCatalog.slice(start, start + 48);
+    return NextResponse.json({
+      success: true,
+      titles: pagedTitles,
+      region,
+      totalPages: Math.ceil(fullCatalog.length / 48),
+      fromCache: true,
+      message: 'Loaded from full catalog cache'
+    });
+  }
+
+  // === Fallback: real Watchmode call (only if snapshot is empty or paid/genres used) ===
   const cacheKey = `freestream:${query ? 'search' : 'list'}:${region}:${types}:${page}:${genres || 'all'}:${query || ''}:${paid ? 'paid' : 'free'}`;
-  const cacheTTL = 86400; // ← 24 hours for EVERY request (was 30 min for searches)
+  const cacheTTL = 86400;
 
   try {
     const cached = await kv.get(cacheKey);
-    if (cached) {
-      return NextResponse.json({ success: true, ...cached, fromCache: true });
-    }
-  } catch (e) {
-    console.error('KV read failed (continuing):', e);
-  }
+    if (cached) return NextResponse.json({ success: true, ...cached, fromCache: true });
+  } catch (e) {}
 
-  // === Normal Watchmode API call ===
   let apiUrl = '';
   if (query) {
     apiUrl = `https://api.watchmode.com/v1/search/?apiKey=${WATCHMODE_API_KEY}&search_field=name&search_value=${encodeURIComponent(query)}&page=${page}&limit=48`;
@@ -82,16 +91,14 @@ export async function GET(request: NextRequest) {
       titles,
       region,
       totalPages: Math.max(1, Math.ceil((raw.total_results || raw.total_pages || titles.length) / 48)),
-      message: query ? `Free results for "${query}"` : `Popular free titles in ${region}`,
+      message: query ? `Live results for "${query}"` : `Popular free titles in ${region}`,
       fromCache: false,
     };
 
-    // Save to 24h KV cache
     await kv.set(cacheKey, normalized, { ex: cacheTTL });
-
     return NextResponse.json({ success: true, ...normalized });
   } catch (error) {
-    console.error('Watchmode fetch error:', error);
+    console.error('Watchmode fallback failed:', error);
     return NextResponse.json({ success: false, error: 'Failed to load titles' });
   }
 }
