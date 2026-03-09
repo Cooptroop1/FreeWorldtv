@@ -57,8 +57,8 @@ export default function DiscoverTab({
   const [page, setPage] = useState(1);
   const [selectedGenre, setSelectedGenre] = useState('');
   const [isUsingFallback, setIsUsingFallback] = useState(false);
-  const posterCache = useRef(new Map());   // ← add this
   const postersFetched = useRef(new Set<number>());
+  const posterCache = useRef(new Map());   // ← ADD THIS LINE
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const prevSearchRef = useRef(debouncedSearch);
@@ -186,18 +186,20 @@ export default function DiscoverTab({
     [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
   );
 
-  // Persistent poster fetching — posters stay when switching Movies / TV (no more slow re-load)
+  // Persistent poster cache — posters stay when switching Movies / TV / All
+// Much faster for Movies Only
 useEffect(() => {
-  if (!allTitles?.length || !TMDB_READ_TOKEN) return;
+  if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
 
-  const titlesNeedingPoster = allTitles.filter((title: any) =>
+  const titlesNeedingPoster = filteredTitles.filter((title: any) =>
     title.tmdb_id && !title.poster_path && !posterCache.current.has(title.tmdb_id)
   );
 
   if (titlesNeedingPoster.length === 0) return;
 
   const fetchBatch = async () => {
-    const batch = titlesNeedingPoster.slice(0, 4); // smaller batch = faster feel
+    const batch = titlesNeedingPoster.slice(0, 5); // smaller = feels faster
+
     const updates = await Promise.all(
       batch.map(async (title: any) => {
         posterCache.current.set(title.tmdb_id, true);
@@ -221,7 +223,7 @@ useEffect(() => {
   };
 
   fetchBatch();
-}, [allTitles, TMDB_READ_TOKEN]);
+}, [filteredTitles, TMDB_READ_TOKEN]); // now reacts to the current filter
 
     const trending = filteredTitles.slice(0, 20);
   const newReleases = filteredTitles.slice(20, 40);
