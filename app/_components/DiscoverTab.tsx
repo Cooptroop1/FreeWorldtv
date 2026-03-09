@@ -347,15 +347,16 @@ export default function DiscoverTab({
                   aria-label={`View details for ${item.title} (${item.year})`}
                 >
                   <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
-                     {item.poster_path ? (
+                      {item.poster_path ? (
                         <Image
                           src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                           alt={`${item.title} poster`}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
                           sizes="160px"
                           quality={75}
                           loading="lazy"
+                          onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                         />
                       ) : (
                         // Grey skeleton while poster loads (exactly like main grid)
@@ -595,11 +596,12 @@ export default function DiscoverTab({
                             src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
                             alt={`${title.title} poster`}
                             fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                             quality={75}
                             priority={index < 3}
                             loading={index < 3 ? "eager" : "lazy"}
+                            onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                           />
                         ) : (
                           // ← This is the magic: grey skeleton while poster loads in background
