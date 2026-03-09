@@ -82,7 +82,7 @@ export default function DiscoverTab({
     }
   }, [debouncedSearch]);
   
-  // Initial fetch
+    // Initial fetch - now uses full_free_catalog snapshot for search too (same as GlobalSearch)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -90,6 +90,7 @@ export default function DiscoverTab({
       setPage(1);
       setHasMore(true);
       setIsUsingFallback(false);
+
       try {
         let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1`;
         if (debouncedSearch) {
@@ -97,20 +98,31 @@ export default function DiscoverTab({
         } else if (selectedGenre) {
           url += `&genres=${selectedGenre}`;
         }
+
         const res = await fetch(url);
         const json = await res.json();
-        let newTitles: any[] = json.success && json.titles?.length ? json.titles : staticFallbackTitles;
-        if (newTitles === staticFallbackTitles) {
-          setIsUsingFallback(true);
+
+        let newTitles: any[] = json.success && json.titles?.length ? json.titles : [];
+
+        // Only fall back to static titles when there is NO search (prevents the "15 same movies" bug)
+        if (newTitles.length === 0) {
+          if (debouncedSearch) {
+            newTitles = []; // clean empty state for bad searches
+          } else {
+            newTitles = staticFallbackTitles;
+            setIsUsingFallback(true);
+          }
         } else {
           setIsUsingFallback(false);
         }
+
         setAllTitles(newTitles);
         setHasMore(newTitles.length >= 48);
         if (json.success) setLastUpdated(new Date().toISOString());
       } catch (err) {
-        setAllTitles(staticFallbackTitles);
-        setIsUsingFallback(true);
+        console.error(err);
+        setAllTitles(debouncedSearch ? [] : staticFallbackTitles);
+        setIsUsingFallback(!debouncedSearch);
         setHasMore(false);
       }
       setLoading(false);
