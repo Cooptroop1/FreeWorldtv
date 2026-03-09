@@ -8,57 +8,54 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get('secret') || searchParams.get('key');
 
-  if (secret !== REFRESH_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!WATCHMODE_API_KEY) return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
+  if (secret !== REFRESH_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  console.log('🚀 Starting multi-region refresh...');
+  if (!WATCHMODE_API_KEY) {
+    return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
+  }
+
+  console.log('🚀 SAFE REFRESH — US only + max 12 pages...');
   let allTitles: any[] = [];
   const seenIds = new Set();
   let totalCalls = 0;
-  const regions = ['US', 'GB', 'CA', 'AU'];
+  const MAX_PAGES = 12;   // ← this stops it burning calls
 
   try {
-    for (const region of regions) {
-      let page = 1;
-      console.log(`🌍 Fetching ${region}...`);
+    let page = 1;
+    while (page <= MAX_PAGES) {
+      const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
+      
+      const res = await fetch(url, { cache: 'no-store' });
+      totalCalls++;
 
-      while (true) {
-        const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=${region}&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
-        
-        const res = await fetch(url, { cache: 'no-store' });
-        totalCalls++;
+      if (!res.ok) break;
 
-        if (!res.ok) break;
+      const data = await res.json();
+      const pageTitles = data.titles || data.results || [];
 
-        const data = await res.json();
-        const pageTitles = data.titles || data.results || [];
+      if (pageTitles.length === 0) break;
 
-        if (pageTitles.length === 0) break;
+      const uniquePage = pageTitles.filter((t: any) => !seenIds.has(t.id) && seenIds.add(t.id));
 
-        const uniquePage = pageTitles.filter((t: any) => !seenIds.has(t.id) && seenIds.add(t.id));
+      allTitles = [...allTitles, ...uniquePage];
+      console.log(`✅ Page ${page}: +${uniquePage.length} titles (Total: ${allTitles.length})`);
 
-        allTitles = [...allTitles, ...uniquePage];
-        console.log(`✅ ${region} page ${page}: +${uniquePage.length} (Total: ${allTitles.length})`);
-
-        page++;
-        await new Promise(r => setTimeout(r, 350));
-      }
+      page++;
+      await new Promise(r => setTimeout(r, 400));
     }
 
-    const sourcesRes = await fetch(`https://api.watchmode.com/v1/providers/?apiKey=${WATCHMODE_API_KEY}`, { cache: 'no-store' });
-    const allProviders = (await sourcesRes.json()).results || [];
-
     await kv.set('full_free_catalog', allTitles, { ex: 86400 });
-    await kv.set('watchmode_providers', allProviders, { ex: 86400 });
     await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
 
-    console.log(`🎉 SUCCESS — ${allTitles.length} titles saved!`);
+    console.log(`🎉 SAFE SUCCESS — ${allTitles.length} titles saved (used only ${totalCalls} calls)`);
 
     return NextResponse.json({
       success: true,
       titleCount: allTitles.length,
-      callsMade: totalCalls,
-      message: 'Snapshot is now filled with real titles!'
+      callsUsed: totalCalls,
+      message: 'Snapshot filled safely!'
     });
 
   } catch (error: any) {
