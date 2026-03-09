@@ -402,8 +402,8 @@ export default function DiscoverTab({
           )}
 
           <HorizontalCarousel title="Continue Watching" items={continueWatching} loadingKey="initial" />
-          <HorizontalCarousel title="Trending Now" items={trending} loadingKey="initial" />
-          <HorizontalCarousel title="New Releases This Week" items={newReleases} loadingKey="initial" />
+          <HorizontalCarousel title="Trending Now" items={trendingItems} loadingKey="initial" />
+          <HorizontalCarousel title="New Releases This Week" items={newReleasesItems} loadingKey="initial" />
          {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 20)} loadingKey="initial" />}
 
           {/* Filters Panel */}
