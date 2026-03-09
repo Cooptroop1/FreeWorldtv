@@ -169,37 +169,49 @@ export default function DiscoverTab({
     return () => observerRef.current?.disconnect();
   }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
 
-  // Optimized poster fetching
-  useEffect(() => {
-    if (!allTitles?.length || !TMDB_READ_TOKEN) return;
-    const titlesNeedingPoster = allTitles.filter((title: any) =>
-      title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+  // Optimized poster fetching — now runs only on CURRENT filtered list (fast for Movies Only)
+useEffect(() => {
+  if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
+
+  const titlesNeedingPoster = filteredTitles.filter((title: any) =>
+    title.tmdb_id && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+  );
+
+  if (titlesNeedingPoster.length === 0) return;
+
+  const fetchWithLimit = async () => {
+    const batch = titlesNeedingPoster.slice(0, 6); // smaller batches = faster & safer
+    const updates = await Promise.all(
+      batch.map(async (title: any) => {
+        postersFetched.current.add(title.tmdb_id);
+        const endpoint = title.type === 'tv_series' ? 'tv' : 'movie';
+        try {
+          const res = await fetch(
+            `https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`,
+            { headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` } }
+          );
+          const json = await res.json();
+          return { ...title, poster_path: json.poster_path };
+        } catch {
+          return title;
+        }
+      })
     );
-    if (titlesNeedingPoster.length === 0) return;
 
-    const fetchWithLimit = async () => {
-      const batch = titlesNeedingPoster.slice(0, 8);
-      const updates = await Promise.all(
-        batch.map(async (title: any) => {
-          postersFetched.current.add(title.tmdb_id);
-          const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
-          try {
-            const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
-              headers: { accept: 'application/json', Authorization: `Bearer ${TMDB_READ_TOKEN}` },
-            });
-            if (!res.ok) throw new Error();
-            const json = await res.json();
-            return { ...title, poster_path: json.poster_path };
-          } catch {
-            return title;
-          }
-        })
-      );
-      setAllTitles(prev => prev.map(title => updates.find((u: any) => u.id === title.id) || title));
-    };
-    fetchWithLimit();
-  }, [allTitles, TMDB_READ_TOKEN]);
+    setAllTitles(prev =>
+      prev.map(title => updates.find((u: any) => u.id === title.id) || title)
+    );
+  };
 
+  // Run immediately, then every 400ms for the rest (no flood)
+  fetchWithLimit();
+  const interval = setInterval(() => {
+    if (titlesNeedingPoster.length > 6) fetchWithLimit();
+    else clearInterval(interval);
+  }, 400);
+
+  return () => clearInterval(interval);
+}, [filteredTitles, TMDB_READ_TOKEN]); // ← key change: now depends on filteredTitles
   // Filtered titles
   const filteredTitles = useMemo(() =>
     debouncedSearch
