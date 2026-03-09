@@ -44,7 +44,7 @@ export default function GlobalSearch({
     localStorage.setItem(getCacheKey(query), JSON.stringify({ data: titles, timestamp: Date.now() }));
   };
 
-  // Search from snapshot + poster enrichment
+  // Search from snapshot
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
@@ -67,35 +67,10 @@ export default function GlobalSearch({
       try {
         const res = await fetch(`/api/cached-fetch?query=${encodeURIComponent(trimmed)}&page=1`);
         const json = await res.json();
-        let results = json.success && Array.isArray(json.titles) ? json.titles : [];
-
-        // === AUTO-FILL POSTERS (same as main grid) ===
-        if (TMDB_READ_TOKEN && results.length > 0) {
-          const needsPoster = results.filter((t: any) => t.tmdb_id && !t.poster_path);
-          if (needsPoster.length > 0) {
-            const batch = needsPoster.slice(0, 8);
-            const updates = await Promise.all(
-              batch.map(async (title: any) => {
-                const type = title.type === 'tv_series' ? 'tv' : 'movie';
-                try {
-                  const tmdbRes = await fetch(
-                    `https://api.themoviedb.org/3/${type}/${title.tmdb_id}?language=en-US`,
-                    { headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` } }
-                  );
-                  const data = await tmdbRes.json();
-                  return { ...title, poster_path: data.poster_path };
-                } catch {
-                  return title;
-                }
-              })
-            );
-            results = results.map((t: any) => updates.find((u: any) => u.id === t.id) || t);
-          }
-        }
-
-        setSuggestions(results.slice(0, 15));
+        const results = json.success && Array.isArray(json.titles) ? json.titles : [];
+        setSuggestions(results.slice(0, 15));   // show basic results immediately
         if (results.length > 0) saveToCache(trimmed, results);
-      } catch (err) {
+      } catch {
         setSuggestions([]);
       } finally {
         setLoading(false);
@@ -103,7 +78,44 @@ export default function GlobalSearch({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, region, contentType, TMDB_READ_TOKEN]);
+  }, [searchQuery, region, contentType]);
+
+  // === POSTER ENRICHMENT FOR ALL RESULTS (no flicker) ===
+  useEffect(() => {
+    if (!TMDB_READ_TOKEN || suggestions.length === 0) return;
+
+    const titlesNeedingPoster = suggestions.filter((t: any) =>
+      t.tmdb_id && !t.poster_path && !postersFetched.current.has(t.tmdb_id)
+    );
+
+    if (titlesNeedingPoster.length === 0) return;
+
+    const fetchPosters = async () => {
+      const batch = titlesNeedingPoster.slice(0, 15); // now fetches ALL
+      const updates = await Promise.all(
+        batch.map(async (title: any) => {
+          postersFetched.current.add(title.tmdb_id);
+          const endpoint = title.type === 'tv_series' ? 'tv' : 'movie';
+          try {
+            const res = await fetch(
+              `https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`,
+              { headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` } }
+            );
+            const data = await res.json();
+            return { ...title, poster_path: data.poster_path };
+          } catch {
+            return title;
+          }
+        })
+      );
+
+      setSuggestions(prev =>
+        prev.map(t => updates.find(u => u.id === t.id) || t)
+      );
+    };
+
+    fetchPosters();
+  }, [suggestions, TMDB_READ_TOKEN]);
 
   // Click outside
   useEffect(() => {
