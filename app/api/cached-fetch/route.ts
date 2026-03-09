@@ -82,9 +82,16 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // PREMIUM
+    // PREMIUM (now respects Movies Only / TV Shows Only / All filter)
   const rawPremium = await kv.get('full_premium_catalog');
-  const catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
+  let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
+
+  // Same filter as Free section
+  const types = searchParams.get('types') || 'movie,tv_series';
+  if (types !== 'movie,tv_series') {
+    catalogPremium = catalogPremium.filter((t: any) => t.type === types);
+  }
+
   const start = (page - 1) * 48;
   return NextResponse.json({
     success: true,
