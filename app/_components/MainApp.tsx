@@ -958,7 +958,7 @@ const deduplicateSources = (sources: any[]) => {
               </div>
 
               {premiumHasMore && (
-                <div id="premium-sentinel" className="h-20 flex items-center justify-center mt-12">
+                <div id="premium-sentinel" className="h-12 md:h-20 flex items-center justify-center mt-12">
                   {premiumLoadingMore && <Loader2 className="w-8 h-8 animate-spin text-purple-500" />}
                 </div>
               )}
@@ -1691,21 +1691,19 @@ const deduplicateSources = (sources: any[]) => {
   {/* Legal Info Button - always visible */}
   <button
     onClick={() => {
-      const footer = document.getElementById('footer');
-      if (footer) {
-        footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        
-        setPauseInfiniteScroll(true);
-        setPremiumHasMore(false);
-        setShowPauseToast(true);
+  const footer = document.getElementById('footer');
+  if (footer) {
+    footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    
+    setPauseInfiniteScroll(true);
+    setShowPauseToast(true);
 
-        setTimeout(() => {
-          setPauseInfiniteScroll(false);
-          setPremiumHasMore(true);
-          setShowPauseToast(false);
-        }, 10000);
-      }
-    }}
+    setTimeout(() => {
+      setPauseInfiniteScroll(false);
+      setShowPauseToast(false);
+    }, 8000); // 8 seconds feels much better than 10
+  }
+}}
     className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
     aria-label="Legal information"
   >
