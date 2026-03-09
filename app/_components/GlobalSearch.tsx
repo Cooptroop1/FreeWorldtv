@@ -11,12 +11,12 @@ interface GlobalSearchProps {
   contentType: string;
 }
 
-export default function GlobalSearch({ 
-  searchQuery, 
-  setSearchQuery, 
-  onTitleSelect, 
-  region, 
-  contentType 
+export default function GlobalSearch({
+  searchQuery,
+  setSearchQuery,
+  onTitleSelect,
+  region,
+  contentType
 }: GlobalSearchProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -24,7 +24,33 @@ export default function GlobalSearch({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Live autocomplete (debounced) — respects TV Shows switch
+  // === 24h CLIENT-SIDE CACHE FOR SEARCH (on top of your backend cache) ===
+  const getCacheKey = (query: string) => 
+    `search_cache_${query.trim().toLowerCase()}_${region}_${contentType}`;
+
+  const getCachedSuggestions = (query: string) => {
+    const key = getCacheKey(query);
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+
+    const { data, timestamp } = JSON.parse(cached);
+    const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000;
+    if (isExpired) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return data;
+  };
+
+  const saveToCache = (query: string, titles: any[]) => {
+    const key = getCacheKey(query);
+    localStorage.setItem(key, JSON.stringify({
+      data: titles,
+      timestamp: Date.now()
+    }));
+  };
+
+  // Live autocomplete with 24h cache
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
@@ -33,24 +59,38 @@ export default function GlobalSearch({
         setShowDropdown(false);
         return;
       }
+
+      // Check client-side 24h cache first
+      const cached = getCachedSuggestions(trimmed);
+      if (cached) {
+        setSuggestions(cached.slice(0, 8));
+        setShowDropdown(true);
+        return;
+      }
+
       setLoading(true);
       setShowDropdown(true);
+
       try {
         const res = await fetch(
           `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&region=${region}&page=1&types=${encodeURIComponent(contentType)}`
         );
         const json = await res.json();
-        if (json.success && Array.isArray(json.titles)) {
-          setSuggestions(json.titles.slice(0, 8));
-        } else {
-          setSuggestions([]);
+
+        const results = json.success && Array.isArray(json.titles) ? json.titles : [];
+        setSuggestions(results.slice(0, 8));
+
+        // Save to 24h client cache
+        if (results.length > 0) {
+          saveToCache(trimmed, results);
         }
       } catch {
         setSuggestions([]);
       } finally {
         setLoading(false);
       }
-    }, 320);
+    }, 400); // slightly better debounce
+
     return () => clearTimeout(timer);
   }, [searchQuery, region, contentType]);
 
@@ -119,7 +159,8 @@ export default function GlobalSearch({
         >
           {loading ? (
             <div className="flex items-center justify-center py-8 text-gray-400">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Finding free titles...
+              <Loader2 className="w-5 h-5 animate-spin mr-2" /> 
+              Searching our 24h cache...
             </div>
           ) : suggestions.length > 0 ? (
             suggestions.map((title: any) => (
@@ -131,9 +172,9 @@ export default function GlobalSearch({
               >
                 <div className="relative w-12 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-gray-700 bg-gray-800">
                   <Image
-                    src={title.poster_path 
-                      ? `https://image.tmdb.org/t/p/w200${title.poster_path}` 
-                      : '/fallback-poster.jpg'}   // ← fallback (create this file or use any placeholder)
+                    src={title.poster_path
+                      ? `https://image.tmdb.org/t/p/w200${title.poster_path}`
+                      : '/fallback-poster.jpg'}
                     alt={`${title.title} poster`}
                     fill
                     className="object-cover"
@@ -141,7 +182,6 @@ export default function GlobalSearch({
                     loading="lazy"
                     quality={75}
                     onError={(e) => {
-                      // Silent fallback if TMDB image is missing
                       (e.target as HTMLImageElement).src = '/fallback-poster.jpg';
                     }}
                   />
