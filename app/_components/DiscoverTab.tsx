@@ -57,7 +57,7 @@ export default function DiscoverTab({
   const [page, setPage] = useState(1);
   const [selectedGenre, setSelectedGenre] = useState('');
   const [isUsingFallback, setIsUsingFallback] = useState(false);
-
+  const posterCache = useRef(new Map());   // ← add this
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -186,21 +186,21 @@ export default function DiscoverTab({
     [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
   );
 
-  // Optimized poster fetching — now runs only on CURRENT filtered list (fast for Movies Only)
+  // Persistent poster fetching — posters stay when switching Movies / TV (no more slow re-load)
 useEffect(() => {
-  if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
+  if (!allTitles?.length || !TMDB_READ_TOKEN) return;
 
-  const titlesNeedingPoster = filteredTitles.filter((title: any) =>
-    title.tmdb_id && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+  const titlesNeedingPoster = allTitles.filter((title: any) =>
+    title.tmdb_id && !title.poster_path && !posterCache.current.has(title.tmdb_id)
   );
 
   if (titlesNeedingPoster.length === 0) return;
 
-  const fetchWithLimit = async () => {
-    const batch = titlesNeedingPoster.slice(0, 6); // smaller batches = faster & safer
+  const fetchBatch = async () => {
+    const batch = titlesNeedingPoster.slice(0, 4); // smaller batch = faster feel
     const updates = await Promise.all(
       batch.map(async (title: any) => {
-        postersFetched.current.add(title.tmdb_id);
+        posterCache.current.set(title.tmdb_id, true);
         const endpoint = title.type === 'tv_series' ? 'tv' : 'movie';
         try {
           const res = await fetch(
@@ -220,15 +220,8 @@ useEffect(() => {
     );
   };
 
-  // Run immediately, then every 400ms for the rest (no flood)
-  fetchWithLimit();
-  const interval = setInterval(() => {
-    if (titlesNeedingPoster.length > 6) fetchWithLimit();
-    else clearInterval(interval);
-  }, 400);
-
-  return () => clearInterval(interval);
-}, [filteredTitles, TMDB_READ_TOKEN]); // ← key change: now depends on filteredTitles
+  fetchBatch();
+}, [allTitles, TMDB_READ_TOKEN]);
 
     const trending = filteredTitles.slice(0, 20);
   const newReleases = filteredTitles.slice(20, 40);
