@@ -22,11 +22,17 @@ export async function GET(request: NextRequest) {
     }
   } catch (e) {}
 
-  // FREE (Discover + Search)
+    // FREE (Discover + Search)
   if (!paid) {
     const raw = await kv.get('full_free_catalog');
-    const catalog: any[] = Array.isArray(raw) ? raw : [];
-    
+    let catalog: any[] = Array.isArray(raw) ? raw : [];
+
+    // NEW: Support for Movies Only / TV Shows Only filter (this fixes the "only 1 movie" problem)
+    const types = searchParams.get('types') || 'movie,tv_series';
+    if (types !== 'movie,tv_series') {
+      catalog = catalog.filter((t: any) => t.type === types);
+    }
+
     if (query) {
       const filtered = catalog.filter((t: any) =>
         t.title?.toLowerCase().includes(query.toLowerCase())
@@ -36,6 +42,7 @@ export async function GET(request: NextRequest) {
         titles: filtered.slice((page - 1) * 48, page * 48)
       });
     }
+
     const start = (page - 1) * 48;
     return NextResponse.json({
       success: true,
