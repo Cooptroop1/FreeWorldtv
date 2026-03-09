@@ -18,7 +18,8 @@ export default function GlobalSearch({
   region,
   contentType
 }: GlobalSearchProps) {
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [rawSuggestions, setRawSuggestions] = useState<any[]>([]);
+  const [displayedSuggestions, setDisplayedSuggestions] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -49,14 +50,15 @@ export default function GlobalSearch({
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
       if (trimmed.length < 2) {
-        setSuggestions([]);
+        setRawSuggestions([]);
         setShowDropdown(false);
         return;
       }
 
       const cached = getCachedSuggestions(trimmed);
       if (cached) {
-        setSuggestions(cached.slice(0, 15));
+        setRawSuggestions(cached);
+        setDisplayedSuggestions(cached.slice(0, 20));
         setShowDropdown(true);
         return;
       }
@@ -68,30 +70,32 @@ export default function GlobalSearch({
         const res = await fetch(`/api/cached-fetch?query=${encodeURIComponent(trimmed)}&page=1`);
         const json = await res.json();
         const results = json.success && Array.isArray(json.titles) ? json.titles : [];
-        setSuggestions(results.slice(0, 15));   // show basic results immediately
+        setRawSuggestions(results);
+        setDisplayedSuggestions(results.slice(0, 20)); // show immediately
         if (results.length > 0) saveToCache(trimmed, results);
       } catch {
-        setSuggestions([]);
+        setRawSuggestions([]);
+        setDisplayedSuggestions([]);
       } finally {
         setLoading(false);
       }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, region, contentType]);
+  }, [searchQuery]);
 
-  // === POSTER ENRICHMENT FOR ALL RESULTS (no flicker) ===
+  // Poster enrichment (runs in background, no flicker)
   useEffect(() => {
-    if (!TMDB_READ_TOKEN || suggestions.length === 0) return;
+    if (!TMDB_READ_TOKEN || rawSuggestions.length === 0) return;
 
-    const titlesNeedingPoster = suggestions.filter((t: any) =>
+    const needsPoster = rawSuggestions.filter((t: any) =>
       t.tmdb_id && !t.poster_path && !postersFetched.current.has(t.tmdb_id)
     );
 
-    if (titlesNeedingPoster.length === 0) return;
+    if (needsPoster.length === 0) return;
 
     const fetchPosters = async () => {
-      const batch = titlesNeedingPoster.slice(0, 15); // now fetches ALL
+      const batch = needsPoster.slice(0, 20);
       const updates = await Promise.all(
         batch.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
@@ -109,13 +113,15 @@ export default function GlobalSearch({
         })
       );
 
-      setSuggestions(prev =>
-        prev.map(t => updates.find(u => u.id === t.id) || t)
-      );
+      // Update displayed list with posters (keeps old posters until new ones are ready)
+      setDisplayedSuggestions(prev => {
+        const newList = rawSuggestions.map(t => updates.find(u => u.id === t.id) || t);
+        return newList.slice(0, 20);
+      });
     };
 
     fetchPosters();
-  }, [suggestions, TMDB_READ_TOKEN]);
+  }, [rawSuggestions, TMDB_READ_TOKEN]);
 
   // Click outside
   useEffect(() => {
@@ -136,7 +142,8 @@ export default function GlobalSearch({
 
   const clearSearch = () => {
     setSearchQuery('');
-    setSuggestions([]);
+    setRawSuggestions([]);
+    setDisplayedSuggestions([]);
     setShowDropdown(false);
   };
 
@@ -165,8 +172,8 @@ export default function GlobalSearch({
             <div className="flex items-center justify-center py-8 text-gray-400">
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading from snapshot...
             </div>
-          ) : suggestions.length > 0 ? (
-            suggestions.map((title: any) => (
+          ) : displayedSuggestions.length > 0 ? (
+            displayedSuggestions.map((title: any) => (
               <div
                 key={title.id}
                 onClick={() => handleSelect(title)}
