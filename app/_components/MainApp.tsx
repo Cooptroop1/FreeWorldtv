@@ -250,18 +250,18 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     fetchRichData();
   }, [selectedTitle]);
 
-      // === SOURCES WITH 24h CACHE + LAST UPDATED TIMESTAMP (SPLIT VERSION) ===
+      // === SOURCES WITH 24h SHARED CACHE (free + paid) ===
 useEffect(() => {
   if (!selectedTitle) {
     setPaidSources([]);
     setFreeSources([]);
     setSourcesLoading(false);
-    setSourcesLastUpdated('');
     return;
   }
 
   const fetchSources = async () => {
     setSourcesLoading(true);
+
     let watchmodeId = selectedTitle.id;
     if (!watchmodeId && selectedTitle.tmdb_id) {
       watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
@@ -273,44 +273,38 @@ useEffect(() => {
       return;
     }
 
-    const cacheKey = `sources_${watchmodeId}_${region}`;
+    const isPremium = selectedTitle.fromPremium === true || tab === 'premium';
+    const cacheKey = `sources_${watchmodeId}_${region}_${isPremium ? 'paid' : 'free'}`;
+
+    // Try cache first
     const cached = localStorage.getItem(cacheKey);
     if (cached) {
-      const { data, timestamp } = JSON.parse(cached);
-      const isExpired = Date.now() - timestamp > 24 * 60 * 60 * 1000;
-      if (!isExpired) {
-        setPaidSources(data.paid || []);
-        setFreeSources(data.free || []);
-        setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
-        setSourcesLoading(false);
-        return;
-      }
+      const { paid, free } = JSON.parse(cached);
+      setPaidSources(paid || []);
+      setFreeSources(free || []);
+      setSourcesLoading(false);
+      return;
     }
 
     try {
-      const isPremium = selectedTitle.fromPremium === true || tab === 'premium';
-
-      // 1. Free sources
       const freeRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}`);
       const freeJson = await freeRes.json();
-      const freeData = freeJson.success ? (freeJson.freeSources || freeJson.sources || []) : [];
+      const freeData = freeJson.success ? freeJson.sources || [] : [];
 
-      // 2. Paid sources (only for Premium tab)
       let paidData: any[] = [];
       if (isPremium) {
         const paidRes = await fetch(`/api/title-sources?id=${watchmodeId}&region=${region}&paid=true`);
         const paidJson = await paidRes.json();
-        paidData = paidJson.success ? (paidJson.paidSources || paidJson.sources || []) : [];
+        paidData = paidJson.success ? paidJson.sources || [] : [];
       }
 
-      const timestamp = Date.now();
-      localStorage.setItem(cacheKey, JSON.stringify({ paid: paidData, free: freeData, timestamp }));
+      // Save to localStorage as backup
+      localStorage.setItem(cacheKey, JSON.stringify({ paid: paidData, free: freeData }));
 
       setPaidSources(paidData);
       setFreeSources(freeData);
-      setSourcesLastUpdated(new Date(timestamp).toLocaleDateString('en-GB'));
     } catch (err) {
-      console.error('Sources fetch error:', err);
+      console.error(err);
       setPaidSources([]);
       setFreeSources([]);
     } finally {
