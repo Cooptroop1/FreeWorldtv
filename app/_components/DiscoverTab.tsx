@@ -187,18 +187,21 @@ export default function DiscoverTab({
   );
 
   // Persistent poster cache — posters stay when switching Movies / TV / All
-// Much faster for Movies Only
+// Fast for Movies Only (only loads visible page)
 useEffect(() => {
   if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
 
-  const titlesNeedingPoster = filteredTitles.filter((title: any) =>
+  // Only process the currently visible page (first 48 titles)
+  const visibleTitles = filteredTitles.slice(0, 48);
+
+  const titlesNeedingPoster = visibleTitles.filter((title: any) =>
     title.tmdb_id && !title.poster_path && !posterCache.current.has(title.tmdb_id)
   );
 
   if (titlesNeedingPoster.length === 0) return;
 
   const fetchBatch = async () => {
-    const batch = titlesNeedingPoster.slice(0, 5); // smaller = feels faster
+    const batch = titlesNeedingPoster.slice(0, 6); // small batches = feels fast
 
     const updates = await Promise.all(
       batch.map(async (title: any) => {
@@ -223,7 +226,7 @@ useEffect(() => {
   };
 
   fetchBatch();
-}, [filteredTitles, TMDB_READ_TOKEN]); // now reacts to the current filter
+}, [filteredTitles, TMDB_READ_TOKEN]);
 
     const trending = filteredTitles.slice(0, 20);
   const newReleases = filteredTitles.slice(20, 40);
