@@ -7,11 +7,11 @@ const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mySuperSecretRefreshKey202
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get('secret') || searchParams.get('key');
-
   if (secret !== REFRESH_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!WATCHMODE_API_KEY) return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
 
   console.log('🚀 REFRESHING BOTH FREE + PREMIUM SNAPSHOTS...');
+
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
   const seenFree = new Set();
@@ -27,7 +27,6 @@ export async function GET(request: Request) {
     const data = await res.json();
     const titles = data.titles || [];
     if (titles.length === 0) break;
-
     const unique = titles.filter((t: any) => !seenFree.has(t.id) && seenFree.add(t.id));
     freeTitles = [...freeTitles, ...unique];
     page++;
@@ -43,31 +42,48 @@ export async function GET(request: Request) {
     const data = await res.json();
     const titles = data.titles || [];
     if (titles.length === 0) break;
-
     const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
     premiumTitles = [...premiumTitles, ...unique];
     page++;
     await new Promise(r => setTimeout(r, 400));
   }
 
-    // === SAVE PREVIOUS SNAPSHOT (needed for real "New Releases This Week") ===
+  // === CLEAN & MAP TITLES (this is the fix — genre_names was accidentally dropped) ===
+  const cleanTitle = (t: any) => ({
+    id: t.id,
+    title: t.title || t.name || "Unknown Title",
+    type: t.type,
+    year: t.year,
+    poster: t.poster || t.image_url || null,
+    imdb_rating: t.imdb_rating || null,
+    tmdb_rating: t.tmdb_rating || null,
+    genre_names: t.genre_names || [],      // ← THIS IS THE IMPORTANT ONE
+    genres: t.genres || [],                // keep both for flexibility
+    popularity: t.popularity || 0,
+    release_date: t.release_date || t.first_air_date || null,
+  });
+
+  const cleanFreeTitles = freeTitles.map(cleanTitle);
+  const cleanPremiumTitles = premiumTitles.map(cleanTitle);
+
+  // === SAVE PREVIOUS SNAPSHOT (needed for real "New Releases This Week") ===
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
-    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 }); // keep old snapshot 7 days
+    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
   }
 
   // Save the new snapshots
-  await kv.set('full_free_catalog', freeTitles, { ex: 86400 });
-  await kv.set('full_premium_catalog', premiumTitles, { ex: 86400 });
+  await kv.set('full_free_catalog', cleanFreeTitles, { ex: 86400 });
+  await kv.set('full_premium_catalog', cleanPremiumTitles, { ex: 86400 });
   await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
 
-  console.log(`🎉 DONE — Free: ${freeTitles.length} | Premium: ${premiumTitles.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — Free: ${cleanFreeTitles.length} | Premium: ${cleanPremiumTitles.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
-    freeTitles: freeTitles.length,
-    premiumTitles: premiumTitles.length,
+    freeTitles: cleanFreeTitles.length,
+    premiumTitles: cleanPremiumTitles.length,
     callsUsed: totalCalls,
-    message: 'Both snapshots cached for 24h!'
+    message: 'Both snapshots cached for 24h with genres included!'
   });
 }
