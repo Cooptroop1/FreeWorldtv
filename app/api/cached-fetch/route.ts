@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
 // === CHANGE THIS NUMBER ANYTIME YOU WANT ===
-const REFRESH_INTERVAL_HOURS = 72;   // 24 = 1 day, 72 = 3 days, 168 = 1 week
+const REFRESH_INTERVAL_HOURS = 72; // 24 = 1 day, 72 = 3 days, 168 = 1 week
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,43 +22,49 @@ export async function GET(request: NextRequest) {
     }
   } catch (e) {}
 
-        // FREE (Discover + Search) + Real Trending + Real New Releases
+  // FREE (Discover + Search) + Real Trending + Real New Releases
   if (!paid) {
     const raw = await kv.get('full_free_catalog');
     let catalog: any[] = Array.isArray(raw) ? raw : [];
 
-    // Movies Only / TV Shows Only filter (only affects grid/search/paging)
+    // Movies Only / TV Shows Only filter
     const types = searchParams.get('types') || 'movie,tv_series';
     if (types !== 'movie,tv_series') {
       catalog = catalog.filter((t: any) => t.type === types);
+    }
+
+    // === GENRE FILTER (this was completely missing — fixes Action / Animation / etc. showing 0) ===
+    const genre = searchParams.get('genre')?.trim();
+    if (genre && genre.toLowerCase() !== 'all') {
+      const genreLower = genre.toLowerCase();
+      catalog = catalog.filter((t: any) =>
+        Array.isArray(t.genre_names) &&
+        t.genre_names.some((g: string) =>
+          g.toLowerCase() === genreLower ||          // exact match
+          g.toLowerCase().includes(genreLower) ||    // "Action & Adventure" catches "action"
+          genreLower.includes(g.toLowerCase())
+        )
+      );
     }
 
     const section = searchParams.get('section');
 
     // === REAL TRENDING NOW (sorted by popularity) ===
     if (section === 'trending') {
-      const sorted = [...catalog].sort((a, b) => {
-        const scoreA = (a.vote_average || 0) * 10 + (a.vote_count || 0) / 100;
-        const scoreB = (b.vote_average || 0) * 10 + (b.vote_count || 0) / 100;
-        return scoreB - scoreA;
-      });
+      const sorted = [...catalog].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
       return NextResponse.json({
         success: true,
         titles: sorted.slice(0, 20)
       });
     }
 
-    // === REAL NEW RELEASES THIS WEEK (titles added since last snapshot) ===
+    // === REAL NEW RELEASES THIS WEEK ===
     if (section === 'new-releases') {
       const previousRaw = await kv.get('previous_free_catalog');
       const previous: any[] = Array.isArray(previousRaw) ? previousRaw : [];
       const prevIds = new Set(previous.map((t: any) => t.id));
-
       let newTitles = catalog.filter((t: any) => !prevIds.has(t.id));
-
-      // Sort newest first by year
       newTitles.sort((a, b) => (b.year || 0) - (a.year || 0));
-
       return NextResponse.json({
         success: true,
         titles: newTitles.slice(0, 20)
@@ -82,14 +88,28 @@ export async function GET(request: NextRequest) {
     });
   }
 
-    // PREMIUM (now respects Movies Only / TV Shows Only / All filter)
+  // PREMIUM (now respects Movies/TV/All + Genre filter)
   const rawPremium = await kv.get('full_premium_catalog');
   let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
 
-  // Same filter as Free section
+  // Types filter
   const types = searchParams.get('types') || 'movie,tv_series';
   if (types !== 'movie,tv_series') {
     catalogPremium = catalogPremium.filter((t: any) => t.type === types);
+  }
+
+  // GENRE FILTER for Premium too
+  const genre = searchParams.get('genre')?.trim();
+  if (genre && genre.toLowerCase() !== 'all') {
+    const genreLower = genre.toLowerCase();
+    catalogPremium = catalogPremium.filter((t: any) =>
+      Array.isArray(t.genre_names) &&
+      t.genre_names.some((g: string) =>
+        g.toLowerCase() === genreLower ||
+        g.toLowerCase().includes(genreLower) ||
+        genreLower.includes(g.toLowerCase())
+      )
+    );
   }
 
   const start = (page - 1) * 48;
