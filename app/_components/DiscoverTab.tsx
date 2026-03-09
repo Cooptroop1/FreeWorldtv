@@ -309,19 +309,20 @@ export default function DiscoverTab({
                   aria-label={`View details for ${item.title} (${item.year})`}
                 >
                   <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
-                      {item.poster_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
-                        alt={`${item.title} poster`}
-                        fill
-                        className="object-cover"
-                        sizes="160px"
-                        quality={75}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center"><Film className="w-12 h-12 text-gray-600" /></div>
-                    )}
+                     {item.poster_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
+                          alt={`${item.title} poster`}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="160px"
+                          quality={75}
+                          loading="lazy"
+                        />
+                      ) : (
+                        // Grey skeleton while poster loads (exactly like main grid)
+                        <div className="w-full h-full bg-zinc-800 animate-pulse" />
+                      )}
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
                       aria-label={isFavorite ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
