@@ -60,7 +60,6 @@ export default function DiscoverTab({
   const [isUsingFallback, setIsUsingFallback] = useState(false);
 
   const postersFetched = useRef(new Set<number>());
-  const posterCache = useRef(new Map());   // ← ADD THIS EXACT LINE
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const prevSearchRef = useRef(debouncedSearch);
@@ -171,6 +170,37 @@ export default function DiscoverTab({
     return () => observerRef.current?.disconnect();
   }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
 
+  // Optimized poster fetching
+  useEffect(() => {
+    if (!allTitles?.length || !TMDB_READ_TOKEN) return;
+    const titlesNeedingPoster = allTitles.filter((title: any) =>
+      title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+    );
+    if (titlesNeedingPoster.length === 0) return;
+
+    const fetchWithLimit = async () => {
+      const batch = titlesNeedingPoster.slice(0, 8);
+      const updates = await Promise.all(
+        batch.map(async (title: any) => {
+          postersFetched.current.add(title.tmdb_id);
+          const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
+          try {
+            const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
+              headers: { accept: 'application/json', Authorization: `Bearer ${TMDB_READ_TOKEN}` },
+            });
+            if (!res.ok) throw new Error();
+            const json = await res.json();
+            return { ...title, poster_path: json.poster_path };
+          } catch {
+            return title;
+          }
+        })
+      );
+      setAllTitles(prev => prev.map(title => updates.find((u: any) => u.id === title.id) || title));
+    };
+    fetchWithLimit();
+  }, [allTitles, TMDB_READ_TOKEN]);
+
   // Filtered titles
   const filteredTitles = useMemo(() =>
     debouncedSearch
@@ -187,47 +217,6 @@ export default function DiscoverTab({
     [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
   );
 
-    // Persistent poster cache — posters stay when switching Movies / TV / All
-  // Fast loading + no disappearing when switching filters
-  useEffect(() => {
-    if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
-
-    // Only process the currently visible page (first 48 titles)
-    const visibleTitles = filteredTitles.slice(0, 48);
-
-    const titlesNeedingPoster = visibleTitles.filter((title: any) =>
-      title.tmdb_id && !title.poster_path && !posterCache.current.has(title.tmdb_id)
-    );
-
-    if (titlesNeedingPoster.length === 0) return;
-
-    const fetchBatch = async () => {
-      const batch = titlesNeedingPoster.slice(0, 6); // small batches = feels fast
-
-      const updates = await Promise.all(
-        batch.map(async (title: any) => {
-          posterCache.current.set(title.tmdb_id, true);
-          const endpoint = title.type === 'tv_series' ? 'tv' : 'movie';
-          try {
-            const res = await fetch(
-              `https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`,
-              { headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` } }
-            );
-            const json = await res.json();
-            return { ...title, poster_path: json.poster_path };
-          } catch {
-            return title;
-          }
-        })
-      );
-
-      setAllTitles(prev =>
-        prev.map(title => updates.find((u: any) => u.id === title.id) || title)
-      );
-    };
-
-    fetchBatch();
-  }, [filteredTitles, TMDB_READ_TOKEN]);
     const trending = filteredTitles.slice(0, 20);
   const newReleases = filteredTitles.slice(20, 40);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 20);
