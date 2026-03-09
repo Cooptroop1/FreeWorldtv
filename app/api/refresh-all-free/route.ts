@@ -2,7 +2,7 @@ import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 
 const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'FreeStreamWorld2026';
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mySuperSecretRefreshKey2026xyz123';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -13,80 +13,56 @@ export async function GET(request: Request) {
   }
 
   if (!WATCHMODE_API_KEY) {
-    return NextResponse.json({ error: 'WATCHMODE_API_KEY is missing' }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'WATCHMODE_API_KEY is MISSING in Vercel Environment Variables!',
+      fix: 'Add WATCHMODE_API_KEY in Vercel Dashboard → Settings → Environment Variables'
+    }, { status: 500 });
   }
 
-  console.log('🚀 REFRESH STARTED — fetching full free catalog...');
+  console.log('🚀 DEBUG REFRESH STARTED...');
   let allTitles: any[] = [];
   let page = 1;
   let totalCalls = 0;
-  const seenIds = new Set();
 
   try {
-    while (true) {
-      const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US,GB,CA,AU&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
-      
-      console.log(`📄 Fetching page ${page}...`);
-      const res = await fetch(url, { cache: 'no-store' });
-      totalCalls++;
+    const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US,GB,CA,AU&types=movie,tv_series&sort_by=popularity_desc&page=1&limit=250`;
+    
+    console.log('📡 Calling Watchmode with URL:', url.replace(WATCHMODE_API_KEY, '***HIDDEN***'));
+    
+    const res = await fetch(url, { cache: 'no-store' });
+    totalCalls++;
 
-      if (!res.ok) {
-        console.error(`❌ Page ${page} failed: ${res.status}`);
-        break;
-      }
-
-      const data = await res.json();
-      const pageTitles = data.titles || data.results || [];
-
-      console.log(`✅ Page ${page} returned ${pageTitles.length} titles`);
-
-      if (pageTitles.length === 0) {
-        console.log('✅ No more pages — stopping');
-        break;
-      }
-
-      // Deduplicate
-      const uniquePage = pageTitles.filter((t: any) => {
-        if (seenIds.has(t.id)) return false;
-        seenIds.add(t.id);
-        return true;
-      });
-
-      allTitles = [...allTitles, ...uniquePage];
-      console.log(`📊 Total titles so far: ${allTitles.length}`);
-
-      page++;
-      await new Promise(r => setTimeout(r, 400)); // respectful delay
+    const rawText = await res.text(); // get raw response first
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      data = { raw: rawText };
     }
 
-    // Save providers too
-    const sourcesRes = await fetch(`https://api.watchmode.com/v1/providers/?apiKey=${WATCHMODE_API_KEY}`, { cache: 'no-store' });
-    const providersData = await sourcesRes.json();
-    const allProviders = providersData.results || providersData || [];
+    console.log(`Status: ${res.status} | Titles returned: ${data.titles?.length || data.results?.length || 0}`);
 
-    console.log(`✅ Fetched ${allProviders.length} providers`);
-
-    // FINAL SAVE
-    await kv.set('full_free_catalog', allTitles, { ex: 86400 });
-    await kv.set('watchmode_providers', allProviders, { ex: 86400 });
-    await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
-
-    console.log(`🎉 SUCCESS — Saved ${allTitles.length} titles!`);
+    const pageTitles = data.titles || data.results || [];
 
     return NextResponse.json({
       success: true,
-      titleCount: allTitles.length,
-      providerCount: allProviders.length,
+      debug: true,
+      statusCode: res.status,
+      apiKeyPresent: !!WATCHMODE_API_KEY,
+      firstPageTitles: pageTitles.length,
+      sampleTitle: pageTitles[0] ? pageTitles[0].title : 'NONE',
+      fullResponse: data,
       callsMade: totalCalls,
-      message: 'Snapshot is now filled!'
+      message: pageTitles.length === 0 
+        ? 'Watchmode returned EMPTY on page 1 — this is the problem'
+        : `Success! ${pageTitles.length} titles on page 1`
     });
 
   } catch (error: any) {
-    console.error('❌ Refresh crashed:', error.message);
-    return NextResponse.json({ 
-      success: false, 
+    return NextResponse.json({
+      success: false,
       error: error.message,
-      message: 'Refresh failed — check Vercel logs for details'
-    }, { status: 500 });
+      message: 'Refresh crashed — see above'
+    });
   }
 }
