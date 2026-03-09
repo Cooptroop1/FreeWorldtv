@@ -33,9 +33,9 @@ export async function GET(request: Request) {
     await new Promise(r => setTimeout(r, 400));
   }
 
-  // === PREMIUM TITLES (US only, max 20 pages) ===
+  // === PREMIUM TITLES (now also 12 pages so ~3k like free) ===
   page = 1;
-  while (page <= 20) {
+  while (page <= 12) {
     const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
     const res = await fetch(url, { cache: 'no-store' });
     totalCalls++;
@@ -48,42 +48,36 @@ export async function GET(request: Request) {
     await new Promise(r => setTimeout(r, 400));
   }
 
-  // === CLEAN & MAP TITLES (this is the fix — genre_names was accidentally dropped) ===
-  const cleanTitle = (t: any) => ({
-    id: t.id,
-    title: t.title || t.name || "Unknown Title",
-    type: t.type,
-    year: t.year,
+  // === PROCESS TITLES (keep EVERY original field + ensure genres & poster) ===
+  const processTitle = (t: any) => ({
+    ...t,                                   // ← THIS RESTORES ALL POSTERS & EVERYTHING
     poster: t.poster || t.image_url || null,
-    imdb_rating: t.imdb_rating || null,
-    tmdb_rating: t.tmdb_rating || null,
-    genre_names: t.genre_names || [],      // ← THIS IS THE IMPORTANT ONE
-    genres: t.genres || [],                // keep both for flexibility
-    popularity: t.popularity || 0,
-    release_date: t.release_date || t.first_air_date || null,
+    genre_names: t.genre_names || [],
+    genres: t.genres || [],
+    title: t.title || t.name || "Unknown Title",
   });
 
-  const cleanFreeTitles = freeTitles.map(cleanTitle);
-  const cleanPremiumTitles = premiumTitles.map(cleanTitle);
+  const processedFree = freeTitles.map(processTitle);
+  const processedPremium = premiumTitles.map(processTitle);
 
-  // === SAVE PREVIOUS SNAPSHOT (needed for real "New Releases This Week") ===
+  // === SAVE PREVIOUS SNAPSHOT (for New Releases) ===
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
     await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
   }
 
-  // Save the new snapshots
-  await kv.set('full_free_catalog', cleanFreeTitles, { ex: 86400 });
-  await kv.set('full_premium_catalog', cleanPremiumTitles, { ex: 86400 });
+  // Save new snapshots
+  await kv.set('full_free_catalog', processedFree, { ex: 86400 });
+  await kv.set('full_premium_catalog', processedPremium, { ex: 86400 });
   await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
 
-  console.log(`🎉 DONE — Free: ${cleanFreeTitles.length} | Premium: ${cleanPremiumTitles.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
-    freeTitles: cleanFreeTitles.length,
-    premiumTitles: cleanPremiumTitles.length,
+    freeTitles: processedFree.length,
+    premiumTitles: processedPremium.length,
     callsUsed: totalCalls,
-    message: 'Both snapshots cached for 24h with genres included!'
+    message: 'Both ~3000 titles with genres + posters fully restored!'
   });
 }
