@@ -169,6 +169,23 @@ export default function DiscoverTab({
     return () => observerRef.current?.disconnect();
   }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
 
+  
+  // Filtered titles
+  const filteredTitles = useMemo(() =>
+    debouncedSearch
+      ? allTitles
+      : allTitles.filter((title: any) => {
+          const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
+          const year = parseInt(title.year || '0');
+          const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
+          const rating = title.vote_average || 0;
+          const matchesRating = rating >= minRatingFilter;
+          const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
+          return matchesGenres && matchesYear && matchesRating && matchesType;
+        }),
+    [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
+  );
+
   // Optimized poster fetching — now runs only on CURRENT filtered list (fast for Movies Only)
 useEffect(() => {
   if (!filteredTitles?.length || !TMDB_READ_TOKEN) return;
@@ -212,21 +229,6 @@ useEffect(() => {
 
   return () => clearInterval(interval);
 }, [filteredTitles, TMDB_READ_TOKEN]); // ← key change: now depends on filteredTitles
-  // Filtered titles
-  const filteredTitles = useMemo(() =>
-    debouncedSearch
-      ? allTitles
-      : allTitles.filter((title: any) => {
-          const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
-          const year = parseInt(title.year || '0');
-          const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
-          const rating = title.vote_average || 0;
-          const matchesRating = rating >= minRatingFilter;
-          const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
-          return matchesGenres && matchesYear && matchesRating && matchesType;
-        }),
-    [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
-  );
 
     const trending = filteredTitles.slice(0, 20);
   const newReleases = filteredTitles.slice(20, 40);
