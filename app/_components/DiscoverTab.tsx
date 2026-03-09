@@ -58,6 +58,10 @@ export default function DiscoverTab({
   const [page, setPage] = useState(1);
   const [selectedGenre, setSelectedGenre] = useState('');
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+    // Real Trending + New Releases (automatically updates when you switch Movies/TV/All)
+  const [trendingItems, setTrendingItems] = useState<any[]>([]);
+  const [newReleasesItems, setNewReleasesItems] = useState<any[]>([]);
+  const [carouselsLoading, setCarouselsLoading] = useState(false);
 
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -200,6 +204,32 @@ export default function DiscoverTab({
     };
     fetchWithLimit();
   }, [allTitles, TMDB_READ_TOKEN]);
+  // Fetch REAL Trending and New Releases (respects Movies Only / TV Shows Only filter)
+  useEffect(() => {
+    const fetchCarousels = async () => {
+      if (debouncedSearch) return; // hide carousels during search (same as before)
+      setCarouselsLoading(true);
+      try {
+        const typesParam = encodeURIComponent(contentType);
+
+        // Real Trending Now
+        const trendRes = await fetch(`/api/cached-fetch?types=${typesParam}&section=trending`);
+        const trendJson = await trendRes.json();
+        if (trendJson.success) setTrendingItems(trendJson.titles || []);
+
+        // Real New Releases This Week
+        const newRes = await fetch(`/api/cached-fetch?types=${typesParam}&section=new-releases`);
+        const newJson = await newRes.json();
+        if (newJson.success) setNewReleasesItems(newJson.titles || []);
+      } catch (err) {
+        console.error("Carousel fetch failed:", err);
+      } finally {
+        setCarouselsLoading(false);
+      }
+    };
+
+    fetchCarousels();
+  }, [contentType, debouncedSearch]);
 
   // Filtered titles
   const filteredTitles = useMemo(() =>
@@ -217,8 +247,6 @@ export default function DiscoverTab({
     [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
   );
 
-    const trending = filteredTitles.slice(0, 20);
-  const newReleases = filteredTitles.slice(20, 40);
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 20);
 
   // SEO JSON-LD
