@@ -8,57 +8,59 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get('secret') || searchParams.get('key');
 
-  if (secret !== REFRESH_SECRET) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (secret !== REFRESH_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!WATCHMODE_API_KEY) return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
 
-  if (!WATCHMODE_API_KEY) {
-    return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
-  }
-
-  console.log('🚀 SAFE REFRESH — US only + max 12 pages...');
-  let allTitles: any[] = [];
-  const seenIds = new Set();
+  console.log('🚀 REFRESHING BOTH FREE + PREMIUM SNAPSHOTS...');
+  let freeTitles: any[] = [];
+  let premiumTitles: any[] = [];
+  const seenFree = new Set();
+  const seenPremium = new Set();
   let totalCalls = 0;
-  const MAX_PAGES = 12;   // ← this stops it burning calls
 
-  try {
-    let page = 1;
-    while (page <= MAX_PAGES) {
-      const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
-      
-      const res = await fetch(url, { cache: 'no-store' });
-      totalCalls++;
+  // === FREE TITLES (US only, safe) ===
+  let page = 1;
+  while (page <= 12) {
+    const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
+    const res = await fetch(url, { cache: 'no-store' });
+    totalCalls++;
+    const data = await res.json();
+    const titles = data.titles || [];
+    if (titles.length === 0) break;
 
-      if (!res.ok) break;
-
-      const data = await res.json();
-      const pageTitles = data.titles || data.results || [];
-
-      if (pageTitles.length === 0) break;
-
-      const uniquePage = pageTitles.filter((t: any) => !seenIds.has(t.id) && seenIds.add(t.id));
-
-      allTitles = [...allTitles, ...uniquePage];
-      console.log(`✅ Page ${page}: +${uniquePage.length} titles (Total: ${allTitles.length})`);
-
-      page++;
-      await new Promise(r => setTimeout(r, 400));
-    }
-
-    await kv.set('full_free_catalog', allTitles, { ex: 86400 });
-    await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
-
-    console.log(`🎉 SAFE SUCCESS — ${allTitles.length} titles saved (used only ${totalCalls} calls)`);
-
-    return NextResponse.json({
-      success: true,
-      titleCount: allTitles.length,
-      callsUsed: totalCalls,
-      message: 'Snapshot filled safely!'
-    });
-
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    const unique = titles.filter((t: any) => !seenFree.has(t.id) && seenFree.add(t.id));
+    freeTitles = [...freeTitles, ...unique];
+    page++;
+    await new Promise(r => setTimeout(r, 400));
   }
+
+  // === PREMIUM TITLES (US only, max 20 pages) ===
+  page = 1;
+  while (page <= 20) {
+    const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
+    const res = await fetch(url, { cache: 'no-store' });
+    totalCalls++;
+    const data = await res.json();
+    const titles = data.titles || [];
+    if (titles.length === 0) break;
+
+    const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
+    premiumTitles = [...premiumTitles, ...unique];
+    page++;
+    await new Promise(r => setTimeout(r, 400));
+  }
+
+  await kv.set('full_free_catalog', freeTitles, { ex: 86400 });
+  await kv.set('full_premium_catalog', premiumTitles, { ex: 86400 });
+  await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
+
+  console.log(`🎉 DONE — Free: ${freeTitles.length} | Premium: ${premiumTitles.length} | Calls: ${totalCalls}`);
+
+  return NextResponse.json({
+    success: true,
+    freeTitles: freeTitles.length,
+    premiumTitles: premiumTitles.length,
+    callsUsed: totalCalls,
+    message: 'Both snapshots cached for 24h!'
+  });
 }
