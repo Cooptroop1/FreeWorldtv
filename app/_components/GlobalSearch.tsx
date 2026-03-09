@@ -18,10 +18,11 @@ export default function GlobalSearch({
   region,
   contentType
 }: GlobalSearchProps) {
-  const [rawSuggestions, setRawSuggestions] = useState<any[]>([]);
-  const [displayedSuggestions, setDisplayedSuggestions] = useState<any[]>([]);
+  const [rawResults, setRawResults] = useState<any[]>([]);
+  const [displayedResults, setDisplayedResults] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const postersFetched = useRef(new Set<number>());
@@ -30,7 +31,7 @@ export default function GlobalSearch({
   // 24h client cache
   const getCacheKey = (query: string) => `search_cache_${query.trim().toLowerCase()}_${region}_${contentType}`;
 
-  const getCachedSuggestions = (query: string) => {
+  const getCached = (query: string) => {
     const cached = localStorage.getItem(getCacheKey(query));
     if (!cached) return null;
     const { data, timestamp } = JSON.parse(cached);
@@ -41,24 +42,25 @@ export default function GlobalSearch({
     return data;
   };
 
-  const saveToCache = (query: string, titles: any[]) => {
+  const saveCache = (query: string, titles: any[]) => {
     localStorage.setItem(getCacheKey(query), JSON.stringify({ data: titles, timestamp: Date.now() }));
   };
 
-  // Search from snapshot
+  // Main search
   useEffect(() => {
     const timer = setTimeout(async () => {
       const trimmed = searchQuery.trim();
       if (trimmed.length < 2) {
-        setRawSuggestions([]);
+        setRawResults([]);
+        setDisplayedResults([]);
         setShowDropdown(false);
         return;
       }
 
-      const cached = getCachedSuggestions(trimmed);
+      const cached = getCached(trimmed);
       if (cached) {
-        setRawSuggestions(cached);
-        setDisplayedSuggestions(cached.slice(0, 20));
+        setRawResults(cached);
+        setDisplayedResults(cached.slice(0, 20));
         setShowDropdown(true);
         return;
       }
@@ -70,39 +72,40 @@ export default function GlobalSearch({
         const res = await fetch(`/api/cached-fetch?query=${encodeURIComponent(trimmed)}&page=1`);
         const json = await res.json();
         const results = json.success && Array.isArray(json.titles) ? json.titles : [];
-        setRawSuggestions(results);
-        setDisplayedSuggestions(results.slice(0, 20)); // show immediately
-        if (results.length > 0) saveToCache(trimmed, results);
+        
+        setRawResults(results);
+        setDisplayedResults(results.slice(0, 20)); // show immediately (with old posters until enriched)
+        if (results.length > 0) saveCache(trimmed, results);
       } catch {
-        setRawSuggestions([]);
-        setDisplayedSuggestions([]);
+        setRawResults([]);
+        setDisplayedResults([]);
       } finally {
         setLoading(false);
       }
-    }, 300);
+    }, 280);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Poster enrichment (runs in background, no flicker)
+  // Poster enrichment — keeps old posters until new ones are ready (no flicker)
   useEffect(() => {
-    if (!TMDB_READ_TOKEN || rawSuggestions.length === 0) return;
+    if (!TMDB_READ_TOKEN || rawResults.length === 0) return;
 
-    const needsPoster = rawSuggestions.filter((t: any) =>
+    const needsPoster = rawResults.filter((t: any) =>
       t.tmdb_id && !t.poster_path && !postersFetched.current.has(t.tmdb_id)
     );
 
     if (needsPoster.length === 0) return;
 
-    const fetchPosters = async () => {
+    const enrich = async () => {
       const batch = needsPoster.slice(0, 20);
       const updates = await Promise.all(
         batch.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
-          const endpoint = title.type === 'tv_series' ? 'tv' : 'movie';
+          const type = title.type === 'tv_series' ? 'tv' : 'movie';
           try {
             const res = await fetch(
-              `https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`,
+              `https://api.themoviedb.org/3/${type}/${title.tmdb_id}?language=en-US`,
               { headers: { Authorization: `Bearer ${TMDB_READ_TOKEN}` } }
             );
             const data = await res.json();
@@ -113,15 +116,15 @@ export default function GlobalSearch({
         })
       );
 
-      // Update displayed list with posters (keeps old posters until new ones are ready)
-      setDisplayedSuggestions(prev => {
-        const newList = rawSuggestions.map(t => updates.find(u => u.id === t.id) || t);
-        return newList.slice(0, 20);
+      // Only update displayed list once posters are ready
+      setDisplayedResults(prev => {
+        const merged = rawResults.map(t => updates.find(u => u.id === t.id) || t);
+        return merged.slice(0, 20);
       });
     };
 
-    fetchPosters();
-  }, [rawSuggestions, TMDB_READ_TOKEN]);
+    enrich();
+  }, [rawResults, TMDB_READ_TOKEN]);
 
   // Click outside
   useEffect(() => {
@@ -142,8 +145,8 @@ export default function GlobalSearch({
 
   const clearSearch = () => {
     setSearchQuery('');
-    setRawSuggestions([]);
-    setDisplayedSuggestions([]);
+    setRawResults([]);
+    setDisplayedResults([]);
     setShowDropdown(false);
   };
 
@@ -172,8 +175,8 @@ export default function GlobalSearch({
             <div className="flex items-center justify-center py-8 text-gray-400">
               <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading from snapshot...
             </div>
-          ) : displayedSuggestions.length > 0 ? (
-            displayedSuggestions.map((title: any) => (
+          ) : displayedResults.length > 0 ? (
+            displayedResults.map((title: any) => (
               <div
                 key={title.id}
                 onClick={() => handleSelect(title)}
