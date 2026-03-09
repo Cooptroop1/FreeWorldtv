@@ -327,7 +327,7 @@ export default function DiscoverTab({
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
   const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
-  const isLoading = loadingKey === 'initial' ? (loading || carouselsLoading) : loadingMore;
+      const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     return (
       <section className="mb-10" aria-labelledby={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
         <h2 id={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`} className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
