@@ -731,7 +731,7 @@ const deduplicateSources = (sources: any[]) => {
                               alt={`${title.title} poster`}
                               fill
                               className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
-                              sizes="(max-width: 768px) 50vw, (max-width: 1024px) 25vw, 20vw"
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                               quality={75}
                               priority={index < 3}
                               loading={index < 3 ? "eager" : "lazy"}
