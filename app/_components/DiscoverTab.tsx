@@ -468,7 +468,7 @@ export default function DiscoverTab({
           <HorizontalCarousel title="New Releases This Week" items={newReleasesItems} loadingKey="initial" />
          {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 20)} loadingKey="initial" />}
 
-                    {/* Filters Panel — only Content Type */}
+                              {/* Filters Panel — ONLY Content Type (no genres, no year, no rating) */}
           <div className="mb-8 flex flex-wrap items-center gap-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -493,7 +493,6 @@ export default function DiscoverTab({
                   <X size={16} /> Reset
                 </button>
               </div>
-
               <div>
                 <p className="text-sm text-gray-400 mb-3">Choose what to show</p>
                 <div className="flex gap-3" role="group" aria-label="Content type filter">
