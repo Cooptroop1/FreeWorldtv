@@ -730,13 +730,12 @@ const deduplicateSources = (sources: any[]) => {
                               src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
                               alt={`${title.title} poster`}
                               fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
+                              className="object-cover group-hover:scale-105 transition-transform duration-500"
                               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                               quality={75}
                               priority={index < 3}
                               loading={index < 3 ? "eager" : "lazy"}
                               unoptimized={true}
-                              onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                             />
                           ) : (
                       <div className="w-full h-full flex items-center justify-center">
