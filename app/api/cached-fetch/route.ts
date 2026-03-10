@@ -27,33 +27,13 @@ export async function GET(request: NextRequest) {
     const raw = await kv.get('full_free_catalog');
     let catalog: any[] = Array.isArray(raw) ? raw : [];
 
-    // === TYPES FILTER (Movies / TV / All) ===
+    // TYPES FILTER (Movies / TV / All)
     const types = searchParams.get('types') || 'movie,tv_series';
     if (types !== 'movie,tv_series') {
       catalog = catalog.filter((t: any) => t.type === types);
     }
 
-        // === FIXED GENRE FILTER (now works with your exact dropdown: Action, Animation, Science Fiction, etc.) ===
-    let genre = searchParams.get('genre')?.trim();
-    if (genre && genre.toLowerCase() !== 'all') {
-      const term = genre.toLowerCase().trim();
-      catalog = catalog.filter((t: any) => {
-        const genreList = [
-          ...(Array.isArray(t.genre_names) ? t.genre_names : []),
-          ...(Array.isArray(t.genres) ? t.genres : []),
-          ...(t.genre ? [t.genre] : [])
-        ];
-        return genreList.some((g: any) => {
-          if (!g) return false;
-          const gStr = String(g).toLowerCase().trim();
-          return gStr.includes(term) || 
-                 term.includes(gStr) ||
-                 gStr.replace(/&/g, 'and').includes(term.replace(/&/g, 'and'));
-        });
-      });
-    }
-
-    // === YEAR RANGE FILTER (From Year / To Year) ===
+    // YEAR RANGE FILTER
     const fromYear = parseInt(searchParams.get('fromYear') || '0', 10);
     const toYear = parseInt(searchParams.get('toYear') || '3000', 10);
     if (fromYear > 0 || toYear < 3000) {
@@ -63,7 +43,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // === MINIMUM RATING FILTER ===
+    // MINIMUM RATING FILTER
     const minRating = parseInt(searchParams.get('minRating') || '0', 10);
     if (minRating > 0) {
       catalog = catalog.filter((t: any) => {
@@ -101,7 +81,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // NORMAL GRID
     const start = (page - 1) * 48;
     return NextResponse.json({
       success: true,
@@ -109,34 +88,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // PREMIUM SECTION (same filters as free)
+  // PREMIUM SECTION (same filters except genre)
   const rawPremium = await kv.get('full_premium_catalog');
   let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
 
   const types = searchParams.get('types') || 'movie,tv_series';
   if (types !== 'movie,tv_series') {
     catalogPremium = catalogPremium.filter((t: any) => t.type === types);
-  }
-
-  // Genre, Year, Rating for Premium too
-  let genre = searchParams.get('genre')?.trim();
-  if (genre && genre.toLowerCase() !== 'all') {
-    const genreLower = genre.toLowerCase().trim();
-    const genreSynonyms: Record<string, string[]> = {
-      'science fiction': ['sci-fi & fantasy', 'sci-fi', 'science fiction'],
-      'family': ['family', 'kids & family'],
-      'action': ['action', 'action & adventure'],
-      'adventure': ['adventure', 'action & adventure'],
-    };
-    catalogPremium = catalogPremium.filter((t: any) => {
-      if (!Array.isArray(t.genre_names)) return false;
-      return t.genre_names.some((g: string) => {
-        const gLower = g.toLowerCase().trim();
-        if (gLower === genreLower || gLower.includes(genreLower) || genreLower.includes(gLower)) return true;
-        const synonyms = genreSynonyms[genreLower] || [];
-        return synonyms.some(syn => gLower.includes(syn) || syn.includes(gLower));
-      });
-    });
   }
 
   const fromYear = parseInt(searchParams.get('fromYear') || '0', 10);
