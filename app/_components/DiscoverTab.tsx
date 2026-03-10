@@ -532,74 +532,23 @@ export default function DiscoverTab({
                 </button>
               </div>
 
-              {/* Genres */}
-              <div className="mb-8">
-                <p className="text-sm text-gray-400 mb-3">Genres</p>
-                <div className="flex flex-wrap gap-2" role="group" aria-label="Genre filters">
-                  {genres.map((g) => {
-                    const isActive = selectedGenresFilter.includes(g.id);
-                    return (
-                      <button
-                        key={g.id}
-                        onClick={() => toggleGenreFilter(g.id)}
-                        aria-pressed={isActive}
-                        className={`px-5 py-2 rounded-full text-sm transition-all ${
-                          isActive ? 'bg-blue-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                        }`}
-                      >
-                        {g.name}
-                      </button>
-                    );
-                  })}
+                            {/* Content Type — ONLY filter we’re keeping */}
+              <div>
+                <p className="text-sm text-gray-400 mb-3">Content Type</p>
+                <div className="flex gap-3" role="group" aria-label="Content type filter">
+                  {['movie,tv_series', 'movie', 'tv_series'].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => setContentType(type)}
+                      aria-pressed={contentType === type}
+                      className={`px-6 py-2.5 rounded-2xl text-sm font-medium transition-all ${
+                        contentType === type ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      {type === 'movie,tv_series' ? 'All (Movies & TV Shows)' : type === 'movie' ? 'Movies Only' : 'TV Shows Only'}
+                    </button>
+                  ))}
                 </div>
-              </div>
-
-              {/* Year Range */}
-              <div className="grid grid-cols-2 gap-6 mb-8">
-                <div>
-                  <label htmlFor="min-year" className="text-sm text-gray-400 mb-2 block">Min Year</label>
-                  <input
-                    id="min-year"
-                    type="number"
-                    value={minYearFilter}
-                    onChange={(e) => setMinYearFilter(e.target.value)}
-                    placeholder="1900"
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="max-year" className="text-sm text-gray-400 mb-2 block">Max Year</label>
-                  <input
-                    id="max-year"
-                    type="number"
-                    value={maxYearFilter}
-                    onChange={(e) => setMaxYearFilter(e.target.value)}
-                    placeholder="2026"
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-white"
-                  />
-                </div>
-              </div>
-
-              {/* Min Rating */}
-              <div className="mb-8">
-                <label htmlFor="rating-slider" className="flex justify-between text-sm text-gray-400 mb-2">
-                  <span>Minimum Rating</span>
-                  <span className="font-mono" aria-live="polite">{minRatingFilter}.0+</span>
-                </label>
-                <input
-                  id="rating-slider"
-                  type="range"
-                  min="0"
-                  max="10"
-                  step="0.1"
-                  value={minRatingFilter}
-                  onChange={(e) => setMinRatingFilter(parseFloat(e.target.value))}
-                  className="w-full accent-blue-500"
-                  aria-valuemin={0}
-                  aria-valuemax={10}
-                  aria-valuenow={minRatingFilter}
-                  aria-valuetext={`${minRatingFilter}.0 and above`}
-                />
               </div>
 
               {/* Content Type */}
