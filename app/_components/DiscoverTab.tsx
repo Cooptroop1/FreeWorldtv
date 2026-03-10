@@ -32,10 +32,9 @@ interface DiscoverTabProps {
 export default function DiscoverTab({
   searchQuery, setSearchQuery, debouncedSearch, region, contentType,
   favorites, toggleFavorite, selectedTitle, setSelectedTitle,
-  selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter,
+  minYearFilter, maxYearFilter, minRatingFilter,
   lastUpdated, setLastUpdated,
   surpriseMe, showFilters, setShowFilters,
-  toggleGenreFilter, setSelectedGenresFilter,
   setMinYearFilter, setMaxYearFilter, setMinRatingFilter, setContentType
 }: DiscoverTabProps) {
   const [allTitles, setAllTitles] = useState<any[]>([]);
@@ -44,7 +43,6 @@ export default function DiscoverTab({
   const [hasMore, setHasMore] = useState(true);
   const [pauseInfinite, setPauseInfinite] = useState(false);
   const [page, setPage] = useState(1);
-  const [selectedGenre, setSelectedGenre] = useState('');
   const [isUsingFallback, setIsUsingFallback] = useState(false);
     // Real Trending + New Releases (automatically updates when you switch Movies/TV/All)
   const [trendingItems, setTrendingItems] = useState<any[]>([]);
@@ -257,21 +255,8 @@ export default function DiscoverTab({
     fetchCarousels();
   }, [contentType, debouncedSearch]);
 
-  // Filtered titles
-  const filteredTitles = useMemo(() =>
-    debouncedSearch
-      ? allTitles
-      : allTitles.filter((title: any) => {
-          const matchesGenres = selectedGenresFilter.length === 0 || selectedGenresFilter.some(g => title.genre_ids?.includes(g));
-          const year = parseInt(title.year || '0');
-          const matchesYear = (!minYearFilter || year >= parseInt(minYearFilter)) && (!maxYearFilter || year <= parseInt(maxYearFilter));
-          const rating = title.vote_average || 0;
-          const matchesRating = rating >= minRatingFilter;
-          const matchesType = contentType === 'movie,tv_series' || title.type === contentType;
-          return matchesGenres && matchesYear && matchesRating && matchesType;
-        }),
-    [allTitles, debouncedSearch, selectedGenresFilter, minYearFilter, maxYearFilter, minRatingFilter, contentType]
-  );
+    // Backend already handles filtering (only Content Type)
+  const filteredTitles = allTitles;
 
   const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 20);
 
@@ -493,7 +478,7 @@ export default function DiscoverTab({
           <HorizontalCarousel title="New Releases This Week" items={newReleasesItems} loadingKey="initial" />
          {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 20)} loadingKey="initial" />}
 
-          {/* Filters Panel */}
+                    {/* Filters Panel — only Content Type */}
           <div className="mb-8 flex flex-wrap items-center gap-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -510,19 +495,17 @@ export default function DiscoverTab({
               🎲 Surprise Me
             </button>
           </div>
-
           {showFilters && (
             <div id="filters-panel" className="mb-10 bg-gray-800/50 border border-gray-700 rounded-3xl p-8">
               <div className="flex justify-between items-center mb-6">
-                <h4 className="text-2xl font-bold">Filters</h4>
+                <h4 className="text-2xl font-bold">Content Type</h4>
                 <button onClick={clearFilters} className="text-sm text-gray-400 hover:text-white flex items-center gap-1">
-                  <X size={16} /> Clear all
+                  <X size={16} /> Reset
                 </button>
               </div>
 
-                            {/* Content Type — ONLY filter we’re keeping */}
               <div>
-                <p className="text-sm text-gray-400 mb-3">Content Type</p>
+                <p className="text-sm text-gray-400 mb-3">Choose what to show</p>
                 <div className="flex gap-3" role="group" aria-label="Content type filter">
                   {['movie,tv_series', 'movie', 'tv_series'].map((type) => (
                     <button
@@ -538,6 +521,7 @@ export default function DiscoverTab({
                   ))}
                 </div>
               </div>
+            </div>
           )}
 
           <div className="mt-12">
