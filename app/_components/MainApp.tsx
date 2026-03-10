@@ -679,31 +679,28 @@ const deduplicateSources = (sources: any[]) => {
       {/* DISCOVER TAB */}
       {tab === 'discover' && (
         <DiscoverTab
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          debouncedSearch={debouncedSearch}
-          region={region}
-          contentType={contentType}
-          favorites={favorites}
-          toggleFavorite={toggleFavorite}
-          selectedTitle={selectedTitle}
-          setSelectedTitle={setSelectedTitle}
-          selectedGenresFilter={selectedGenresFilter}
-          minYearFilter={minYearFilter}
-          maxYearFilter={maxYearFilter}
-          minRatingFilter={minRatingFilter}
-          lastUpdated={lastUpdated}
-          setLastUpdated={setLastUpdated}
-          surpriseMe={surpriseMe}
-          showFilters={showFilters}
-          setShowFilters={setShowFilters}
-          toggleGenreFilter={toggleGenreFilter}
-          setSelectedGenresFilter={setSelectedGenresFilter}
-          setMinYearFilter={setMinYearFilter}
-          setMaxYearFilter={setMaxYearFilter}
-          setMinRatingFilter={setMinRatingFilter}
-          setContentType={setContentType}
-        />
+  searchQuery={searchQuery}
+  setSearchQuery={setSearchQuery}
+  debouncedSearch={debouncedSearch}
+  region={region}
+  contentType={contentType}
+  favorites={favorites}
+  toggleFavorite={toggleFavorite}
+  selectedTitle={selectedTitle}
+  setSelectedTitle={setSelectedTitle}
+  minYearFilter={minYearFilter}
+  maxYearFilter={maxYearFilter}
+  minRatingFilter={minRatingFilter}
+  lastUpdated={lastUpdated}
+  setLastUpdated={setLastUpdated}
+  surpriseMe={surpriseMe}
+  showFilters={showFilters}
+  setShowFilters={setShowFilters}
+  setMinYearFilter={setMinYearFilter}
+  setMaxYearFilter={setMaxYearFilter}
+  setMinRatingFilter={setMinRatingFilter}
+  setContentType={setContentType}
+/>
       )}
 
       {/* TOP 10 TAB */}
