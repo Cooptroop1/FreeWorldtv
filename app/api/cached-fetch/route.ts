@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
-// === CHANGE THIS NUMBER ANYTIME YOU WANT ===
-const REFRESH_INTERVAL_HOURS = 72;
+// === AUTO REFRESH SETTINGS (smart + full) ===
+const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;   // 24 hours → smart daily (only 2 pages)
+const FULL_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days → full rebuild
+const REFRESH_SECRET = 'mySuperSecretRefreshKey2026xyz123';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -10,19 +12,29 @@ export async function GET(request: NextRequest) {
   const paid = searchParams.get('paid') === 'true';
   const page = parseInt(searchParams.get('page') || '1', 10);
 
-  // === AUTO-REFRESH ===
-  const intervalMs = REFRESH_INTERVAL_HOURS * 60 * 60 * 1000;
+  // === FULLY AUTOMATIC REFRESH (no cron job needed) ===
   try {
     const lastRefresh = await kv.get<number>('lastFullRefresh') || 0;
-    if (Date.now() - lastRefresh > intervalMs && !query && !paid) {
-      const host = request.headers.get('host');
-      fetch(`https://${host}/api/refresh-all-free?secret=mySuperSecretRefreshKey2026xyz123`, {
-        cache: 'no-store'
-      }).catch(() => {});
-    }
-  } catch (e) {}
+    const now = Date.now();
+    let mode = '';
 
-  // FREE SECTION
+    if (now - lastRefresh > FULL_INTERVAL_MS && !query && !paid) {
+      mode = 'full';
+    } else if (now - lastRefresh > DAILY_INTERVAL_MS && !query && !paid) {
+      mode = 'daily';
+    }
+
+    if (mode) {
+      const host = request.headers.get('host') || 'freestreamworld.com';
+      const url = `https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}&mode=${mode}`;
+      fetch(url, { cache: 'no-store' }).catch(() => {});
+      console.log(`🔄 AUTO ${mode.toUpperCase()} REFRESH triggered by first visitor`);
+    }
+  } catch (e) {
+    console.error('Auto-refresh check failed:', e);
+  }
+
+  // FREE SECTION (unchanged)
   if (!paid) {
     const raw = await kv.get('full_free_catalog');
     let catalog: any[] = Array.isArray(raw) ? raw : [];
@@ -88,7 +100,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // PREMIUM SECTION (same filters except genre)
+  // PREMIUM SECTION (unchanged)
   const rawPremium = await kv.get('full_premium_catalog');
   let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
 
