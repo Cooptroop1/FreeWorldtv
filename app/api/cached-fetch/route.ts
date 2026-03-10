@@ -33,26 +33,22 @@ export async function GET(request: NextRequest) {
       catalog = catalog.filter((t: any) => t.type === types);
     }
 
-    // === GENRE FILTER (smart matching — fixes Action, Science Fiction, etc.) ===
+        // === FIXED GENRE FILTER (now works with your exact dropdown: Action, Animation, Science Fiction, etc.) ===
     let genre = searchParams.get('genre')?.trim();
     if (genre && genre.toLowerCase() !== 'all') {
-      const genreLower = genre.toLowerCase().trim();
-      const genreSynonyms: Record<string, string[]> = {
-        'science fiction': ['sci-fi & fantasy', 'sci-fi', 'science fiction'],
-        'family': ['family', 'kids & family'],
-        'action': ['action', 'action & adventure'],
-        'adventure': ['adventure', 'action & adventure'],
-      };
-
+      const term = genre.toLowerCase().trim();
       catalog = catalog.filter((t: any) => {
-        if (!Array.isArray(t.genre_names)) return false;
-        return t.genre_names.some((g: string) => {
-          const gLower = g.toLowerCase().trim();
-          // Exact or partial match
-          if (gLower === genreLower || gLower.includes(genreLower) || genreLower.includes(gLower)) return true;
-          // Synonyms
-          const synonyms = genreSynonyms[genreLower] || [];
-          return synonyms.some(syn => gLower.includes(syn) || syn.includes(gLower));
+        const genreList = [
+          ...(Array.isArray(t.genre_names) ? t.genre_names : []),
+          ...(Array.isArray(t.genres) ? t.genres : []),
+          ...(t.genre ? [t.genre] : [])
+        ];
+        return genreList.some((g: any) => {
+          if (!g) return false;
+          const gStr = String(g).toLowerCase().trim();
+          return gStr.includes(term) || 
+                 term.includes(gStr) ||
+                 gStr.replace(/&/g, 'and').includes(term.replace(/&/g, 'and'));
         });
       });
     }
