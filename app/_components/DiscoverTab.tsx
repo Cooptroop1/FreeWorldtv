@@ -73,7 +73,7 @@ export default function DiscoverTab({
     }
   }, [debouncedSearch]);
   
-    // Initial fetch - now uses full_free_catalog snapshot for search too (same as GlobalSearch)
+        // Initial fetch - now uses full_free_catalog snapshot (Content Type only)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -81,24 +81,17 @@ export default function DiscoverTab({
       setPage(1);
       setHasMore(true);
       setIsUsingFallback(false);
-
       try {
         let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1`;
         if (debouncedSearch) {
           url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=1`;
-        } else if (selectedGenre) {
-          url += `&genres=${selectedGenre}`;
         }
-
         const res = await fetch(url);
         const json = await res.json();
-
         let newTitles: any[] = json.success && json.titles?.length ? json.titles : [];
-
-        // Only fall back to static titles when there is NO search (prevents the "15 same movies" bug)
         if (newTitles.length === 0) {
           if (debouncedSearch) {
-            newTitles = []; // clean empty state for bad searches
+            newTitles = [];
           } else {
             newTitles = staticFallbackTitles;
             setIsUsingFallback(true);
@@ -106,7 +99,6 @@ export default function DiscoverTab({
         } else {
           setIsUsingFallback(false);
         }
-
         setAllTitles(newTitles);
         setHasMore(newTitles.length >= 48);
         if (json.success) setLastUpdated(new Date().toISOString());
@@ -119,9 +111,9 @@ export default function DiscoverTab({
       setLoading(false);
     };
     fetchData();
-  }, [debouncedSearch, selectedGenre, region, contentType]);
+  }, [debouncedSearch, region, contentType]);
 
-  // Load more
+    // Load more (Content Type only)
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || pauseInfinite) return;
     setLoadingMore(true);
@@ -129,8 +121,6 @@ export default function DiscoverTab({
       let url = `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${page + 1}`;
       if (debouncedSearch) {
         url = `/api/cached-fetch?query=${encodeURIComponent(debouncedSearch)}&region=${region}&page=${page + 1}`;
-      } else if (selectedGenre) {
-        url += `&genres=${selectedGenre}`;
       }
       const res = await fetch(url);
       const json = await res.json();
@@ -143,7 +133,7 @@ export default function DiscoverTab({
     } finally {
       setLoadingMore(false);
     }
-  }, [page, debouncedSearch, selectedGenre, region, contentType, loadingMore, hasMore, pauseInfinite]);
+  }, [page, debouncedSearch, region, contentType, loadingMore, hasMore, pauseInfinite]);
 
   // Infinite scroll observer
   useEffect(() => {
