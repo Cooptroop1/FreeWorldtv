@@ -15,7 +15,6 @@ interface DiscoverTabProps {
   toggleFavorite: (title: any) => void;
   selectedTitle: any;
   setSelectedTitle: (title: any) => void;
-  selectedGenresFilter: number[];
   minYearFilter: string;
   maxYearFilter: string;
   minRatingFilter: number;
@@ -24,22 +23,11 @@ interface DiscoverTabProps {
   surpriseMe: () => void;
   showFilters: boolean;
   setShowFilters: (show: boolean) => void;
-  toggleGenreFilter: (genreId: number) => void;
-  setSelectedGenresFilter: (genres: number[]) => void;
   setMinYearFilter: (year: string) => void;
   setMaxYearFilter: (year: string) => void;
   setMinRatingFilter: (rating: number) => void;
   setContentType: (type: string) => void;
 }
-
-const genres = [
-  { id: 28, name: 'Action' }, { id: 12, name: 'Adventure' }, { id: 16, name: 'Animation' },
-  { id: 35, name: 'Comedy' }, { id: 80, name: 'Crime' }, { id: 99, name: 'Documentary' },
-  { id: 18, name: 'Drama' }, { id: 10751, name: 'Family' }, { id: 14, name: 'Fantasy' },
-  { id: 36, name: 'History' }, { id: 27, name: 'Horror' }, { id: 10402, name: 'Music' },
-  { id: 9648, name: 'Mystery' }, { id: 10749, name: 'Romance' }, { id: 878, name: 'Science Fiction' },
-  { id: 53, name: 'Thriller' }, { id: 10752, name: 'War' }, { id: 37, name: 'Western' },
-];
 
 export default function DiscoverTab({
   searchQuery, setSearchQuery, debouncedSearch, region, contentType,
@@ -306,8 +294,8 @@ export default function DiscoverTab({
     }))
   }), [debouncedSearch, filteredTitles]);
 
-  const clearFilters = () => {
-    setSelectedGenresFilter([]);
+    const clearFilters = () => {
+    // Content Type is controlled by parent, so we just reset the others if they exist
     setMinYearFilter('');
     setMaxYearFilter('');
     setMinRatingFilter(0);
@@ -550,26 +538,6 @@ export default function DiscoverTab({
                   ))}
                 </div>
               </div>
-
-              {/* Content Type */}
-              <div>
-                <p className="text-sm text-gray-400 mb-3">Content Type</p>
-                <div className="flex gap-3" role="group" aria-label="Content type filter">
-                  {['movie,tv_series', 'movie', 'tv_series'].map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setContentType(type)}
-                      aria-pressed={contentType === type}
-                      className={`px-6 py-2.5 rounded-2xl text-sm font-medium transition-all ${
-                        contentType === type ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'
-                      }`}
-                    >
-                      {type === 'movie,tv_series' ? 'All' : type === 'movie' ? 'Movies Only' : 'TV Series Only'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
           )}
 
           <div className="mt-12">
