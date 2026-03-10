@@ -725,18 +725,20 @@ const deduplicateSources = (sources: any[]) => {
                   className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                 >
                   <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                    {title.poster_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
-                        alt={title.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
-                        quality={75}
-                        priority={index < 3}
-                        loading={index < 3 ? "eager" : "lazy"}
-                      />
-                    ) : (
+                      {title.poster_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                              alt={`${title.title} poster`}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
+                              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 17vw"
+                              quality={75}
+                              priority={index < 3}
+                              loading={index < 3 ? "eager" : "lazy"}
+                              unoptimized={true}
+                              onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
+                            />
+                          ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
                       </div>
