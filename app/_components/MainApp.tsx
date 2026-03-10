@@ -1412,7 +1412,7 @@ const deduplicateSources = (sources: any[]) => {
                         className="snap-start flex-shrink-0 w-28 cursor-pointer group"
                       >
                         <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-gray-800 to-gray-700">
-                                                    {rel.poster_path ? (
+                           {rel.poster_path ? (
                             <Image
                               src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
                               alt={rel.title || rel.name}
@@ -1421,6 +1421,7 @@ const deduplicateSources = (sources: any[]) => {
                               sizes="(max-width: 640px) 28vw, 128px"
                               quality={80}
                               loading="lazy"
+                              unoptimized={true}
                               onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                             />
                           ) : (
