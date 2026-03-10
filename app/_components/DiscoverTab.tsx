@@ -362,19 +362,16 @@ export default function DiscoverTab({
                     aria-label={`View details for ${item.title} (${item.year})`}
                   >
                     <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
-                                         {item.poster_path ? (
-                      <Image
+                     {item.poster_path ? (
+                      <img
                         src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                         alt={`${item.title} poster`}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
-                        sizes="160px"
-                        quality={75}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
-                        unoptimized={true}
-                        onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                       />
                     ) : (
+                      <div className="w-full h-full bg-zinc-800 animate-pulse" />
+                    )}
                         <div className="w-full h-full bg-zinc-800 animate-pulse" />
                       )}
                       <button
