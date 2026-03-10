@@ -91,7 +91,6 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [radioSearch, setRadioSearch] = useState('');
   const [radioCountryCode, setRadioCountryCode] = useState('');
   const [pauseInfiniteScroll, setPauseInfiniteScroll] = useState(false);
-  const [showPauseToast, setShowPauseToast] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [tmdbDetails, setTmdbDetails] = useState<any>(null);
   const [trailers, setTrailers] = useState<any[]>([]);
@@ -1465,10 +1464,8 @@ const deduplicateSources = (sources: any[]) => {
         if (footer) {
           footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
           setPauseInfiniteScroll(true);
-          setShowPauseToast(true);
           setTimeout(() => {
             setPauseInfiniteScroll(false);
-            setShowPauseToast(false);
           }, 8000);
         }
       }}
