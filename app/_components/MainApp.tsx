@@ -1445,19 +1445,19 @@ const deduplicateSources = (sources: any[]) => {
           </div>
         </div>
       )}
-   {/* Floating Buttons Stack — both ↑ and Legal appear only after scrolling down */}
-<div className="fixed bottom-6 right-6 z-[75] flex flex-col gap-3 items-end">
-  {/* Back to Top Button */}
+   {/* Floating Buttons Stack — mobile-friendly (smaller + no overlap) */}
+<div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-[75] flex flex-col gap-3 items-end">
+  {/* Back to Top Button — smaller on mobile */}
   {showBackToTop && (
     <button
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white w-14 h-14 rounded-2xl shadow-2xl flex items-center justify-center text-3xl transition-all hover:scale-105 active:scale-95"
+      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white w-12 h-12 md:w-14 md:h-14 rounded-2xl shadow-2xl flex items-center justify-center text-3xl transition-all hover:scale-105 active:scale-95"
       aria-label="Back to top"
     >
       ↑
     </button>
   )}
-  {/* Legal Info Button — now appears only after scrolling down (same as ↑) */}
+  {/* Legal Info Button — smaller on mobile, no covering videos or footer */}
   {showBackToTop && (
     <button
       onClick={() => {
@@ -1472,11 +1472,11 @@ const deduplicateSources = (sources: any[]) => {
           }, 8000);
         }
       }}
-      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2.5 md:px-6 md:py-3 rounded-2xl shadow-2xl flex items-center gap-2 text-sm md:text-base transition-all hover:scale-105 active:scale-95"
       aria-label="Legal information"
     >
       📜 Legal Info
-      <ChevronDown size={18} />
+      <ChevronDown size={16} />
     </button>
   )}
 </div>
