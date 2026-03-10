@@ -1135,101 +1135,46 @@ const deduplicateSources = (sources: any[]) => {
         </div>
       )}
       
-      {/* FILTERS MODAL — NOW FULLY ACCESSIBLE */}
+            {/* CLEAN FILTERS MODAL — ONLY Content Type */}
       {showFilters && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4">
-          <div className="bg-gray-900 rounded-2xl w-full max-w-lg p-8 relative">
-            <button onClick={() => setShowFilters(false)} className="absolute top-6 right-6 text-4xl text-gray-400 hover:text-white transition-colors">×</button>
-            <h2 className="text-2xl font-bold mb-6">Advanced Filters</h2>
-
-            <div className="mb-6">
-              <h3 className="font-medium mb-3">Genres</h3>
-              <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                {genres.map(g => (
-                  <label key={g.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedGenresFilter.includes(g.id)}
-                      onChange={() => toggleGenreFilter(g.id)}
-                      className="accent-blue-500"
-                    />
-                    {g.name}
-                  </label>
+          <div className="bg-gray-900 rounded-2xl w-full max-w-md p-8 relative">
+            <button 
+              onClick={() => setShowFilters(false)} 
+              className="absolute top-6 right-6 text-4xl text-gray-400 hover:text-white transition-colors"
+            >
+              ×
+            </button>
+            <h2 className="text-2xl font-bold mb-6">Content Type</h2>
+            
+            <div>
+              <p className="text-sm text-gray-400 mb-3">Choose what to show</p>
+              <div className="flex flex-col gap-3">
+                {['movie,tv_series', 'movie', 'tv_series'].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setContentType(type);
+                      setShowFilters(false);
+                    }}
+                    className={`w-full py-4 rounded-2xl text-lg font-medium transition-all ${
+                      contentType === type 
+                        ? 'bg-white text-black' 
+                        : 'bg-gray-700 hover:bg-gray-600 text-white'
+                    }`}
+                  >
+                    {type === 'movie,tv_series' ? 'All (Movies & TV Shows)' : type === 'movie' ? 'Movies Only' : 'TV Shows Only'}
+                  </button>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              <div>
-                <label htmlFor="min-year" className="block text-sm mb-1">From Year</label>
-                <input
-                  id="min-year"
-                  type="number"
-                  value={minYearFilter}
-                  onChange={(e) => setMinYearFilter(e.target.value)}
-                  placeholder="1900"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
-                />
-              </div>
-              <div>
-                <label htmlFor="max-year" className="block text-sm mb-1">To Year</label>
-                <input
-                  id="max-year"
-                  type="number"
-                  value={maxYearFilter}
-                  onChange={(e) => setMaxYearFilter(e.target.value)}
-                  placeholder="2026"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
-                />
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <label htmlFor="min-rating" className="block text-sm mb-2">Minimum Rating</label>
-              <select
-                id="min-rating"
-                value={minRatingFilter}
-                onChange={(e) => setMinRatingFilter(Number(e.target.value))}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2"
-              >
-                <option value={0}>Any Rating</option>
-                <option value={6}>6+</option>
-                <option value={7}>7+</option>
-                <option value={8}>8+</option>
-              </select>
-            </div>
-
-            <div className="mb-8">
-              <label htmlFor="content-type" className="block text-sm font-medium mb-2">Content Type</label>
-              <select
-                id="content-type"
-                value={contentType}
-                onChange={(e) => setContentType(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3"
-              >
-                <option value="movie,tv_series">All (Movies &amp; TV Shows)</option>
-                <option value="movie">Movies Only</option>
-                <option value="tv_series">TV Shows Only</option>
-              </select>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setSelectedGenresFilter([]);
-                  setMinYearFilter('');
-                  setMaxYearFilter('');
-                  setMinRatingFilter(0);
-                  setContentType('movie,tv_series');
-                }}
-                className="flex-1 py-3 bg-gray-700 rounded-xl"
-              >
-                Reset
-              </button>
-              <button onClick={() => setShowFilters(false)} className="flex-1 py-3 bg-blue-600 rounded-xl font-medium">
-                Apply Filters
-              </button>
-            </div>
+            <button 
+              onClick={() => setShowFilters(false)} 
+              className="mt-8 w-full py-3 bg-gray-700 rounded-xl text-gray-300 hover:text-white"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
