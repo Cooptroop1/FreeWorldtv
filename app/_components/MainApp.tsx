@@ -1444,9 +1444,9 @@ const deduplicateSources = (sources: any[]) => {
           </div>
         </div>
       )}
-                       {/* Floating Buttons Stack (↑ only shows after scrolling) */}
+   {/* Floating Buttons Stack — both ↑ and Legal appear only after scrolling down */}
 <div className="fixed bottom-6 right-6 z-[75] flex flex-col gap-3 items-end">
-  {/* Back to Top Button - appears only after scrolling down */}
+  {/* Back to Top Button */}
   {showBackToTop && (
     <button
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
@@ -1456,29 +1456,28 @@ const deduplicateSources = (sources: any[]) => {
       ↑
     </button>
   )}
-
-  {/* Legal Info Button - always visible */}
-  <button
-    onClick={() => {
-  const footer = document.getElementById('footer');
-  if (footer) {
-    footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    
-    setPauseInfiniteScroll(true);
-    setShowPauseToast(true);
-
-    setTimeout(() => {
-      setPauseInfiniteScroll(false);
-      setShowPauseToast(false);
-    }, 8000); // 8 seconds feels much better than 10
-  }
-}}
-    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-    aria-label="Legal information"
-  >
-    📜 Legal Info
-    <ChevronDown size={18} />
-  </button>
+  {/* Legal Info Button — now appears only after scrolling down (same as ↑) */}
+  {showBackToTop && (
+    <button
+      onClick={() => {
+        const footer = document.getElementById('footer');
+        if (footer) {
+          footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setPauseInfiniteScroll(true);
+          setShowPauseToast(true);
+          setTimeout(() => {
+            setPauseInfiniteScroll(false);
+            setShowPauseToast(false);
+          }, 8000);
+        }
+      }}
+      className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+      aria-label="Legal information"
+    >
+      📜 Legal Info
+      <ChevronDown size={18} />
+    </button>
+  )}
 </div>
 
 {/* Pause Toast */}
