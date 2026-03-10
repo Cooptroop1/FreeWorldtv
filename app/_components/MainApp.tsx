@@ -1477,14 +1477,6 @@ const deduplicateSources = (sources: any[]) => {
     </button>
   )}
 </div>
-
-{/* Pause Toast */}
-{showPauseToast && (
-  <div className="fixed bottom-28 right-6 z-[80] bg-gray-900 border border-blue-500 text-blue-400 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in">
-    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-    Scroll paused for 10 seconds (legal review)
-  </div>
-)}
         <footer id="footer" className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
         <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
         <p className="mt-2">
