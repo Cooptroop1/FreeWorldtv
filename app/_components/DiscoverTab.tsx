@@ -27,6 +27,7 @@ interface DiscoverTabProps {
   setMaxYearFilter: (year: string) => void;
   setMinRatingFilter: (rating: number) => void;
   setContentType: (type: string) => void;
+  pauseInfiniteScroll: boolean;   // ← NEW (this fixes the error)
 }
 
 export default function DiscoverTab({
@@ -35,7 +36,8 @@ export default function DiscoverTab({
   minYearFilter, maxYearFilter, minRatingFilter,
   lastUpdated, setLastUpdated,
   surpriseMe, showFilters, setShowFilters,
-  setMinYearFilter, setMaxYearFilter, setMinRatingFilter, setContentType
+  setMinYearFilter, setMaxYearFilter, setMinRatingFilter, setContentType,
+  pauseInfiniteScroll   // ← NEW (this fixes the error)
 }: DiscoverTabProps) {
   const [allTitles, setAllTitles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
