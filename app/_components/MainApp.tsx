@@ -1414,12 +1414,14 @@ const deduplicateSources = (sources: any[]) => {
                         <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-gray-800 to-gray-700">
                           {rel.poster_path ? (
                             <Image
-                              src={`https://image.tmdb.org/t/p/w185${rel.poster_path}`}
+                              src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
                               alt={rel.title || rel.name}
                               fill
                               className="object-cover group-hover:scale-105 transition-transform"
-                              sizes="112px"
-                              quality={75}
+                              sizes="(max-width: 640px) 28vw, 128px"
+                              quality={80}
+                              loading="lazy"
+                              onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                             />
                           ) : (
                             <>
