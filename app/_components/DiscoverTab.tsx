@@ -362,7 +362,7 @@ export default function DiscoverTab({
                     aria-label={`View details for ${item.title} (${item.year})`}
                   >
                     <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
-                      {item.poster_path ? (
+                                          {item.poster_path ? (
                       <Image
                         src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                         alt={`${item.title} poster`}
