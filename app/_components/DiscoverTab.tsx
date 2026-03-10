@@ -135,12 +135,12 @@ export default function DiscoverTab({
     }
   }, [page, debouncedSearch, region, contentType, loadingMore, hasMore, pauseInfinite]);
 
-  // Infinite scroll observer
+    // Infinite scroll observer (now respects Legal button pause from MainApp)
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfinite) {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfiniteScroll) {
           loadMore();
         }
       },
@@ -148,7 +148,7 @@ export default function DiscoverTab({
     );
     if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
     return () => observerRef.current?.disconnect();
-  }, [loadMore, hasMore, loadingMore, loading, pauseInfinite]);
+  }, [loadMore, hasMore, loadingMore, loading, pauseInfiniteScroll]);
 
   // Optimized poster fetching
   useEffect(() => {
