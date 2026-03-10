@@ -57,6 +57,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: '#111827',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({
@@ -66,7 +67,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-            <head>
+      <head>
+        {/* Force dark mode on iPad / iOS Safari */}
+        <meta name="color-scheme" content="dark" />
+        <meta name="supported-color-schemes" content="dark" />
         {/* Google Site Verification */}
         <meta name="google-site-verification" content="v5peivsBuVQvw32Su3UT4btwIbndtLT1Eg4JGPDhM_E" />
         {/* Structured Data */}
@@ -110,7 +114,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased">
+       <body className="antialiased dark bg-[#111827]">
         {/* Skip to main content - Accessibility boost */}
         <a
           href="#main-content"
