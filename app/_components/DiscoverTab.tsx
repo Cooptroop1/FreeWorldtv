@@ -363,19 +363,19 @@ export default function DiscoverTab({
                   >
                     <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
                       {item.poster_path ? (
-  <Image
-    src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
-    alt={`${item.title} poster`}
-    fill
-    className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
-    sizes="(max-width: 640px) 160px, (max-width: 1024px) 185px, 200px"
-    quality={85}
-    loading="lazy"
-    onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
-  />
-) : (
-  <div className="w-full h-full bg-zinc-800 animate-pulse" />
-)}
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
+                          alt={`${item.title} poster`}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
+                          sizes="160px"
+                          quality={75}
+                          loading="lazy"
+                          onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-zinc-800 animate-pulse" />
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
                         aria-label={isFavorite ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
@@ -543,20 +543,21 @@ export default function DiscoverTab({
                     >
                       <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden flex-shrink-0">
                         {title.poster_path ? (
-  <Image
-    src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
-    alt={`${title.title} poster`}
-    fill
-    className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
-    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-    quality={85}
-    priority={index < 3}
-    loading={index < 3 ? "eager" : "lazy"}
-    onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
-  />
-) : (
-  <div className="w-full h-full bg-zinc-800 animate-pulse" />
-)}
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                            alt={`${title.title} poster`}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                            quality={75}
+                            priority={index < 3}
+                            loading={index < 3 ? "eager" : "lazy"}
+                            onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
+                          />
+                        ) : (
+                          // ← This is the magic: grey skeleton while poster loads in background
+                          <div className="w-full h-full bg-zinc-800 animate-pulse" />
+                        )}
                         {/* Hover overlay — now fully accessible */}
                         <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3">
                           <button
