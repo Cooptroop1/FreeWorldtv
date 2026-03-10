@@ -56,10 +56,13 @@ export async function GET(request: Request) {
     await new Promise(r => setTimeout(r, 400));
   }
 
-  // === SMART MERGE FOR DAILY MODE ===
+    // === SMART MERGE FOR DAILY MODE ===
   if (!isFullRefresh) {
-    const oldFree = await kv.get('full_free_catalog') || [];
-    const oldPremium = await kv.get('full_premium_catalog') || [];
+    const oldFreeRaw = await kv.get('full_free_catalog');
+    const oldPremiumRaw = await kv.get('full_premium_catalog');
+
+    const oldFree: any[] = Array.isArray(oldFreeRaw) ? oldFreeRaw : [];
+    const oldPremium: any[] = Array.isArray(oldPremiumRaw) ? oldPremiumRaw : [];
 
     const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
     const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
@@ -70,7 +73,6 @@ export async function GET(request: Request) {
     freeTitles = [...freeTitles, ...oldFreeFiltered];
     premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
   }
-
   // === PROCESS & SAVE (unchanged) ===
   const processTitle = (t: any) => ({
     ...t,
