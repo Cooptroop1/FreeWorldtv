@@ -677,7 +677,7 @@ const deduplicateSources = (sources: any[]) => {
       <OfflineMessage />
 
       {/* DISCOVER TAB */}
-      {tab === 'discover' && (
+            {tab === 'discover' && (
         <DiscoverTab
   searchQuery={searchQuery}
   setSearchQuery={setSearchQuery}
@@ -700,6 +700,7 @@ const deduplicateSources = (sources: any[]) => {
   setMaxYearFilter={setMaxYearFilter}
   setMinRatingFilter={setMinRatingFilter}
   setContentType={setContentType}
+  pauseInfiniteScroll={pauseInfiniteScroll}
 />
       )}
 
