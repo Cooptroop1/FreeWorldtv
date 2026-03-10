@@ -1370,12 +1370,14 @@ const deduplicateSources = (sources: any[]) => {
                         <div className="relative aspect-square rounded-full overflow-hidden mx-auto border-2 border-gray-700 group-hover:border-blue-500 transition-all">
                           {actor.profile_path ? (
                             <Image
-                              src={`https://image.tmdb.org/t/p/w92${actor.profile_path}`}
+                              src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
                               alt={actor.name}
                               fill
                               className="object-cover"
                               loading="lazy"
-                              sizes="92px"
+                              sizes="(max-width: 640px) 20vw, 92px"
+                              unoptimized={true}
+                              onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-700 flex items-center justify-center text-4xl">👤</div>
