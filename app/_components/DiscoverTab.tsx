@@ -543,20 +543,19 @@ export default function DiscoverTab({
                       aria-label={`View free sources for ${title.title} (${title.year})`}
                     >
                       <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden flex-shrink-0">
-                        {title.poster_path ? (
+                         {title.poster_path ? (
                           <Image
                             src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
                             alt={`${title.title} poster`}
                             fill
-                            className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                             quality={75}
                             priority={index < 3}
                             loading={index < 3 ? "eager" : "lazy"}
-                            onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
+                            unoptimized={true}
                           />
                         ) : (
-                          // ← This is the magic: grey skeleton while poster loads in background
                           <div className="w-full h-full bg-zinc-800 animate-pulse" />
                         )}
                         {/* Hover overlay — now fully accessible */}
