@@ -139,16 +139,17 @@ export default function PremiumTab({
         aria-label={`View sources for ${title.title}`}
       >
         <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-          {title.poster_path ? (
+                    {title.poster_path ? (
             <Image
               src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
               alt={title.title}
               fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
               quality={75}
               priority={index < 3}
               loading={index < 3 ? "eager" : "lazy"}
+              unoptimized={true}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600" /></div>
