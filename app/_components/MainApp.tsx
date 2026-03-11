@@ -841,12 +841,16 @@ const deduplicateSources = (sources: any[]) => {
                   onClick={() => setSelectedRadio(station)}
                   className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm flex flex-col"
                 >
-                  <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
+                                    <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
                     {station.favicon ? (
                       <img
                         src={station.favicon}
                         alt={station.name}
                         className="w-20 h-20 object-contain"
+                        onError={(e) => {
+                          // Hide broken favicons (stops 402 spam in console)
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     ) : (
                       <Radio className="w-16 h-16 text-orange-500 group-hover:text-orange-400 transition-colors" />
