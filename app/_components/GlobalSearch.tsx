@@ -169,20 +169,24 @@ export default function GlobalSearch({
                 className="flex items-center gap-4 px-5 py-3 hover:bg-gray-800 cursor-pointer transition-colors group"
               >
                 <div className="relative w-12 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-gray-700 bg-gray-800">
-                  <Image
-                    src={title.poster_path
-                      ? `https://image.tmdb.org/t/p/w200${title.poster_path}`
-                      : '/fallback-poster.jpg'}
-                    alt={title.title}
-                    fill
-                    className="object-cover"
-                    sizes="48px"
-                    loading="lazy"
-                    quality={75}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/fallback-poster.jpg';
-                    }}
-                  />
+                                    {title.poster_path ? (
+                    <Image
+                      src={`https://image.tmdb.org/t/p/w200${title.poster_path}`}
+                      alt={title.title}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                      loading="lazy"
+                      quality={75}
+                      unoptimized={true}
+                    />
+                  ) : (
+                    <img 
+                      src="/fallback-poster.jpg" 
+                      alt={title.title}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white group-hover:text-blue-400 line-clamp-1">{title.title}</p>
