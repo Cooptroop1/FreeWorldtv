@@ -291,13 +291,13 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-                                    const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+                                        const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
-    const [showRight, setShowRight] = useState(items.length > 4); // ← force right arrow if lots of content
+    const [showRight, setShowRight] = useState(items.length > 4);
 
-    // Update arrow visibility (much simpler + more aggressive)
+    // Update arrow visibility
     const updateArrows = useCallback(() => {
       const el = scrollRef.current;
       if (!el) return;
@@ -305,7 +305,7 @@ export default function DiscoverTab({
       setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
     }, []);
 
-    // Super reliable arrow check (runs immediately + after posters load)
+    // Arrow checks + ResizeObserver
     useEffect(() => {
       const el = scrollRef.current;
       if (!el) return;
@@ -316,12 +316,10 @@ export default function DiscoverTab({
       el.addEventListener('scroll', updateArrows, { passive: true });
       window.addEventListener('resize', updateArrows);
 
-      // Force check right after render AND after images settle
       requestAnimationFrame(() => {
         updateArrows();
-        setTimeout(updateArrows, 100);
-        setTimeout(updateArrows, 400);
-        setTimeout(updateArrows, 800);
+        setTimeout(updateArrows, 150);
+        setTimeout(updateArrows, 500);
       });
 
       return () => {
@@ -354,10 +352,10 @@ export default function DiscoverTab({
             <ChevronLeft size={28} />
           </button>
 
-          {/* Scroll Container — full mobile/desktop support + no bounce */}
+          {/* Scroll Container — FIXED scrolling (grab + full touch) */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap touch-pan-x overscroll-x-contain select-none"
+            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap touch-pan-x overscroll-x-contain select-none cursor-grab active:cursor-grabbing"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
             onScroll={updateArrows}
           >
@@ -367,12 +365,20 @@ export default function DiscoverTab({
               items.map((item) => {
                 const isFavorite = favorites.some(fav => fav.id === item.id);
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={(e) => {
                       e.preventDefault();
+                      e.stopPropagation();
                       setSelectedTitle(item);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedTitle(item);
+                      }
                     }}
                     className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col active:scale-95 transition-transform"
                     aria-label={`View details for ${item.title} (${item.year})`}
@@ -404,7 +410,7 @@ export default function DiscoverTab({
                       <p className="text-sm line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
                       <p className="text-xs text-center text-gray-400">{item.year}</p>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             ) : (
