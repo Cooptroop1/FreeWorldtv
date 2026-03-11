@@ -291,44 +291,43 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-                                const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+                                    const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
-    const [showRight, setShowRight] = useState(false);
+    const [showRight, setShowRight] = useState(items.length > 4); // ← force right arrow if lots of content
 
-    // Update arrow visibility
+    // Update arrow visibility (much simpler + more aggressive)
     const updateArrows = useCallback(() => {
       const el = scrollRef.current;
       if (!el) return;
-      setShowLeft(el.scrollLeft > 5);
-      setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 5);
+      setShowLeft(el.scrollLeft > 10);
+      setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
     }, []);
 
-    // Arrow visibility + ResizeObserver (fixes disappearing arrows after posters load)
+    // Super reliable arrow check (runs immediately + after posters load)
     useEffect(() => {
       const el = scrollRef.current;
       if (!el) return;
 
-      const ro = new ResizeObserver(() => updateArrows());
+      const ro = new ResizeObserver(updateArrows);
       ro.observe(el);
 
       el.addEventListener('scroll', updateArrows, { passive: true });
       window.addEventListener('resize', updateArrows);
 
-      // Staggered checks to catch image loading layout shifts
-      const timers = [
-        setTimeout(updateArrows, 50),
-        setTimeout(updateArrows, 200),
-        setTimeout(updateArrows, 500),
-        setTimeout(updateArrows, 900),
-      ];
+      // Force check right after render AND after images settle
+      requestAnimationFrame(() => {
+        updateArrows();
+        setTimeout(updateArrows, 100);
+        setTimeout(updateArrows, 400);
+        setTimeout(updateArrows, 800);
+      });
 
       return () => {
         ro.disconnect();
         el.removeEventListener('scroll', updateArrows);
         window.removeEventListener('resize', updateArrows);
-        timers.forEach(t => clearTimeout(t));
       };
     }, [items, updateArrows]);
 
