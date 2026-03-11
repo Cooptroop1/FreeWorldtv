@@ -291,13 +291,13 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-                                            const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+              const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
     const [showRight, setShowRight] = useState(false);
 
-    // Simple arrow visibility (exactly like it was this morning)
+    // Update arrow visibility (exactly like yesterday)
     const updateArrows = () => {
       const el = scrollRef.current;
       if (!el) return;
@@ -310,6 +310,7 @@ export default function DiscoverTab({
       if (!el) return;
       el.addEventListener('scroll', updateArrows);
       window.addEventListener('resize', updateArrows);
+      // Initial check
       setTimeout(updateArrows, 100);
       return () => {
         el.removeEventListener('scroll', updateArrows);
@@ -317,8 +318,12 @@ export default function DiscoverTab({
       };
     }, [items]);
 
-    const scrollLeft = () => scrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
-    const scrollRight = () => scrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
+    const scrollLeft = () => {
+      scrollRef.current?.scrollBy({ left: -176, behavior: 'smooth' });
+    };
+    const scrollRight = () => {
+      scrollRef.current?.scrollBy({ left: 176, behavior: 'smooth' });
+    };
 
     return (
       <section className="mb-10 relative" aria-labelledby={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -335,11 +340,11 @@ export default function DiscoverTab({
             <ChevronLeft size={28} />
           </button>
 
-          {/* Scroll Container — simple & reliable (like before) */}
+          {/* Scroll Container — exactly like yesterday */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap touch-pan-x overscroll-x-contain select-none"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             onScroll={updateArrows}
           >
             {isLoading ? (
@@ -356,20 +361,21 @@ export default function DiscoverTab({
                       e.stopPropagation();
                       setSelectedTitle(item);
                     }}
-                    className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col active:scale-95 transition-transform"
+                    className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col"
                     aria-label={`View details for ${item.title} (${item.year})`}
                   >
-                    <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform duration-300 flex-shrink-0">
+                    <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
                       {item.poster_path ? (
                         <Image
                           src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                           alt={`${item.title} poster`}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
                           sizes="160px"
                           quality={75}
                           loading="lazy"
-                          unoptimized={true}
+                          onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
+                          unoptimized={true}   {/* ← THIS IS THE ONLY CHANGE NEEDED (stops 402 errors) */}
                         />
                       ) : (
                         <div className="w-full h-full bg-zinc-800 animate-pulse" />
