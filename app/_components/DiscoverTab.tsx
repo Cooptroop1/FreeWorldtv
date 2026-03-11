@@ -291,13 +291,13 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-              const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+                  const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
     const [showRight, setShowRight] = useState(false);
 
-    // Update arrow visibility (exactly like yesterday)
+    // Update arrow visibility
     const updateArrows = () => {
       const el = scrollRef.current;
       if (!el) return;
@@ -339,8 +339,7 @@ export default function DiscoverTab({
           >
             <ChevronLeft size={28} />
           </button>
-
-          {/* Scroll Container — exactly like yesterday */}
+        {/* Scroll Container — Scrollbar completely hidden (clean JustWatch look) */}
           <div
             ref={scrollRef}
             className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -375,7 +374,7 @@ export default function DiscoverTab({
                           quality={75}
                           loading="lazy"
                           onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
-                          unoptimized={true}   {/* ← THIS IS THE ONLY CHANGE NEEDED (stops 402 errors) */}
+                          unoptimized={true}
                         />
                       ) : (
                         <div className="w-full h-full bg-zinc-800 animate-pulse" />
@@ -399,7 +398,6 @@ export default function DiscoverTab({
               <p className="text-gray-500 italic">No titles in this section yet</p>
             )}
           </div>
-
           {/* Right Arrow */}
           <button
             onClick={scrollRight}
