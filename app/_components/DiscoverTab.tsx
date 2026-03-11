@@ -291,7 +291,7 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-        const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+            const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
@@ -316,9 +316,8 @@ export default function DiscoverTab({
       // More reliable initial check
       const timer = setTimeout(() => {
         updateArrows();
-        // Second check for when images finish loading
-        setTimeout(updateArrows, 300);
-      }, 50);
+        setTimeout(updateArrows, 400);
+      }, 80);
 
       return () => {
         el.removeEventListener('scroll', updateArrows);
@@ -328,11 +327,11 @@ export default function DiscoverTab({
     }, [items, updateArrows]);
 
     const scrollLeft = () => {
-      scrollRef.current?.scrollBy({ left: -220, behavior: 'smooth' });
+      scrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
     };
 
     const scrollRight = () => {
-      scrollRef.current?.scrollBy({ left: 220, behavior: 'smooth' });
+      scrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
     };
 
     return (
@@ -350,11 +349,11 @@ export default function DiscoverTab({
             <ChevronLeft size={28} />
           </button>
 
-          {/* Scroll Container — Scrollbar completely hidden (clean JustWatch look) */}
+          {/* Scroll Container — Scrollbar completely hidden + full mobile touch support */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap touch-pan-x overscroll-x-contain select-none"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
             onScroll={updateArrows}
           >
             {isLoading ? (
@@ -366,16 +365,16 @@ export default function DiscoverTab({
                   <button
                     key={item.id}
                     onClick={() => setSelectedTitle(item)}
-                    className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col"
+                    className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col active:scale-95 transition-transform"
                     aria-label={`View details for ${item.title} (${item.year})`}
                   >
-                    <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
+                    <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform duration-300 flex-shrink-0">
                       {item.poster_path ? (
                         <Image
                           src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                           alt={`${item.title} poster`}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="object-cover"
                           sizes="160px"
                           quality={75}
                           loading="lazy"
