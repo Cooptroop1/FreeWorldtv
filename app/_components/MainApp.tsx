@@ -725,22 +725,23 @@ const deduplicateSources = (sources: any[]) => {
                   className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                 >
                   <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                        {title.poster_path ? (
-                            <Image
-                              src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
-                              alt={title.title}
-                              fill
-                              className="object-cover group-hover:scale-105 transition-transform duration-500"
-                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
-                              quality={75}
-                              priority={index < 3}
-                              loading={index < 3 ? "eager" : "lazy"}
-                            />
-                          ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
-                      </div>
-                    )}
+                                                        {title.poster_path ? (
+                                    <Image
+                                      src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                                      alt={title.title}
+                                      fill
+                                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+                                      quality={75}
+                                      priority={index < 3}
+                                      loading={index < 3 ? "eager" : "lazy"}
+                                      unoptimized={true}
+                                    />
+                                  ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                              </div>
+                            )}
 
                     {/* Hover overlay with share buttons */}
                     <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center items-center gap-3">
@@ -1036,16 +1037,17 @@ const deduplicateSources = (sources: any[]) => {
                     className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative"
                   >
                     <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                      {title.poster_path ? (
+                                            {title.poster_path ? (
                         <Image
                           src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
                           alt={title.title}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                           quality={75}
                           priority={index < 3}
                           loading={index < 3 ? "eager" : "lazy"}
+                          unoptimized={true}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -1368,7 +1370,7 @@ const deduplicateSources = (sources: any[]) => {
                     {cast.map((actor: any) => (
                       <div key={actor.id} className="text-center group">
                         <div className="relative aspect-square rounded-full overflow-hidden mx-auto border-2 border-gray-700 group-hover:border-blue-500 transition-all">
-                          {actor.profile_path ? (
+                                                    {actor.profile_path ? (
                             <Image
                               src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
                               alt={actor.name}
@@ -1377,7 +1379,6 @@ const deduplicateSources = (sources: any[]) => {
                               loading="lazy"
                               sizes="(max-width: 640px) 20vw, 92px"
                               unoptimized={true}
-                              onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-700 flex items-center justify-center text-4xl">👤</div>
@@ -1414,7 +1415,7 @@ const deduplicateSources = (sources: any[]) => {
                         className="snap-start flex-shrink-0 w-28 cursor-pointer group"
                       >
                         <div className="relative aspect-[2/3] rounded-lg overflow-hidden shadow-md bg-gradient-to-br from-gray-800 to-gray-700">
-                           {rel.poster_path ? (
+                                                      {rel.poster_path ? (
                             <Image
                               src={`https://image.tmdb.org/t/p/w342${rel.poster_path}`}
                               alt={rel.title || rel.name}
@@ -1424,7 +1425,6 @@ const deduplicateSources = (sources: any[]) => {
                               quality={80}
                               loading="lazy"
                               unoptimized={true}
-                              onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
                             />
                           ) : (
                             <>
