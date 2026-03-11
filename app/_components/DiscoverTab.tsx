@@ -291,38 +291,44 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-            const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+                const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
     const [showRight, setShowRight] = useState(false);
 
-    // Update arrow visibility - improved reliability
+    // Update arrow visibility
     const updateArrows = useCallback(() => {
       const el = scrollRef.current;
       if (!el) return;
-      setShowLeft(el.scrollLeft > 8);
-      setShowRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+      setShowLeft(el.scrollLeft > 5);
+      setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 5);
     }, []);
 
-    // Better timing for arrow visibility
+    // Arrow visibility + ResizeObserver (fixes disappearing arrows after posters load)
     useEffect(() => {
       const el = scrollRef.current;
       if (!el) return;
 
+      const ro = new ResizeObserver(() => updateArrows());
+      ro.observe(el);
+
       el.addEventListener('scroll', updateArrows, { passive: true });
       window.addEventListener('resize', updateArrows);
 
-      // More reliable initial check
-      const timer = setTimeout(() => {
-        updateArrows();
-        setTimeout(updateArrows, 400);
-      }, 80);
+      // Staggered checks to catch image loading layout shifts
+      const timers = [
+        setTimeout(updateArrows, 50),
+        setTimeout(updateArrows, 200),
+        setTimeout(updateArrows, 500),
+        setTimeout(updateArrows, 900),
+      ];
 
       return () => {
+        ro.disconnect();
         el.removeEventListener('scroll', updateArrows);
         window.removeEventListener('resize', updateArrows);
-        clearTimeout(timer);
+        timers.forEach(t => clearTimeout(t));
       };
     }, [items, updateArrows]);
 
@@ -349,7 +355,7 @@ export default function DiscoverTab({
             <ChevronLeft size={28} />
           </button>
 
-          {/* Scroll Container — Scrollbar completely hidden + full mobile touch support */}
+          {/* Scroll Container — full mobile/desktop support + no bounce */}
           <div
             ref={scrollRef}
             className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap touch-pan-x overscroll-x-contain select-none"
