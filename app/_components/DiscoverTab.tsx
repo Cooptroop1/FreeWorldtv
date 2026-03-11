@@ -291,51 +291,34 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-                                        const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+                                            const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
-    const [showRight, setShowRight] = useState(items.length > 4);
+    const [showRight, setShowRight] = useState(false);
 
-    // Update arrow visibility
-    const updateArrows = useCallback(() => {
+    // Simple arrow visibility (exactly like it was this morning)
+    const updateArrows = () => {
       const el = scrollRef.current;
       if (!el) return;
-      setShowLeft(el.scrollLeft > 10);
-      setShowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 10);
-    }, []);
+      setShowLeft(el.scrollLeft > 20);
+      setShowRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
+    };
 
-    // Arrow checks + ResizeObserver
     useEffect(() => {
       const el = scrollRef.current;
       if (!el) return;
-
-      const ro = new ResizeObserver(updateArrows);
-      ro.observe(el);
-
-      el.addEventListener('scroll', updateArrows, { passive: true });
+      el.addEventListener('scroll', updateArrows);
       window.addEventListener('resize', updateArrows);
-
-      requestAnimationFrame(() => {
-        updateArrows();
-        setTimeout(updateArrows, 150);
-        setTimeout(updateArrows, 500);
-      });
-
+      setTimeout(updateArrows, 100);
       return () => {
-        ro.disconnect();
         el.removeEventListener('scroll', updateArrows);
         window.removeEventListener('resize', updateArrows);
       };
-    }, [items, updateArrows]);
+    }, [items]);
 
-    const scrollLeft = () => {
-      scrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
-    };
-
-    const scrollRight = () => {
-      scrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
-    };
+    const scrollLeft = () => scrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' });
+    const scrollRight = () => scrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' });
 
     return (
       <section className="mb-10 relative" aria-labelledby={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`}>
@@ -352,10 +335,10 @@ export default function DiscoverTab({
             <ChevronLeft size={28} />
           </button>
 
-          {/* Scroll Container — FIXED scrolling (grab + full touch) */}
+          {/* Scroll Container — simple & reliable (like before) */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap touch-pan-x overscroll-x-contain select-none cursor-grab active:cursor-grabbing"
+            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap touch-pan-x overscroll-x-contain select-none"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
             onScroll={updateArrows}
           >
@@ -365,20 +348,13 @@ export default function DiscoverTab({
               items.map((item) => {
                 const isFavorite = favorites.some(fav => fav.id === item.id);
                 return (
-                  <div
+                  <button
                     key={item.id}
-                    role="button"
-                    tabIndex={0}
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
                       setSelectedTitle(item);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedTitle(item);
-                      }
                     }}
                     className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col active:scale-95 transition-transform"
                     aria-label={`View details for ${item.title} (${item.year})`}
@@ -389,7 +365,7 @@ export default function DiscoverTab({
                           src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                           alt={`${item.title} poster`}
                           fill
-                          className="object-cover"
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
                           sizes="160px"
                           quality={75}
                           loading="lazy"
@@ -410,7 +386,7 @@ export default function DiscoverTab({
                       <p className="text-sm line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
                       <p className="text-xs text-center text-gray-400">{item.year}</p>
                     </div>
-                  </div>
+                  </button>
                 );
               })
             ) : (
