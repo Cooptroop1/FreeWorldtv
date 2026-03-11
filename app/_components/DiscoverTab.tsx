@@ -291,39 +291,48 @@ export default function DiscoverTab({
 
   const SkeletonPoster = () => <div className="flex-shrink-0 w-40 h-60 bg-zinc-800 rounded-xl animate-pulse" aria-hidden="true" />;
 
-    const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
+        const HorizontalCarousel = ({ title, items, loadingKey }: { title: string; items: any[]; loadingKey: 'initial' | 'more' }) => {
     const isLoading = loadingKey === 'initial' ? loading : loadingMore;
     const scrollRef = useRef<HTMLDivElement>(null);
     const [showLeft, setShowLeft] = useState(false);
     const [showRight, setShowRight] = useState(false);
 
-    // Update arrow visibility
-    const updateArrows = () => {
+    // Update arrow visibility - improved reliability
+    const updateArrows = useCallback(() => {
       const el = scrollRef.current;
       if (!el) return;
-      setShowLeft(el.scrollLeft > 20);
-      setShowRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
-    };
+      setShowLeft(el.scrollLeft > 8);
+      setShowRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 8);
+    }, []);
 
+    // Better timing for arrow visibility
     useEffect(() => {
       const el = scrollRef.current;
       if (!el) return;
-      el.addEventListener('scroll', updateArrows);
+
+      el.addEventListener('scroll', updateArrows, { passive: true });
       window.addEventListener('resize', updateArrows);
-      // Initial check
-      setTimeout(updateArrows, 100);
+
+      // More reliable initial check
+      const timer = setTimeout(() => {
+        updateArrows();
+        // Second check for when images finish loading
+        setTimeout(updateArrows, 300);
+      }, 50);
+
       return () => {
         el.removeEventListener('scroll', updateArrows);
         window.removeEventListener('resize', updateArrows);
+        clearTimeout(timer);
       };
-    }, [items]);
+    }, [items, updateArrows]);
 
     const scrollLeft = () => {
-      scrollRef.current?.scrollBy({ left: -176, behavior: 'smooth' });
+      scrollRef.current?.scrollBy({ left: -220, behavior: 'smooth' });
     };
 
     const scrollRight = () => {
-      scrollRef.current?.scrollBy({ left: 176, behavior: 'smooth' });
+      scrollRef.current?.scrollBy({ left: 220, behavior: 'smooth' });
     };
 
     return (
@@ -331,7 +340,6 @@ export default function DiscoverTab({
         <h2 id={`carousel-${title.toLowerCase().replace(/\s+/g, '-')}`} className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
           {title} {isLoading && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
         </h2>
-
         <div className="relative group">
           {/* Left Arrow */}
           <button
@@ -342,10 +350,10 @@ export default function DiscoverTab({
             <ChevronLeft size={28} />
           </button>
 
-        {/* Scroll Container — Scrollbar completely hidden (clean JustWatch look) */}
+          {/* Scroll Container — Scrollbar completely hidden (clean JustWatch look) */}
           <div
             ref={scrollRef}
-            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden flex-nowrap"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             onScroll={updateArrows}
           >
@@ -362,21 +370,20 @@ export default function DiscoverTab({
                     aria-label={`View details for ${item.title} (${item.year})`}
                   >
                     <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
-                                          {item.poster_path ? (
-                      <Image
-                        src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
-                        alt={`${item.title} poster`}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500 opacity-0 transition-opacity duration-700 data-[loaded=true]:opacity-100"
-                        sizes="160px"
-                        quality={75}
-                        loading="lazy"
-                        unoptimized={true}
-                        onLoadingComplete={(img) => { img.dataset.loaded = 'true'; }}
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-zinc-800 animate-pulse" />
-                    )}
+                      {item.poster_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
+                          alt={`${item.title} poster`}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="160px"
+                          quality={75}
+                          loading="lazy"
+                          unoptimized={true}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-zinc-800 animate-pulse" />
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }}
                         aria-label={isFavorite ? `Remove ${item.title} from favorites` : `Add ${item.title} to favorites`}
