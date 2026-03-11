@@ -440,7 +440,7 @@ export default function DiscoverTab({
             </div>
           )}
 
-          {/* Hero */}
+         {/* Hero */}
           {filteredTitles[0] && (
             <div className="relative h-[70vh] mb-12 rounded-3xl overflow-hidden" role="img" aria-label={`${filteredTitles[0].title} hero background`}>
               {filteredTitles[0].poster_path ? (
@@ -451,6 +451,7 @@ export default function DiscoverTab({
                   className="object-cover brightness-75"
                   priority
                   quality={75}
+                  unoptimized={true}
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
