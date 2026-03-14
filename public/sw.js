@@ -1,7 +1,5 @@
-// public/sw.js - v8 (final version - March 2026)
-// Faster activation + better assets + never cache the refresh endpoint
-const CACHE_NAME = 'freestreamworld-v8';
-
+// public/sw.js - v9 (safe version - no more image caching spam)
+const CACHE_NAME = 'freestreamworld-v9';
 const urlsToCache = [
   '/',
   '/logo.png',
@@ -15,17 +13,11 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Installing v8 - pre-caching assets');
-        return Promise.allSettled(
-          urlsToCache.map(url =>
-            cache.add(url).catch(err => {
-              console.warn(`[SW] Could not cache ${url} (skipping):`, err.message);
-            })
-          )
-        );
+        console.log('[SW] Installing v9 - pre-caching static assets only');
+        return cache.addAll(urlsToCache);
       })
   );
-  self.skipWaiting(); // Activate immediately
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -43,19 +35,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network-First for APIs (critical for our cached-fetch + sources modal)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // NEVER cache the background refresh (keeps it fresh)
+  // NEVER cache the background refresh endpoint
   if (url.pathname.includes('/api/refresh-all-free')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // All other APIs (cached-fetch, title-sources, etc.)
+  // Network-First for all API calls (cached-fetch, title-sources, etc.)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request)
@@ -69,7 +60,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-While-Revalidate for everything else (static pages, images, etc.)
+  // IMPORTANT: SKIP caching for ALL external images (TMDB posters, etc.)
+  // This is what was causing the QuotaExceededError
+  if (url.hostname.includes('image.tmdb.org') || 
+      url.pathname.endsWith('.jpg') || 
+      url.pathname.endsWith('.png') || 
+      url.pathname.endsWith('.webp')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Stale-While-Revalidate ONLY for static HTML/pages and your own assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
