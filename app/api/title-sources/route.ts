@@ -17,12 +17,16 @@ export async function GET(request: Request) {
   }
 
   const cacheKey = `sources:${titleId}:${region}:${paid ? 'paid' : 'free'}`;
+  const callTime = new Date().toISOString();
 
-  // === 24h SHARED CACHE (first check) ===
+  // === 48h SHARED CACHE (first check) ===
   const cached = await kv.get(cacheKey);
   if (cached) {
+    console.log(`[${callTime}] CACHE HIT – sources for title ${titleId} (${region})`);
     return NextResponse.json({ ...cached, fromCache: true });
   }
+
+  console.log(`[${callTime}] CACHE MISS – calling Watchmode for title ${titleId} (${region})`);
 
   try {
     const result = await client.title.getSources(titleId, {
@@ -31,9 +35,7 @@ export async function GET(request: Request) {
 
     let sourcesData: any[] = [];
     let message = '';
-
     if (paid) {
-      // Paid / Subscription sources only
       sourcesData = result.data?.filter((source: any) =>
         source.type === 'sub' ||
         source.subscription === true ||
@@ -43,7 +45,6 @@ export async function GET(request: Request) {
         ? `${sourcesData.length} subscription options found!`
         : 'No subscription sources available in this region right now';
     } else {
-      // Free sources only
       sourcesData = result.data?.filter((source: any) =>
         source.type === 'free' || source.price === 0 || source.free_with_ads === true
       ) || [];
@@ -64,9 +65,8 @@ export async function GET(request: Request) {
       fromCache: false
     };
 
-    // Save to 24h KV cache (shared for everyone)
-    await kv.set(cacheKey, responseData, { ex: 86400 });
-
+    // Save to 48h KV cache (shared for everyone)
+    await kv.set(cacheKey, responseData, { ex: 172800 }); // 48 hours
     return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Title sources error:', error);
