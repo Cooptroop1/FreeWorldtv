@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     };
 
     // Save to 48h KV cache (shared for everyone)
-    await kv.set(cacheKey, responseData, { ex: 172800 }); // 48 hours
+    await kv.set(cacheKey, sourcesData, { ex: 86400 * 7 }); // 7 days — safer for testing
     return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Title sources error:', error);
