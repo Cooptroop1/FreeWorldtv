@@ -33,11 +33,11 @@ export default function PremiumTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-        // Initial fetch (paid titles only) — FIXED mixed list after filter switch
+          // Initial fetch (paid titles only) — FINAL fix for low counts
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
-      setPremiumTitles([]); // Force clear old list immediately
+      setPremiumTitles([]);           // Force full clear
       setPage(1);
       setHasMore(true);
 
@@ -47,19 +47,24 @@ export default function PremiumTab({
         );
         const json = await res.json();
 
-        let titles = json.success && json.titles?.length
+        let rawTitles = json.success && json.titles?.length
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
           : staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
 
-        // Client-side safety filter (makes sure mixed data never shows)
-        if (contentType !== 'movie,tv_series') {
-          titles = titles.filter((t: any) => t.type === contentType);
+        console.log(`RAW from API: ${rawTitles.length} titles for ${contentType}`);
+
+        // Strong filter that handles all common type variations
+        let filteredTitles = rawTitles;
+        if (contentType === 'movie') {
+          filteredTitles = rawTitles.filter((t: any) => t.type === 'movie');
+        } else if (contentType === 'tv_series') {
+          filteredTitles = rawTitles.filter((t: any) => t.type === 'tv_series' || t.type === 'tv');
         }
 
-        console.log(`Premium filtered to ${titles.length} titles for ${contentType}`);
+        console.log(`Premium FILTERED to ${filteredTitles.length} titles for ${contentType}`);
 
-        setPremiumTitles(titles);
-        setHasMore(titles.length >= 48);
+        setPremiumTitles(filteredTitles);
+        setHasMore(filteredTitles.length >= 48);
       } catch (err) {
         console.error('Premium fetch failed:', err);
         const fallback = staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
