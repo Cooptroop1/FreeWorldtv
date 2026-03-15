@@ -102,10 +102,17 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // PREMIUM SECTION (same logging)
+    // PREMIUM SECTION — now respects Movies Only / TV Shows Only filter
   const rawPremium = await kv.get('full_premium_catalog');
   let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
-  console.log(`[${callTime}] WATCHMODE CALL - PREMIUM page ${page} - served from cache`);
+
+  // === TYPES FILTER (exactly like Free section) ===
+  if (types !== 'movie,tv_series') {
+    catalogPremium = catalogPremium.filter((t: any) => t.type === types);
+  }
+
+  console.log(`[${callTime}] WATCHMODE CALL - PREMIUM page ${page} - served from cache (${catalogPremium.length} titles after filter)`);
+
   const start = (page - 1) * 48;
   return NextResponse.json({
     success: true,
