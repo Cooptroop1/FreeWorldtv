@@ -368,13 +368,13 @@ export default function DiscoverTab({
                         <Image
                           src={`https://image.tmdb.org/t/p/w342${item.poster_path}`}
                           alt={`${item.title} poster`}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          sizes="160px"
-                          quality={75}
+                            fill
+                                className="object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                              sizes="160px"
+                            quality={75}
                           loading="lazy"
-                          unoptimized={true}
-                        />
+                        unoptimized={true}
+                       />
                       ) : (
                         <div className="w-full h-full bg-zinc-800 animate-pulse" />
                       )}
