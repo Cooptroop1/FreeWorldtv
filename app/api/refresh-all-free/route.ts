@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   }
 }
 
-    // === PREMIUM TITLES ===
+      // === PREMIUM TITLES ===
   page = 1;
   while (page <= maxPages) {
     try {
