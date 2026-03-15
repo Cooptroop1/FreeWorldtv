@@ -97,22 +97,14 @@ export async function GET(request: Request) {
     genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
   });
 
-  const processedFree = freeTitles.map(processTitle);
+    const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
 
-  // === ONE-TIME SEED: Create a baseline so "New Releases This Week" shows again ===
-  const hasPrevious = await kv.get('previous_free_catalog');
-  if (!hasPrevious && !isFullRefresh) {
-    await kv.set('previous_free_catalog', processedFree, { ex: 86400 * 7 });
-    console.log("✅ One-time previous_free_catalog seeded — New This Week will work");
-  }
-
-  // Only save previous catalog on a REAL full refresh going forward
-  if (isFullRefresh) {
-    const oldFreeCatalog = await kv.get('full_free_catalog');
-    if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
-      await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
-    }
+  // Save previous catalog EVERY time (daily + full) — exactly like before our changes
+  // This makes "New Releases This Week" show the fresh daily batch again
+  const oldFreeCatalog = await kv.get('full_free_catalog');
+  if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
+    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
   }
   await kv.set('full_free_catalog', processedFree, { ex: 86400 * 2 });
   await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 2 });
