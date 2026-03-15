@@ -33,7 +33,7 @@ export default function PremiumTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-    // Initial fetch (paid titles only) — FIXED content type switching
+      // Initial fetch (paid titles only) — FIXED low count
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
@@ -51,10 +51,7 @@ export default function PremiumTab({
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
           : staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
 
-        // Extra safety filter (in case API cache returns old data)
-        if (contentType !== 'movie,tv_series') {
-          titles = titles.filter((t: any) => t.type === contentType);
-        }
+        console.log(`Premium API returned ${titles.length} titles for ${contentType}`); // ← debug line
 
         setPremiumTitles(titles);
         setHasMore(titles.length >= 48);
