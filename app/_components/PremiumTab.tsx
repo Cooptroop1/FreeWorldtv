@@ -33,30 +33,40 @@ export default function PremiumTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-  // Initial fetch (paid titles only)
+    // Initial fetch (paid titles only) — FIXED content type switching
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
-      setPremiumTitles([]);
+      setPremiumTitles([]); // Force clear old list immediately
       setPage(1);
       setHasMore(true);
+
       try {
         const res = await fetch(
           `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1&paid=true`
         );
         const json = await res.json();
+
         let titles = json.success && json.titles?.length
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
           : staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
 
+        // Extra safety filter (in case API cache returns old data)
+        if (contentType !== 'movie,tv_series') {
+          titles = titles.filter((t: any) => t.type === contentType);
+        }
+
         setPremiumTitles(titles);
         setHasMore(titles.length >= 48);
-      } catch {
-        setPremiumTitles(staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true })));
+      } catch (err) {
+        console.error('Premium fetch failed:', err);
+        const fallback = staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
+        setPremiumTitles(fallback);
         setHasMore(false);
       }
       setLoading(false);
     };
+
     fetchPremium();
   }, [region, contentType]);
 
