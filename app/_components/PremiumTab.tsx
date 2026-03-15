@@ -33,11 +33,11 @@ export default function PremiumTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-          // Initial fetch (paid titles only) — FINAL fix for low counts
+    // Initial fetch (paid titles only) — DEBUG version to see exact type distribution
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
-      setPremiumTitles([]);           // Force full clear
+      setPremiumTitles([]);
       setPage(1);
       setHasMore(true);
 
@@ -53,12 +53,24 @@ export default function PremiumTab({
 
         console.log(`RAW from API: ${rawTitles.length} titles for ${contentType}`);
 
-        // Strong filter that handles all common type variations
+        // === SHOW US WHAT TYPES ACTUALLY EXIST IN THE CACHE ===
+        const typeCount = rawTitles.reduce((acc: any, t: any) => {
+          const type = t.type || 'unknown';
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        }, {});
+        console.log('🔍 Type distribution in premium cache:', typeCount);
+
+        // Strong filter that covers all common variations
         let filteredTitles = rawTitles;
         if (contentType === 'movie') {
-          filteredTitles = rawTitles.filter((t: any) => t.type === 'movie');
+          filteredTitles = rawTitles.filter((t: any) => 
+            t.type === 'movie' || t.type === 'movies'
+          );
         } else if (contentType === 'tv_series') {
-          filteredTitles = rawTitles.filter((t: any) => t.type === 'tv_series' || t.type === 'tv');
+          filteredTitles = rawTitles.filter((t: any) => 
+            t.type === 'tv_series' || t.type === 'tv' || t.type === 'series'
+          );
         }
 
         console.log(`Premium FILTERED to ${filteredTitles.length} titles for ${contentType}`);
