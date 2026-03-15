@@ -18,13 +18,19 @@ export async function GET() {
       }
     }
 
+        const premiumSnapshot = await kv.get('full_premium_catalog');
+    const premiumSize = Array.isArray(premiumSnapshot) ? premiumSnapshot.length : 0;
+    const totalTitles = size + premiumSize;
+
     return NextResponse.json({
-      snapshotKey: 'full_free_catalog',
-      titleCount: size,
+      snapshotKey: 'full_free_catalog + full_premium_catalog',
+      freeCount: size,
+      premiumCount: premiumSize,
+      totalTitles: totalTitles,
       lastRefresh: lastRefreshDate,
-      status: size > 1000 
-        ? '✅ GOOD — snapshot has real titles' 
-        : '❌ EMPTY — run the refresh link below'
+      status: (size > 1000 && premiumSize > 1000)
+        ? `✅ GOOD — 20 pages each (≈5k free + ≈5k premium)`
+        : 'EMPTY — run the refresh link below'
     });
   } catch (e: any) {
     return NextResponse.json({ 
