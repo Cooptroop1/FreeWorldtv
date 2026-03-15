@@ -4,7 +4,10 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   try {
     const lastRefreshRaw = await kv.get('lastFullRefresh');
-    const lastRefresh = typeof lastRefreshRaw === 'number' ? lastRefreshRaw : (Number(lastRefreshRaw) || 0);
+    const lastRefresh = typeof lastRefreshRaw === 'number' 
+      ? lastRefreshRaw 
+      : (Number(lastRefreshRaw) || 0);
+
     const now = Date.now();
     const daysSince = ((now - lastRefresh) / (1000 * 60 * 60 * 24)).toFixed(2);
     const daysUntilNext = (7 - parseFloat(daysSince)).toFixed(2);
