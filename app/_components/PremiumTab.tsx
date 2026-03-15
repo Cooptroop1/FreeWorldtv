@@ -33,7 +33,7 @@ export default function PremiumTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-    // Initial fetch (paid titles only) — DEBUG version to see exact type distribution
+      // Initial fetch (paid titles only) — FINAL DEBUG to see real types
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
@@ -53,23 +53,28 @@ export default function PremiumTab({
 
         console.log(`RAW from API: ${rawTitles.length} titles for ${contentType}`);
 
-        // === SHOW US WHAT TYPES ACTUALLY EXIST IN THE CACHE ===
-        const typeCount = rawTitles.reduce((acc: any, t: any) => {
+        // === READABLE TYPE DISTRIBUTION ===
+        const typeCount: any = {};
+        rawTitles.forEach((t: any) => {
           const type = t.type || 'unknown';
-          acc[type] = (acc[type] || 0) + 1;
-          return acc;
-        }, {});
-        console.log('🔍 Type distribution in premium cache:', typeCount);
+          typeCount[type] = (typeCount[type] || 0) + 1;
+        });
+        console.table(typeCount);   // ← this will show nice table
 
-        // Strong filter that covers all common variations
+        // Sample titles so we see what types actually exist
+        console.log('📋 Sample first 8 titles & types:', 
+          rawTitles.slice(0, 8).map((t: any) => ({ title: t.title?.substring(0, 35), type: t.type }))
+        );
+
+        // Strong filter that catches all common variations
         let filteredTitles = rawTitles;
         if (contentType === 'movie') {
           filteredTitles = rawTitles.filter((t: any) => 
-            t.type === 'movie' || t.type === 'movies'
+            String(t.type || '').toLowerCase().includes('movie')
           );
         } else if (contentType === 'tv_series') {
           filteredTitles = rawTitles.filter((t: any) => 
-            t.type === 'tv_series' || t.type === 'tv' || t.type === 'series'
+            ['tv_series', 'tv', 'series', 'show'].includes(String(t.type || '').toLowerCase())
           );
         }
 
