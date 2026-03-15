@@ -93,11 +93,15 @@ export async function GET(request: Request) {
     genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
   });
 
-    const processedFree = freeTitles.map(processTitle);
+      const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
-  const oldFreeCatalog = await kv.get('full_free_catalog');
-  if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
-    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
+
+  // Only save previous catalog on a REAL full refresh (keeps "New Releases This Week" truly weekly)
+  if (isFullRefresh) {
+    const oldFreeCatalog = await kv.get('full_free_catalog');
+    if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
+      await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
+    }
   }
   await kv.set('full_free_catalog', processedFree, { ex: 86400 * 2 });
   await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 2 });
