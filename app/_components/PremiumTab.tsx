@@ -203,9 +203,9 @@ export default function PremiumTab({
             <div key={i} className="bg-gray-800/80 rounded-xl overflow-hidden aspect-[2/3] animate-pulse" />
           ))}
         </div>
-      ) : (
+       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
+          <div key={contentType} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
             {premiumTitles.map((title, index) => MovieCard(title, index))}
           </div>
 
