@@ -33,7 +33,7 @@ export default function PremiumTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-      // Initial fetch (paid titles only) — FINAL DEBUG to see real types
+        // Initial fetch (paid titles only) — back to full 48 titles like before
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
@@ -47,41 +47,14 @@ export default function PremiumTab({
         );
         const json = await res.json();
 
-        let rawTitles = json.success && json.titles?.length
+        let titles = json.success && json.titles?.length
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
           : staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
 
-        console.log(`RAW from API: ${rawTitles.length} titles for ${contentType}`);
+        console.log(`Premium loaded full ${titles.length} titles for ${contentType}`);
 
-        // === READABLE TYPE DISTRIBUTION ===
-        const typeCount: any = {};
-        rawTitles.forEach((t: any) => {
-          const type = t.type || 'unknown';
-          typeCount[type] = (typeCount[type] || 0) + 1;
-        });
-        console.table(typeCount);   // ← this will show nice table
-
-        // Sample titles so we see what types actually exist
-        console.log('📋 Sample first 8 titles & types:', 
-          rawTitles.slice(0, 8).map((t: any) => ({ title: t.title?.substring(0, 35), type: t.type }))
-        );
-
-        // Strong filter that catches all common variations
-        let filteredTitles = rawTitles;
-        if (contentType === 'movie') {
-          filteredTitles = rawTitles.filter((t: any) => 
-            String(t.type || '').toLowerCase().includes('movie')
-          );
-        } else if (contentType === 'tv_series') {
-          filteredTitles = rawTitles.filter((t: any) => 
-            ['tv_series', 'tv', 'series', 'show'].includes(String(t.type || '').toLowerCase())
-          );
-        }
-
-        console.log(`Premium FILTERED to ${filteredTitles.length} titles for ${contentType}`);
-
-        setPremiumTitles(filteredTitles);
-        setHasMore(filteredTitles.length >= 48);
+        setPremiumTitles(titles);
+        setHasMore(titles.length >= 48);
       } catch (err) {
         console.error('Premium fetch failed:', err);
         const fallback = staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
