@@ -81,20 +81,21 @@ export async function GET(request: Request) {
     genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
   });
 
-  const processedFree = freeTitles.map(processTitle);
+    const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
-
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
     await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
   }
-
   await kv.set('full_free_catalog', processedFree, { ex: 86400 * 2 });
   await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 2 });
-  await kv.set('lastFullRefresh', Date.now(), { ex: 86400 });
+
+  // ← ONLY update the timer on a REAL full refresh (exactly like yesterday)
+  if (isFullRefresh) {
+    await kv.set('lastFullRefresh', Date.now()); // no expiration — survives forever
+  }
 
   console.log(`🎉 DONE — ${isFullRefresh ? 'FULL' : 'DAILY SMART'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
-
   return NextResponse.json({
     success: true,
     mode: isFullRefresh ? 'full' : 'daily',
