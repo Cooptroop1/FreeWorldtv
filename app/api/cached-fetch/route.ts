@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
 // === AUTO REFRESH SETTINGS (smart + full) ===
-const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;   // 24 hours → smart daily (only 2 pages)
+const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours → smart daily (only 2 pages)
 const FULL_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days → full rebuild
-const REFRESH_SECRET = 'mySuperSecretRefreshKey2026xyz123';
+const REFRESH_SECRET = process.env.REFRESH_SECRET || 'fallback-secret-for-local-dev-only';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
