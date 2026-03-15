@@ -27,6 +27,7 @@ export async function GET(request: Request) {
   // === FREE TITLES ===
   let page = 1;
   while (page <= maxPages) {
+  try {
     const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
     const res = await fetch(url, { cache: 'no-store' });
     totalCalls++;
@@ -38,22 +39,31 @@ export async function GET(request: Request) {
     freeTitles = [...freeTitles, ...unique];
     page++;
     await new Promise(r => setTimeout(r, 400));
+  } catch (e) {
+    console.error(`Free page ${page} failed, skipping`, e);
+    page++; // continue so one bad page doesn't kill everything
   }
+}
 
-  // === PREMIUM TITLES ===
+    // === PREMIUM TITLES ===
   page = 1;
   while (page <= maxPages) {
-    const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
-    const res = await fetch(url, { cache: 'no-store' });
-    totalCalls++;
-    const data = await res.json();
-    const titles = data.titles || [];
-    if (titles.length === 0) break;
+    try {
+      const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
+      const res = await fetch(url, { cache: 'no-store' });
+      totalCalls++;
+      const data = await res.json();
+      const titles = data.titles || [];
+      if (titles.length === 0) break;
 
-    const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
-    premiumTitles = [...premiumTitles, ...unique];
-    page++;
-    await new Promise(r => setTimeout(r, 400));
+      const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
+      premiumTitles = [...premiumTitles, ...unique];
+      page++;
+      await new Promise(r => setTimeout(r, 400));
+    } catch (e) {
+      console.error(`Premium page ${page} failed, skipping`, e);
+      page++;
+    }
   }
 
     // === SMART MERGE FOR DAILY MODE ===
@@ -64,14 +74,16 @@ export async function GET(request: Request) {
     const oldFree: any[] = Array.isArray(oldFreeRaw) ? oldFreeRaw : [];
     const oldPremium: any[] = Array.isArray(oldPremiumRaw) ? oldPremiumRaw : [];
 
-    const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
+        const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
     const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
-
+    
     const oldFreeFiltered = oldFree.filter((t: any) => !newFreeIds.has(t.id));
     const oldPremiumFiltered = oldPremium.filter((t: any) => !newPremiumIds.has(t.id));
-
+    
     freeTitles = [...freeTitles, ...oldFreeFiltered];
     premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
+
+    console.log(`Smart merge: Added ${oldFreeFiltered.length} old free + ${oldPremiumFiltered.length} old premium titles`);;
   }
   // === PROCESS & SAVE (unchanged) ===
   const processTitle = (t: any) => ({
