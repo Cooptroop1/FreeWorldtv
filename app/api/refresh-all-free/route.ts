@@ -2,7 +2,7 @@ import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 
 const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
-const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mySuperSecretRefreshKey2026xyz123';
+const REFRESH_SECRET = process.env.REFRESH_SECRET;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -11,6 +11,10 @@ export async function GET(request: Request) {
 
   if (secret !== REFRESH_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!WATCHMODE_API_KEY) return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
+
+  if (!REFRESH_SECRET) {
+    return NextResponse.json({ error: 'REFRESH_SECRET environment variable is missing' }, { status: 500 });
+  }
 
   const isFullRefresh = mode === 'full';
 
@@ -83,7 +87,7 @@ export async function GET(request: Request) {
     freeTitles = [...freeTitles, ...oldFreeFiltered];
     premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
 
-    console.log(`Smart merge: Added ${oldFreeFiltered.length} old free + ${oldPremiumFiltered.length} old premium titles`);;
+    console.log(`Smart merge: Added ${oldFreeFiltered.length} old free + ${oldPremiumFiltered.length} old premium titles`);
   }
   // === PROCESS & SAVE (unchanged) ===
   const processTitle = (t: any) => ({
