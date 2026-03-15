@@ -11,8 +11,8 @@ export async function GET() {
     const cacheKey = 'watchmode_providers';
 
     // Check cache first
-    let providers = await kv.get(cacheKey);
-    if (Array.isArray(providers) && providers.length > 0) {
+    let providers: any[] = (await kv.get(cacheKey)) || [];
+    if (providers.length > 0) {
       console.log(`✅ Returning ${providers.length} cached providers`);
       return NextResponse.json(providers);
     }
@@ -20,7 +20,7 @@ export async function GET() {
     // First-time fetch (only happens once every 30 days)
     console.log('⚡ Fetching providers list from Watchmode (1 call)');
     const result = await client.sources.list();
-    providers = result.data || [];
+    providers = Array.isArray(result.data) ? result.data : [];
 
     // Save for 30 days
     await kv.set(cacheKey, providers, { ex: 86400 * 30 });
