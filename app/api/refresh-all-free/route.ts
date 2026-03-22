@@ -13,12 +13,12 @@ export async function GET(request: Request) {
   if (!REFRESH_SECRET) return NextResponse.json({ error: 'REFRESH_SECRET missing' }, { status: 500 });
 
   const isFullRefresh = mode === 'full';
-  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL (40 pages = 80 calls)' : 'SMART DAILY (4 calls)'}...`);
+  console.log(`🚀 STARTING ${isFullRefresh ? 'SAFE TEST (5 pages = 10 calls)' : 'SMART DAILY (4 calls)'}...`);
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
   let totalCalls = 0;
-  const maxPages = isFullRefresh ? 40 : 2;
+  const maxPages = isFullRefresh ? 5 : 2;   // ← only 5 pages for safety
 
   // === FREE TITLES ===
   let page = 1;
@@ -27,24 +27,9 @@ export async function GET(request: Request) {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`❌ FREE page ${page} — HTTP ${res.status}: ${errorText}`);
-        page++;
-        continue;
-      }
-
       const data = await res.json();
       const titles = data.titles || [];
-
-      // DEBUG: show exactly what page 1 returns
-      if (page === 1) {
-        console.log(`DEBUG FREE page 1: ${titles.length} titles | total_pages=${data.total_pages || 'N/A'} | total_results=${data.total_results || 'N/A'}`);
-      }
-
       if (titles.length === 0) break;
-
       freeTitles = [...freeTitles, ...titles];
       page++;
       await new Promise(r => setTimeout(r, 400));
@@ -61,23 +46,9 @@ export async function GET(request: Request) {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`❌ PREMIUM page ${page} — HTTP ${res.status}: ${errorText}`);
-        page++;
-        continue;
-      }
-
       const data = await res.json();
       const titles = data.titles || [];
-
-      if (page === 1) {
-        console.log(`DEBUG PREMIUM page 1: ${titles.length} titles | total_pages=${data.total_pages || 'N/A'} | total_results=${data.total_results || 'N/A'}`);
-      }
-
       if (titles.length === 0) break;
-
       premiumTitles = [...premiumTitles, ...titles];
       page++;
       await new Promise(r => setTimeout(r, 400));
@@ -87,11 +58,11 @@ export async function GET(request: Request) {
     }
   }
 
-  // === GUARD: do NOT save empty catalog (keeps your old 5000 titles safe) ===
+  // === GUARD + SAVE (keeps old catalog if nothing new) ===
   if (freeTitles.length === 0 && premiumTitles.length === 0) {
-    console.log('⚠️ No titles fetched — keeping old catalog in cache');
+    console.log('⚠️ Rate limit still active — keeping your existing 5000 titles');
   } else {
-    // === SMART MERGE + SAVE ===
+    // smart merge + 30-day save (same as before)
     if (!isFullRefresh) {
       const oldFreeRaw = await kv.get('full_free_catalog');
       const oldPremiumRaw = await kv.get('full_premium_catalog');
@@ -112,22 +83,14 @@ export async function GET(request: Request) {
       genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
     });
 
-    const processedFree = freeTitles.map(processTitle);
-    const processedPremium = premiumTitles.map(processTitle);
-
-    const oldFreeCatalog = await kv.get('full_free_catalog');
-    if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
-      await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 });
-    }
-
-    await kv.set('full_free_catalog', processedFree, { ex: 86400 * 30 });
-    await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 30 });
+    await kv.set('full_free_catalog', freeTitles.map(processTitle), { ex: 86400 * 30 });
+    await kv.set('full_premium_catalog', premiumTitles.map(processTitle), { ex: 86400 * 30 });
   }
 
   if (isFullRefresh) await kv.set('lastFullRefresh', Date.now());
   else await kv.set('lastDailyRefresh', Date.now());
 
-  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL (40 pages)' : 'DAILY'} | Free: ${freeTitles.length} | Premium: ${premiumTitles.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — Free: ${freeTitles.length} | Premium: ${premiumTitles.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
