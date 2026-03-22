@@ -10,61 +10,87 @@ export async function GET(request: Request) {
   const mode = searchParams.get('mode') || 'daily';
   if (secret !== REFRESH_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!WATCHMODE_API_KEY) return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
-  if (!REFRESH_SECRET) {
-    return NextResponse.json({ error: 'REFRESH_SECRET environment variable is missing' }, { status: 500 });
-  }
+  if (!REFRESH_SECRET) return NextResponse.json({ error: 'REFRESH_SECRET missing' }, { status: 500 });
 
   const isFullRefresh = mode === 'full';
-  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL MONTHLY REBUILD (200 calls)' : 'SMART DAILY (4 calls)'}...`);
+  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL MONTHLY REBUILD' : 'SMART DAILY'}...`);
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
-  const seenFree = new Set();
-  const seenPremium = new Set();
   let totalCalls = 0;
-  const maxPages = isFullRefresh ? 100 : 2;   // ← you wanted 100 pages on full
+  let maxPages = isFullRefresh ? 100 : 2;   // your goal
+  let failures = 0;
 
-  // === FREE TITLES ===
+  // === FREE TITLES (smart total_pages + hard safety) ===
   let page = 1;
-  while (page <= maxPages) {
+  while (page <= maxPages && failures < 5) {
     try {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
       const titles = data.titles || [];
+
+      // Smart: use real total_pages from API on first page
+      if (page === 1 && data.total_pages) {
+        maxPages = Math.min(maxPages, data.total_pages);
+        console.log(`📊 FREE: API says ${data.total_pages} total pages — limiting to ${maxPages}`);
+      }
+
+      console.log(`DEBUG FREE page ${page}: ${titles.length} titles`);
+
       if (titles.length === 0) break;
-      const unique = titles.filter((t: any) => !seenFree.has(t.id) && seenFree.add(t.id));
-      freeTitles = [...freeTitles, ...unique];
+
+      freeTitles = [...freeTitles, ...titles];
       page++;
       await new Promise(r => setTimeout(r, 400));
+      failures = 0; // reset on success
     } catch (e) {
-      console.error(`Free page ${page} failed, skipping`, e);
+      console.error(`❌ FREE page ${page} error:`, e);
+      failures++;
       page++;
     }
   }
 
-  // === PREMIUM TITLES ===
+  // === PREMIUM TITLES (same safe logic) ===
   page = 1;
-  while (page <= maxPages) {
+  maxPages = isFullRefresh ? 100 : 2;   // reset for premium
+  failures = 0;
+  while (page <= maxPages && failures < 5) {
     try {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const data = await res.json();
       const titles = data.titles || [];
+
+      if (page === 1 && data.total_pages) {
+        maxPages = Math.min(maxPages, data.total_pages);
+        console.log(`📊 PREMIUM: API says ${data.total_pages} total pages — limiting to ${maxPages}`);
+      }
+
+      console.log(`DEBUG PREMIUM page ${page}: ${titles.length} titles`);
+
       if (titles.length === 0) break;
-      const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
-      premiumTitles = [...premiumTitles, ...unique];
+
+      premiumTitles = [...premiumTitles, ...titles];
       page++;
       await new Promise(r => setTimeout(r, 400));
+      failures = 0;
     } catch (e) {
-      console.error(`Premium page ${page} failed, skipping`, e);
+      console.error(`❌ PREMIUM page ${page} error:`, e);
+      failures++;
       page++;
     }
   }
 
-  // === SMART MERGE FOR DAILY MODE ===
+  // === REST IS SAME AS BEFORE (smart merge, 30-day cache, timers) ===
   if (!isFullRefresh) {
     const oldFreeRaw = await kv.get('full_free_catalog');
     const oldPremiumRaw = await kv.get('full_premium_catalog');
@@ -74,41 +100,27 @@ export async function GET(request: Request) {
     const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
     const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
 
-    const oldFreeFiltered = oldFree.filter((t: any) => !newFreeIds.has(t.id));
-    const oldPremiumFiltered = oldPremium.filter((t: any) => !newPremiumIds.has(t.id));
-
-    freeTitles = [...freeTitles, ...oldFreeFiltered];
-    premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
-    console.log(`Smart merge: Added ${oldFreeFiltered.length} old free + ${oldPremiumFiltered.length} old premium titles`);
+    freeTitles = [...freeTitles, ...oldFree.filter((t: any) => !newFreeIds.has(t.id))];
+    premiumTitles = [...premiumTitles, ...oldPremium.filter((t: any) => !newPremiumIds.has(t.id))];
   }
 
-  // === PROCESS & SAVE ===
-  const processTitle = (t: any) => ({
-    ...t,
-    poster: t.poster || t.image_url || null,
-    title: t.title || t.name || "Unknown Title",
-    genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
-  });
+  const processTitle = (t: any) => ({ ...t, poster: t.poster || t.image_url || null, title: t.title || t.name || "Unknown Title", genre_names: Array.isArray(t.genre_names) ? t.genre_names : [] });
 
   const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
 
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
-    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 }); // ← now 30 days too
+    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 });
   }
 
-  // ← CHANGED: now saves the huge 100-page catalog for FULL 30 DAYS
   await kv.set('full_free_catalog', processedFree, { ex: 86400 * 30 });
   await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 30 });
 
-  if (isFullRefresh) {
-    await kv.set('lastFullRefresh', Date.now());
-  } else {
-    await kv.set('lastDailyRefresh', Date.now());
-  }
+  if (isFullRefresh) await kv.set('lastFullRefresh', Date.now());
+  else await kv.set('lastDailyRefresh', Date.now());
 
-  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL MONTHLY' : 'DAILY SMART'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL' : 'DAILY'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
@@ -116,6 +128,6 @@ export async function GET(request: Request) {
     freeTitles: processedFree.length,
     premiumTitles: processedPremium.length,
     callsUsed: totalCalls,
-    message: isFullRefresh ? 'Full monthly catalog rebuilt (200 calls — cached 30 days)' : 'Smart daily refresh complete (4 calls)'
+    message: isFullRefresh ? `Full monthly rebuilt (${totalCalls} calls — cached 30 days)` : 'Smart daily complete (4 calls)'
   });
 }
