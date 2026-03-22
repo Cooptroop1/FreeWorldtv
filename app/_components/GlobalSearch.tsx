@@ -8,7 +8,8 @@ interface GlobalSearchProps {
   setSearchQuery: (query: string) => void;
   onTitleSelect: (title: any) => void;
   region: string;
-  contentType: string;
+  contentType: string;     // "movie", "tv_series", or ""
+  paidOnly: boolean;       // ← NEW: true = search paid only, false = search free only
 }
 
 export default function GlobalSearch({
@@ -16,12 +17,12 @@ export default function GlobalSearch({
   setSearchQuery,
   onTitleSelect,
   region,
-  contentType
+  contentType,
+  paidOnly
 }: GlobalSearchProps) {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const postersFetched = useRef(new Set<number>());
@@ -29,8 +30,7 @@ export default function GlobalSearch({
   const prevQueryRef = useRef('');
 
   // 24h client cache
-  const getCacheKey = (query: string) => `search_cache_${query.trim().toLowerCase()}_${region}_${contentType}`;
-
+  const getCacheKey = (query: string) => `search_cache_${query.trim().toLowerCase()}_${region}_${contentType}_${paidOnly}`;
   const getCachedSuggestions = (query: string) => {
     const cached = localStorage.getItem(getCacheKey(query));
     if (!cached) return null;
@@ -41,16 +41,13 @@ export default function GlobalSearch({
     }
     return data;
   };
-
   const saveToCache = (query: string, titles: any[]) => {
     localStorage.setItem(getCacheKey(query), JSON.stringify({ data: titles, timestamp: Date.now() }));
   };
 
-  // Main search
+  // Main search — section-specific (free OR paid only)
   useEffect(() => {
     const trimmed = searchQuery.trim();
-
-    // Clear poster memory when search changes
     if (trimmed !== prevQueryRef.current) {
       postersFetched.current.clear();
       prevQueryRef.current = trimmed;
@@ -74,7 +71,10 @@ export default function GlobalSearch({
       setShowDropdown(true);
 
       try {
-        const res = await fetch(`/api/cached-fetch?query=${encodeURIComponent(trimmed)}&page=1`);
+        const paidParam = paidOnly ? 'true' : 'false';
+        const res = await fetch(
+          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&types=${contentType}&paid=${paidParam}&page=1`
+        );
         const json = await res.json();
         const results = json.success && Array.isArray(json.titles) ? json.titles : [];
         setSuggestions(results.slice(0, 20));
@@ -87,16 +87,14 @@ export default function GlobalSearch({
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, contentType, paidOnly]);
 
-  // Poster enrichment (runs on every search)
+  // Poster enrichment (unchanged)
   useEffect(() => {
     if (!TMDB_READ_TOKEN || suggestions.length === 0) return;
-
     const needsPoster = suggestions.filter((t: any) =>
       t.tmdb_id && !t.poster_path && !postersFetched.current.has(t.tmdb_id)
     );
-
     if (needsPoster.length === 0) return;
 
     const enrich = async () => {
@@ -117,10 +115,8 @@ export default function GlobalSearch({
           }
         })
       );
-
       setSuggestions(prev => prev.map(t => updates.find(u => u.id === t.id) || t));
     };
-
     enrich();
   }, [suggestions, TMDB_READ_TOKEN]);
 
@@ -143,7 +139,7 @@ export default function GlobalSearch({
         <input
           ref={inputRef}
           type="text"
-          placeholder="Search free movies & shows"
+          placeholder={paidOnly ? "Search paid movies & shows" : "Search free movies & shows"}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-gray-800 border border-gray-700 rounded-2xl pl-12 pr-12 py-3.5 text-base text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
@@ -169,7 +165,7 @@ export default function GlobalSearch({
                 className="flex items-center gap-4 px-5 py-3 hover:bg-gray-800 cursor-pointer transition-colors group"
               >
                 <div className="relative w-12 h-16 flex-shrink-0 rounded-lg overflow-hidden border border-gray-700 bg-gray-800">
-                                    {title.poster_path ? (
+                  {title.poster_path ? (
                     <Image
                       src={`https://image.tmdb.org/t/p/w200${title.poster_path}`}
                       alt={title.title}
@@ -181,16 +177,14 @@ export default function GlobalSearch({
                       unoptimized={true}
                     />
                   ) : (
-                    <img 
-                      src="/fallback-poster.jpg" 
-                      alt={title.title}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src="/fallback-poster.jpg" alt={title.title} className="w-full h-full object-cover" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-white group-hover:text-blue-400 line-clamp-1">{title.title}</p>
-                  <p className="text-xs text-gray-400">{title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}</p>
+                  <p className="text-xs text-gray-400">
+                    {title.year} • {title.type === 'tv_series' ? 'TV Series' : 'Movie'}
+                  </p>
                 </div>
               </div>
             ))
