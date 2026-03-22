@@ -13,12 +13,12 @@ export async function GET(request: Request) {
   if (!REFRESH_SECRET) return NextResponse.json({ error: 'REFRESH_SECRET missing' }, { status: 500 });
 
   const isFullRefresh = mode === 'full';
-  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL MONTHLY REBUILD' : 'SMART DAILY'}...`);
+  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL MONTHLY REBUILD (120 calls)' : 'SMART DAILY (4 calls)'}...`);
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
   let totalCalls = 0;
-  let maxPages = isFullRefresh ? 60 : 2;   // safe for now (you can change to 100 later)
+  let maxPages = isFullRefresh ? 60 : 2;   // ← safe & reliable
   let consecutiveFailures = 0;
 
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // === SMART MERGE (fixed typing — this was the build error) ===
+  // === SMART MERGE + 30-DAY SAVE ===
   if (!isFullRefresh) {
     const oldFreeRaw = await kv.get('full_free_catalog');
     const oldPremiumRaw = await kv.get('full_premium_catalog');
@@ -121,7 +121,6 @@ export async function GET(request: Request) {
     premiumTitles = [...premiumTitles, ...oldPremium.filter((t: any) => !newPremiumIds.has(t.id))];
   }
 
-  // === PROCESS & SAVE ===
   const processTitle = (t: any) => ({
     ...t,
     poster: t.poster || t.image_url || null,
