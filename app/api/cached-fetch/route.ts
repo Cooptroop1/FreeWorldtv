@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
-// === AUTO REFRESH SETTINGS (smart + full) ===
-const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours → smart daily (only 2 pages)
-const FULL_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days → full rebuild
+// === AUTO REFRESH SETTINGS — UPDATED FOR YOUR NEW PLAN ===
+const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;           // every day → 4 calls
+const FULL_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;       // ← CHANGED: now once per month
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'fallback-secret-for-local-dev-only';
 
 export async function GET(request: NextRequest) {
@@ -14,17 +14,15 @@ export async function GET(request: NextRequest) {
   const section = searchParams.get('section');
   const types = searchParams.get('types') || 'movie,tv_series';
 
-  // === CLEAR LOGGING SO YOU SEE EVERY CALL ===
   const callTime = new Date().toISOString();
   console.log(`[${callTime}] WATCHMODE API CALL - cached-fetch - query: ${query || 'none'} - section: ${section || 'none'} - paid: ${paid} - page: ${page} - types: ${types}`);
 
-  // === FIXED FULLY AUTOMATIC REFRESH (no more 40 calls a day) ===
+  // === FIXED AUTOMATIC REFRESH (now monthly full + daily smart) ===
   try {
     const lastFull = await kv.get<number>('lastFullRefresh') || 0;
     const lastDaily = await kv.get<number>('lastDailyRefresh') || 0;
     const now = Date.now();
 
-    // Simple lock so only ONE refresh runs at a time
     const lock = await kv.get('refresh_lock');
     if (lock) {
       console.log(`[${callTime}] Refresh already in progress (locked)`);
@@ -37,12 +35,11 @@ export async function GET(request: NextRequest) {
       }
 
       if (mode) {
-        await kv.set('refresh_lock', '1', { ex: 300 }); // 5-minute lock
+        await kv.set('refresh_lock', '1', { ex: 300 });
 
         const host = request.headers.get('host') || 'freestreamworld.com';
         const url = `https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}&mode=${mode}`;
         
-        // Fire the refresh (non-blocking)
         fetch(url, { cache: 'no-store' })
           .then(() => kv.del('refresh_lock'))
           .catch(() => kv.del('refresh_lock'));
@@ -54,7 +51,7 @@ export async function GET(request: NextRequest) {
     console.error('Auto-refresh check failed:', e);
   }
 
-  // FREE SECTION
+  // FREE SECTION (unchanged)
   if (!paid) {
     const raw = await kv.get('full_free_catalog');
     let catalog: any[] = Array.isArray(raw) ? raw : [];
@@ -77,12 +74,10 @@ export async function GET(request: NextRequest) {
       });
     }
     if (section === 'trending') {
-      console.log(`[${callTime}] WATCHMODE CALL - TRENDING page ${page} - served from cache`);
       const sorted = [...catalog].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
       return NextResponse.json({ success: true, titles: sorted.slice(0, 20) });
     }
     if (section === 'new-releases') {
-      console.log(`[${callTime}] WATCHMODE CALL - NEW RELEASES page ${page} - served from cache`);
       const previousRaw = await kv.get('previous_free_catalog');
       const previous: any[] = Array.isArray(previousRaw) ? previousRaw : [];
       const prevIds = new Set(previous.map((t: any) => t.id));
@@ -91,7 +86,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, titles: newTitles.slice(0, 20) });
     }
     if (query) {
-      console.log(`[${callTime}] WATCHMODE CALL - SEARCH for "${query}" - page ${page}`);
       const filtered = catalog.filter((t: any) =>
         t.title?.toLowerCase().includes(query.toLowerCase())
       );
@@ -100,7 +94,6 @@ export async function GET(request: NextRequest) {
         titles: filtered.slice((page - 1) * 48, page * 48)
       });
     }
-    console.log(`[${callTime}] WATCHMODE CALL - MAIN GRID page ${page} - served from cache`);
     const start = (page - 1) * 48;
     return NextResponse.json({
       success: true,
@@ -108,13 +101,12 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // PREMIUM SECTION
+  // PREMIUM SECTION (unchanged)
   const rawPremium = await kv.get('full_premium_catalog');
   let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
   if (types !== 'movie,tv_series') {
     catalogPremium = catalogPremium.filter((t: any) => t.type === types);
   }
-  console.log(`[${callTime}] WATCHMODE CALL - PREMIUM page ${page} - served from cache (${catalogPremium.length} titles after filter)`);
   const start = (page - 1) * 48;
   return NextResponse.json({
     success: true,
