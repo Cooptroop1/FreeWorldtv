@@ -86,7 +86,7 @@ export async function GET(request: Request) {
     premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
   }
 
-  // === PROCESS & SAVE (30 days) ===
+  // === PROCESS TITLES ===
   const processTitle = (t: any) => ({
     ...t,
     poster: t.poster || t.image_url || null,
@@ -97,17 +97,19 @@ export async function GET(request: Request) {
   const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
 
+  // === STRONG MERGE (this fixes the TypeScript error) ===
+  const currentFreeRaw = await kv.get('full_free_catalog');
+  const currentPremiumRaw = await kv.get('full_premium_catalog');
+  const currentFree: any[] = Array.isArray(currentFreeRaw) ? currentFreeRaw : [];
+  const currentPremium: any[] = Array.isArray(currentPremiumRaw) ? currentPremiumRaw : [];
+
+  const mergedFree = [...currentFree, ...processedFree];
+  const mergedPremium = [...currentPremium, ...processedPremium];
+
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
     await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 });
   }
-
-  // Merge new titles into existing cache (for append mode)
-  const currentFree = (await kv.get('full_free_catalog')) || [];
-  const currentPremium = (await kv.get('full_premium_catalog')) || [];
-
-  const mergedFree = [...currentFree, ...processedFree];
-  const mergedPremium = [...currentPremium, ...processedPremium];
 
   await kv.set('full_free_catalog', mergedFree, { ex: 86400 * 30 });
   await kv.set('full_premium_catalog', mergedPremium, { ex: 86400 * 30 });
