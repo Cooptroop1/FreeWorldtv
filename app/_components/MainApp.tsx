@@ -327,23 +327,31 @@ useEffect(() => {
     };
   }, [selectedChannel]);
 
-    // Real Top 10 (uses trending logic + respects Movies Only / TV Shows Only / All filter)
-  useEffect(() => {
-    if (tab !== 'top10') return;
-    const fetchTop10 = async () => {
-      setTop10Loading(true);
-      try {
-        const typesParam = encodeURIComponent(contentType);
-        const res = await fetch(`/api/cached-fetch?types=${typesParam}&section=trending`);
-        const json = await res.json();
-        setTop10Titles(json.success && json.titles?.length ? json.titles.slice(0, 10) : staticFallbackTitles.slice(0, 10));
-      } catch {
-        setTop10Titles(staticFallbackTitles.slice(0, 10));
-      }
-      setTop10Loading(false);
-    };
-    fetchTop10();
-  }, [tab, contentType]);
+    // Real Top 10 — pulls from your full 23k+ free catalog
+useEffect(() => {
+  if (tab !== 'top10') return;
+
+  const fetchRealTop10 = async () => {
+    setTop10Loading(true);
+    try {
+      const raw = await kv.get('full_free_catalog');   // ← your real catalog
+      let titles: any[] = Array.isArray(raw) ? raw : staticFallbackTitles;
+
+      // Sort by popularity (real Top 10)
+      titles = titles
+        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+        .slice(0, 10);
+
+      setTop10Titles(titles);
+    } catch (err) {
+      console.error(err);
+      setTop10Titles(staticFallbackTitles.slice(0, 10));
+    }
+    setTop10Loading(false);
+  };
+
+  fetchRealTop10();
+}, [tab]);
 
             // === RADIO STATIONS (search + country filter — safe & separate) ===
   useEffect(() => {
