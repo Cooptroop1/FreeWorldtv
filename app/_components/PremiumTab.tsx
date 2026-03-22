@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Film, Loader2, Star, Heart } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
-import GlobalSearch from '../GlobalSearch';   // ← adjust path if needed
+import GlobalSearch from './GlobalSearch';   // ← FIXED import
 
 interface PremiumTabProps {
   region: string;
@@ -37,7 +37,7 @@ export default function PremiumTab({
   // Search state for Premium tab only
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Initial fetch (paid only)
+  // Initial fetch (paid titles only)
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
@@ -188,7 +188,7 @@ export default function PremiumTab({
           onTitleSelect={setSelectedTitle}
           region={region}
           contentType={contentType}
-          paidOnly={true}   // ← Only searches the paid catalog
+          paidOnly={true}
         />
       </div>
 
