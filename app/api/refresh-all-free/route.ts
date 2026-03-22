@@ -18,13 +18,12 @@ export async function GET(request: Request) {
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
   let totalCalls = 0;
-  let maxPages = isFullRefresh ? 60 : 2;   // ← SAFE default (change to 100 later if you want)
+  let maxPages = isFullRefresh ? 60 : 2;   // safe for now (you can change to 100 later)
   let consecutiveFailures = 0;
 
-  // Helper to sleep
   const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-  // === FREE TITLES (with 429 backoff + dynamic total_pages) ===
+  // === FREE TITLES ===
   let page = 1;
   while (page <= maxPages && consecutiveFailures < 3) {
     try {
@@ -34,51 +33,7 @@ export async function GET(request: Request) {
 
       if (!res.ok) {
         if (res.status === 429) {
-          console.log(`⏳ RATE LIMIT (429) on free page ${page} — waiting 5 seconds...`);
-          await sleep(5000);
-          continue; // retry same page
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      const titles = data.titles || [];
-
-      // Use real total_pages from API
-      if (page === 1 && data.total_pages) {
-        maxPages = Math.min(maxPages, data.total_pages);
-        console.log(`📊 FREE: API says ${data.total_pages} pages total — using ${maxPages}`);
-      }
-
-      console.log(`✅ FREE page ${page}: ${titles.length} titles`);
-
-      if (titles.length === 0) break;
-
-      freeTitles = [...freeTitles, ...titles];
-      page++;
-      await sleep(800); // gentler delay
-      consecutiveFailures = 0;
-    } catch (e: any) {
-      console.error(`❌ FREE page ${page}:`, e.message);
-      consecutiveFailures++;
-      page++;
-      await sleep(2000);
-    }
-  }
-
-  // === PREMIUM TITLES (same safe logic) ===
-  page = 1;
-  maxPages = isFullRefresh ? 60 : 2; // reset
-  consecutiveFailures = 0;
-  while (page <= maxPages && consecutiveFailures < 3) {
-    try {
-      const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
-      const res = await fetch(url, { cache: 'no-store' });
-      totalCalls++;
-
-      if (!res.ok) {
-        if (res.status === 429) {
-          console.log(`⏳ RATE LIMIT (429) on premium page ${page} — waiting 5 seconds...`);
+          console.log(`⏳ RATE LIMIT on free page ${page} — waiting 5s...`);
           await sleep(5000);
           continue;
         }
@@ -90,7 +45,50 @@ export async function GET(request: Request) {
 
       if (page === 1 && data.total_pages) {
         maxPages = Math.min(maxPages, data.total_pages);
-        console.log(`📊 PREMIUM: API says ${data.total_pages} pages total — using ${maxPages}`);
+        console.log(`📊 FREE: API says ${data.total_pages} pages — using ${maxPages}`);
+      }
+
+      console.log(`✅ FREE page ${page}: ${titles.length} titles`);
+
+      if (titles.length === 0) break;
+
+      freeTitles = [...freeTitles, ...titles];
+      page++;
+      await sleep(800);
+      consecutiveFailures = 0;
+    } catch (e: any) {
+      console.error(`❌ FREE page ${page}:`, e.message);
+      consecutiveFailures++;
+      page++;
+      await sleep(2000);
+    }
+  }
+
+  // === PREMIUM TITLES ===
+  page = 1;
+  maxPages = isFullRefresh ? 60 : 2;
+  consecutiveFailures = 0;
+  while (page <= maxPages && consecutiveFailures < 3) {
+    try {
+      const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
+      const res = await fetch(url, { cache: 'no-store' });
+      totalCalls++;
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          console.log(`⏳ RATE LIMIT on premium page ${page} — waiting 5s...`);
+          await sleep(5000);
+          continue;
+        }
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const titles = data.titles || [];
+
+      if (page === 1 && data.total_pages) {
+        maxPages = Math.min(maxPages, data.total_pages);
+        console.log(`📊 PREMIUM: API says ${data.total_pages} pages — using ${maxPages}`);
       }
 
       console.log(`✅ PREMIUM page ${page}: ${titles.length} titles`);
@@ -109,10 +107,13 @@ export async function GET(request: Request) {
     }
   }
 
-  // === SMART MERGE + SAVE (exactly as you wanted) ===
+  // === SMART MERGE (fixed typing — this was the build error) ===
   if (!isFullRefresh) {
-    const oldFree = (await kv.get('full_free_catalog')) || [];
-    const oldPremium = (await kv.get('full_premium_catalog')) || [];
+    const oldFreeRaw = await kv.get('full_free_catalog');
+    const oldPremiumRaw = await kv.get('full_premium_catalog');
+    const oldFree: any[] = Array.isArray(oldFreeRaw) ? oldFreeRaw : [];
+    const oldPremium: any[] = Array.isArray(oldPremiumRaw) ? oldPremiumRaw : [];
+
     const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
     const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
 
@@ -120,6 +121,7 @@ export async function GET(request: Request) {
     premiumTitles = [...premiumTitles, ...oldPremium.filter((t: any) => !newPremiumIds.has(t.id))];
   }
 
+  // === PROCESS & SAVE ===
   const processTitle = (t: any) => ({
     ...t,
     poster: t.poster || t.image_url || null,
