@@ -301,31 +301,54 @@ useEffect(() => {
   fetchSources();
 }, [selectedTitle, region, tab]);
 
-  // Video.js player
-  useEffect(() => {
-    if (!selectedChannel || !videoRef.current) return;
-    if (playerRef.current) {
+  // === SAFER VIDEO PLAYER FOR CUSTOM LINKS (My Links) ===
+useEffect(() => {
+  if (!selectedChannel || !videoRef.current) return;
+
+  // Dispose previous player safely
+  if (playerRef.current) {
+    try {
       playerRef.current.dispose();
-      playerRef.current = null;
-    }
+    } catch (e) {}
+    playerRef.current = null;
+  }
+
+  try {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
     playerRef.current = videojs(videoRef.current, {
-      autoplay: 'muted',
+      autoplay: false,           // changed to false for stability
       muted: true,
       controls: true,
       fluid: true,
       bigPlayButton: true,
       html5: {
-        vhs: { overrideNative: !isSafari, withCredentials: false, bandwidth: 2000000 },
+        vhs: {
+          overrideNative: !isSafari,
+          withCredentials: false,
+          bandwidth: 2000000
+        },
         nativeAudioTracks: isSafari,
         nativeVideoTracks: isSafari,
       },
-      sources: [{ src: selectedChannel.url, type: 'application/x-mpegURL' }],
+      sources: [{
+        src: selectedChannel.url,
+        type: 'application/x-mpegURL'
+      }]
     });
-    return () => {
-      if (playerRef.current) playerRef.current.dispose();
-    };
-  }, [selectedChannel]);
+  } catch (e) {
+    console.error('Video player failed to start:', e);
+  }
+
+  return () => {
+    if (playerRef.current) {
+      try {
+        playerRef.current.dispose();
+      } catch (e) {}
+      playerRef.current = null;
+    }
+  };
+}, [selectedChannel]);
 
     // === REAL TOP 10 — always pulls from your full current catalog ===
 useEffect(() => {
