@@ -13,14 +13,14 @@ export async function GET(request: Request) {
   if (!REFRESH_SECRET) return NextResponse.json({ error: 'REFRESH_SECRET missing' }, { status: 500 });
 
   const isFullRefresh = mode === 'full';
-  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL (10 pages = 20 calls)' : 'SMART DAILY (4 calls)'}...`);
+  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL (40 pages = 80 calls)' : 'SMART DAILY (4 calls)'}...`);
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
   const seenFree = new Set();
   const seenPremium = new Set();
   let totalCalls = 0;
-  const maxPages = isFullRefresh ? 10 : 2;
+  const maxPages = isFullRefresh ? 40 : 2;   // ← changed to 40
 
   // === FREE TITLES ===
   let page = 1;
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
     await kv.set('lastDailyRefresh', Date.now());
   }
 
-  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL (10 pages)' : 'DAILY'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL (40 pages)' : 'DAILY'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
