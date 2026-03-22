@@ -15,14 +15,14 @@ export async function GET(request: Request) {
   }
 
   const isFullRefresh = mode === 'full';
-  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL REBUILD (40 calls)' : 'SMART DAILY (4 calls)'}...`);
+  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL MONTHLY REBUILD (200 calls)' : 'SMART DAILY (4 calls)'}...`);
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
   const seenFree = new Set();
   const seenPremium = new Set();
   let totalCalls = 0;
-  const maxPages = isFullRefresh ? 20 : 2;
+  const maxPages = isFullRefresh ? 100 : 2;   // ← you wanted 100 pages on full
 
   // === FREE TITLES ===
   let page = 1;
@@ -95,20 +95,20 @@ export async function GET(request: Request) {
 
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
-    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 7 });
+    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 }); // ← now 30 days too
   }
 
-  await kv.set('full_free_catalog', processedFree, { ex: 86400 * 2 });
-  await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 2 });
+  // ← CHANGED: now saves the huge 100-page catalog for FULL 30 DAYS
+  await kv.set('full_free_catalog', processedFree, { ex: 86400 * 30 });
+  await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 30 });
 
-  // ← UPDATED: now we also record daily refreshes
   if (isFullRefresh) {
     await kv.set('lastFullRefresh', Date.now());
   } else {
     await kv.set('lastDailyRefresh', Date.now());
   }
 
-  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL' : 'DAILY SMART'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL MONTHLY' : 'DAILY SMART'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
@@ -116,6 +116,6 @@ export async function GET(request: Request) {
     freeTitles: processedFree.length,
     premiumTitles: processedPremium.length,
     callsUsed: totalCalls,
-    message: isFullRefresh ? 'Full catalog rebuilt (40 calls)' : 'Smart daily refresh complete (4 calls)'
+    message: isFullRefresh ? 'Full monthly catalog rebuilt (200 calls — cached 30 days)' : 'Smart daily refresh complete (4 calls)'
   });
 }
