@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Film, Loader2, Star, Heart } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
+import GlobalSearch from '../GlobalSearch';   // ← adjust path if needed
 
 interface PremiumTabProps {
   region: string;
@@ -11,7 +12,7 @@ interface PremiumTabProps {
   toggleFavorite: (title: any) => void;
   selectedTitle: any;
   setSelectedTitle: (title: any) => void;
-  pauseInfiniteScroll: boolean;   // from MainApp
+  pauseInfiniteScroll: boolean;
 }
 
 export default function PremiumTab({
@@ -33,26 +34,24 @@ export default function PremiumTab({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
-        // Initial fetch (paid titles only) — back to full 48 titles like before
+  // Search state for Premium tab only
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Initial fetch (paid only)
   useEffect(() => {
     const fetchPremium = async () => {
       setLoading(true);
       setPremiumTitles([]);
       setPage(1);
       setHasMore(true);
-
       try {
         const res = await fetch(
           `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=1&paid=true`
         );
         const json = await res.json();
-
         let titles = json.success && json.titles?.length
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
           : staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
-
-        console.log(`Premium loaded full ${titles.length} titles for ${contentType}`);
-
         setPremiumTitles(titles);
         setHasMore(titles.length >= 48);
       } catch (err) {
@@ -63,11 +62,10 @@ export default function PremiumTab({
       }
       setLoading(false);
     };
-
     fetchPremium();
   }, [region, contentType]);
 
-  // Load more
+  // Load more (unchanged)
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || pauseInfiniteScroll) return;
     setLoadingMore(true);
@@ -79,7 +77,6 @@ export default function PremiumTab({
       const newTitles = json.success && json.titles?.length
         ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
         : [];
-
       setPremiumTitles(prev => [...prev, ...newTitles]);
       setPage(prev => prev + 1);
       setHasMore(newTitles.length >= 48);
@@ -90,7 +87,7 @@ export default function PremiumTab({
     }
   }, [page, region, contentType, loadingMore, hasMore, pauseInfiniteScroll]);
 
-  // Infinite scroll observer (exact same as DiscoverTab)
+  // Infinite scroll (unchanged)
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
     observerRef.current = new IntersectionObserver(
@@ -105,7 +102,7 @@ export default function PremiumTab({
     return () => observerRef.current?.disconnect();
   }, [loadMore, hasMore, loadingMore, loading, pauseInfiniteScroll]);
 
-  // Optimized poster fetching (same as DiscoverTab)
+  // Poster enrichment (unchanged)
   useEffect(() => {
     if (!premiumTitles?.length || !TMDB_READ_TOKEN) return;
     const titlesNeedingPoster = premiumTitles.filter((title: any) =>
@@ -143,10 +140,9 @@ export default function PremiumTab({
         key={title.id}
         onClick={() => setSelectedTitle(title)}
         className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative flex flex-col h-full text-left"
-        aria-label={`View sources for ${title.title}`}
       >
         <div className="relative aspect-[2/3] bg-gray-700 overflow-hidden">
-                    {title.poster_path ? (
+          {title.poster_path ? (
             <Image
               src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
               alt={title.title}
@@ -184,6 +180,18 @@ export default function PremiumTab({
 
   return (
     <section className="max-w-7xl mx-auto">
+      {/* Premium-only search bar */}
+      <div className="mb-8">
+        <GlobalSearch
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          onTitleSelect={setSelectedTitle}
+          region={region}
+          contentType={contentType}
+          paidOnly={true}   // ← Only searches the paid catalog
+        />
+      </div>
+
       <div className="flex items-center gap-4 mb-6">
         <Star className="text-purple-400" size={36} />
         <h2 className="text-4xl font-bold">Premium on Subscription</h2>
@@ -198,12 +206,11 @@ export default function PremiumTab({
             <div key={i} className="bg-gray-800/80 rounded-xl overflow-hidden aspect-[2/3] animate-pulse" />
           ))}
         </div>
-       ) : (
+      ) : (
         <>
           <div key={contentType} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
             {premiumTitles.map((title, index) => MovieCard(title, index))}
           </div>
-
           {hasMore && (
             <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
               {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-purple-500" />}
