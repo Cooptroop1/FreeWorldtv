@@ -17,10 +17,8 @@ export async function GET(request: Request) {
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
-  const seenFree = new Set();
-  const seenPremium = new Set();
   let totalCalls = 0;
-  const maxPages = isFullRefresh ? 40 : 2;   // ← changed to 40
+  const maxPages = isFullRefresh ? 40 : 2;
 
   // === FREE TITLES ===
   let page = 1;
@@ -29,11 +27,25 @@ export async function GET(request: Request) {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`❌ FREE page ${page} — HTTP ${res.status}: ${errorText}`);
+        page++;
+        continue;
+      }
+
       const data = await res.json();
       const titles = data.titles || [];
+
+      // DEBUG: show exactly what page 1 returns
+      if (page === 1) {
+        console.log(`DEBUG FREE page 1: ${titles.length} titles | total_pages=${data.total_pages || 'N/A'} | total_results=${data.total_results || 'N/A'}`);
+      }
+
       if (titles.length === 0) break;
-      const unique = titles.filter((t: any) => !seenFree.has(t.id) && seenFree.add(t.id));
-      freeTitles = [...freeTitles, ...unique];
+
+      freeTitles = [...freeTitles, ...titles];
       page++;
       await new Promise(r => setTimeout(r, 400));
     } catch (e) {
@@ -49,11 +61,24 @@ export async function GET(request: Request) {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`❌ PREMIUM page ${page} — HTTP ${res.status}: ${errorText}`);
+        page++;
+        continue;
+      }
+
       const data = await res.json();
       const titles = data.titles || [];
+
+      if (page === 1) {
+        console.log(`DEBUG PREMIUM page 1: ${titles.length} titles | total_pages=${data.total_pages || 'N/A'} | total_results=${data.total_results || 'N/A'}`);
+      }
+
       if (titles.length === 0) break;
-      const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
-      premiumTitles = [...premiumTitles, ...unique];
+
+      premiumTitles = [...premiumTitles, ...titles];
       page++;
       await new Promise(r => setTimeout(r, 400));
     } catch (e) {
@@ -62,55 +87,53 @@ export async function GET(request: Request) {
     }
   }
 
-  // === SMART MERGE FOR DAILY ===
-  if (!isFullRefresh) {
-    const oldFreeRaw = await kv.get('full_free_catalog');
-    const oldPremiumRaw = await kv.get('full_premium_catalog');
-    const oldFree: any[] = Array.isArray(oldFreeRaw) ? oldFreeRaw : [];
-    const oldPremium: any[] = Array.isArray(oldPremiumRaw) ? oldPremiumRaw : [];
-
-    const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
-    const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
-
-    const oldFreeFiltered = oldFree.filter((t: any) => !newFreeIds.has(t.id));
-    const oldPremiumFiltered = oldPremium.filter((t: any) => !newPremiumIds.has(t.id));
-
-    freeTitles = [...freeTitles, ...oldFreeFiltered];
-    premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
-  }
-
-  // === PROCESS & SAVE (30 days) ===
-  const processTitle = (t: any) => ({
-    ...t,
-    poster: t.poster || t.image_url || null,
-    title: t.title || t.name || "Unknown Title",
-    genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
-  });
-
-  const processedFree = freeTitles.map(processTitle);
-  const processedPremium = premiumTitles.map(processTitle);
-
-  const oldFreeCatalog = await kv.get('full_free_catalog');
-  if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
-    await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 });
-  }
-
-  await kv.set('full_free_catalog', processedFree, { ex: 86400 * 30 });
-  await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 30 });
-
-  if (isFullRefresh) {
-    await kv.set('lastFullRefresh', Date.now());
+  // === GUARD: do NOT save empty catalog (keeps your old 5000 titles safe) ===
+  if (freeTitles.length === 0 && premiumTitles.length === 0) {
+    console.log('⚠️ No titles fetched — keeping old catalog in cache');
   } else {
-    await kv.set('lastDailyRefresh', Date.now());
+    // === SMART MERGE + SAVE ===
+    if (!isFullRefresh) {
+      const oldFreeRaw = await kv.get('full_free_catalog');
+      const oldPremiumRaw = await kv.get('full_premium_catalog');
+      const oldFree: any[] = Array.isArray(oldFreeRaw) ? oldFreeRaw : [];
+      const oldPremium: any[] = Array.isArray(oldPremiumRaw) ? oldPremiumRaw : [];
+
+      const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
+      const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
+
+      freeTitles = [...freeTitles, ...oldFree.filter((t: any) => !newFreeIds.has(t.id))];
+      premiumTitles = [...premiumTitles, ...oldPremium.filter((t: any) => !newPremiumIds.has(t.id))];
+    }
+
+    const processTitle = (t: any) => ({
+      ...t,
+      poster: t.poster || t.image_url || null,
+      title: t.title || t.name || "Unknown Title",
+      genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
+    });
+
+    const processedFree = freeTitles.map(processTitle);
+    const processedPremium = premiumTitles.map(processTitle);
+
+    const oldFreeCatalog = await kv.get('full_free_catalog');
+    if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
+      await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 });
+    }
+
+    await kv.set('full_free_catalog', processedFree, { ex: 86400 * 30 });
+    await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 30 });
   }
 
-  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL (40 pages)' : 'DAILY'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
+  if (isFullRefresh) await kv.set('lastFullRefresh', Date.now());
+  else await kv.set('lastDailyRefresh', Date.now());
+
+  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL (40 pages)' : 'DAILY'} | Free: ${freeTitles.length} | Premium: ${premiumTitles.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
     mode: isFullRefresh ? 'full' : 'daily',
-    freeTitles: processedFree.length,
-    premiumTitles: processedPremium.length,
+    freeTitles: freeTitles.length,
+    premiumTitles: premiumTitles.length,
     callsUsed: totalCalls
   });
 }
