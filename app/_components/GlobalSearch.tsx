@@ -8,8 +8,8 @@ interface GlobalSearchProps {
   setSearchQuery: (query: string) => void;
   onTitleSelect: (title: any) => void;
   region: string;
-  contentType: string;   // "movie", "tv_series", or "" (both)
-  paidOnly: boolean;     // true = paid catalog, false = free catalog
+  contentType: string;
+  paidOnly: boolean;
 }
 
 export default function GlobalSearch({
@@ -29,23 +29,8 @@ export default function GlobalSearch({
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
   const prevQueryRef = useRef('');
 
-  // 24h client cache
   const getCacheKey = (query: string) => `search_cache_${query.trim().toLowerCase()}_${region}_${contentType}_${paidOnly}`;
-  const getCachedSuggestions = (query: string) => {
-    const cached = localStorage.getItem(getCacheKey(query));
-    if (!cached) return null;
-    const { data, timestamp } = JSON.parse(cached);
-    if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(getCacheKey(query));
-      return null;
-    }
-    return data;
-  };
-  const saveToCache = (query: string, titles: any[]) => {
-    localStorage.setItem(getCacheKey(query), JSON.stringify({ data: titles, timestamp: Date.now() }));
-  };
 
-  // Main search — respects contentType filter
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (trimmed !== prevQueryRef.current) {
@@ -60,32 +45,24 @@ export default function GlobalSearch({
     }
 
     const timer = setTimeout(async () => {
-      const cached = getCachedSuggestions(trimmed);
-      if (cached) {
-        setSuggestions(cached.slice(0, 20));
-        setShowDropdown(true);
-        return;
-      }
-
       setLoading(true);
       setShowDropdown(true);
 
       try {
         const paidParam = paidOnly ? 'true' : 'false';
+        const typesParam = contentType || 'movie,tv_series';
+
         const res = await fetch(
-          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&types=${contentType || 'movie,tv_series'}&paid=${paidParam}&page=1`
+          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&types=${typesParam}&paid=${paidParam}&page=1`
         );
         const json = await res.json();
         let results = json.success && Array.isArray(json.titles) ? json.titles : [];
 
-        // Extra safety filter (in case backend missed it)
         if (contentType === 'movie' || contentType === 'tv_series') {
           results = results.filter((t: any) => t.type === contentType);
         }
 
-        const unique = results.slice(0, 20);
-        setSuggestions(unique);
-        if (unique.length > 0) saveToCache(trimmed, unique);
+        setSuggestions(results.slice(0, 20));
       } catch {
         setSuggestions([]);
       } finally {
@@ -96,7 +73,6 @@ export default function GlobalSearch({
     return () => clearTimeout(timer);
   }, [searchQuery, contentType, paidOnly]);
 
-  // Poster enrichment (unchanged)
   useEffect(() => {
     if (!TMDB_READ_TOKEN || suggestions.length === 0) return;
     const needsPoster = suggestions.filter((t: any) =>
