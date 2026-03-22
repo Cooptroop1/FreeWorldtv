@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
-// === AUTO REFRESH SETTINGS — UPDATED FOR YOUR NEW PLAN ===
-const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;           // every day → 4 calls
-const FULL_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000;       // ← CHANGED: now once per month
+// === AUTO REFRESH SETTINGS — 30-day full rebuild (clean files) ===
+const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;     // daily → 4 calls
+const FULL_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // every 30 days → full 20 pages
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'fallback-secret-for-local-dev-only';
 
 export async function GET(request: NextRequest) {
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   const callTime = new Date().toISOString();
   console.log(`[${callTime}] WATCHMODE API CALL - cached-fetch - query: ${query || 'none'} - section: ${section || 'none'} - paid: ${paid} - page: ${page} - types: ${types}`);
 
-  // === FIXED AUTOMATIC REFRESH (now monthly full + daily smart) ===
+  // === AUTOMATIC REFRESH (30-day full + daily smart) ===
   try {
     const lastFull = await kv.get<number>('lastFullRefresh') || 0;
     const lastDaily = await kv.get<number>('lastDailyRefresh') || 0;
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     } else {
       let mode = '';
       if (now - lastFull > FULL_INTERVAL_MS && !query && !paid) {
-        mode = 'full';
+        mode = 'full';          // ← full rebuild every 30 days
       } else if (now - lastDaily > DAILY_INTERVAL_MS && !query && !paid) {
         mode = 'daily';
       }
