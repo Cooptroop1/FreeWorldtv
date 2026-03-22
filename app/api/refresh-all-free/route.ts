@@ -8,19 +8,25 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get('secret') || searchParams.get('key');
   const mode = searchParams.get('mode') || 'daily';
+
   if (secret !== REFRESH_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (!WATCHMODE_API_KEY) return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
-  if (!REFRESH_SECRET) return NextResponse.json({ error: 'REFRESH_SECRET missing' }, { status: 500 });
+
+  if (!REFRESH_SECRET) {
+    return NextResponse.json({ error: 'REFRESH_SECRET environment variable is missing' }, { status: 500 });
+  }
 
   const isFullRefresh = mode === 'full';
-  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL (40 pages = 80 calls)' : 'SMART DAILY (4 calls)'}...`);
+
+  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL MONTHLY REBUILD (40 calls — cached 30 days)' : 'SMART DAILY (4 calls)'}...`);
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
   const seenFree = new Set();
   const seenPremium = new Set();
   let totalCalls = 0;
-  const maxPages = isFullRefresh ? 40 : 2;   // ← this is the only change
+
+  const maxPages = isFullRefresh ? 20 : 2;
 
   // === FREE TITLES ===
   let page = 1;
@@ -32,12 +38,13 @@ export async function GET(request: Request) {
       const data = await res.json();
       const titles = data.titles || [];
       if (titles.length === 0) break;
+
       const unique = titles.filter((t: any) => !seenFree.has(t.id) && seenFree.add(t.id));
       freeTitles = [...freeTitles, ...unique];
       page++;
       await new Promise(r => setTimeout(r, 400));
     } catch (e) {
-      console.error(`Free page ${page} failed`, e);
+      console.error(`Free page ${page} failed, skipping`, e);
       page++;
     }
   }
@@ -52,12 +59,13 @@ export async function GET(request: Request) {
       const data = await res.json();
       const titles = data.titles || [];
       if (titles.length === 0) break;
+
       const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
       premiumTitles = [...premiumTitles, ...unique];
       page++;
       await new Promise(r => setTimeout(r, 400));
     } catch (e) {
-      console.error(`Premium page ${page} failed`, e);
+      console.error(`Premium page ${page} failed, skipping`, e);
       page++;
     }
   }
@@ -66,20 +74,23 @@ export async function GET(request: Request) {
   if (!isFullRefresh) {
     const oldFreeRaw = await kv.get('full_free_catalog');
     const oldPremiumRaw = await kv.get('full_premium_catalog');
+
     const oldFree: any[] = Array.isArray(oldFreeRaw) ? oldFreeRaw : [];
     const oldPremium: any[] = Array.isArray(oldPremiumRaw) ? oldPremiumRaw : [];
 
     const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
     const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
-
+   
     const oldFreeFiltered = oldFree.filter((t: any) => !newFreeIds.has(t.id));
     const oldPremiumFiltered = oldPremium.filter((t: any) => !newPremiumIds.has(t.id));
-
+   
     freeTitles = [...freeTitles, ...oldFreeFiltered];
     premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
+
+    console.log(`Smart merge: Added ${oldFreeFiltered.length} old free + ${oldPremiumFiltered.length} old premium titles`);
   }
 
-  // === PROCESS & SAVE (30 days) ===
+  // === PROCESS & SAVE ===
   const processTitle = (t: any) => ({
     ...t,
     poster: t.poster || t.image_url || null,
@@ -90,27 +101,29 @@ export async function GET(request: Request) {
   const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
 
+  // Save previous catalog — now 30 days (exactly what you asked)
   const oldFreeCatalog = await kv.get('full_free_catalog');
   if (oldFreeCatalog && Array.isArray(oldFreeCatalog) && oldFreeCatalog.length > 0) {
     await kv.set('previous_free_catalog', oldFreeCatalog, { ex: 86400 * 30 });
   }
 
+  // Full catalog now saved for full 30 days
   await kv.set('full_free_catalog', processedFree, { ex: 86400 * 30 });
   await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 30 });
 
+  // Timer (only full updates this)
   if (isFullRefresh) {
     await kv.set('lastFullRefresh', Date.now());
-  } else {
-    await kv.set('lastDailyRefresh', Date.now());
   }
 
-  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL (40 pages)' : 'DAILY SMART'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL MONTHLY' : 'DAILY SMART'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
     mode: isFullRefresh ? 'full' : 'daily',
     freeTitles: processedFree.length,
     premiumTitles: processedPremium.length,
-    callsUsed: totalCalls
+    callsUsed: totalCalls,
+    message: isFullRefresh ? 'Full monthly catalog rebuilt (40 calls — cached 30 days)' : 'Smart daily refresh complete (4 calls)'
   });
 }
