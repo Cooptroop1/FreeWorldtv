@@ -13,101 +13,56 @@ export async function GET(request: Request) {
   if (!REFRESH_SECRET) return NextResponse.json({ error: 'REFRESH_SECRET missing' }, { status: 500 });
 
   const isFullRefresh = mode === 'full';
-  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL MONTHLY REBUILD (120 calls)' : 'SMART DAILY (4 calls)'}...`);
+  console.log(`🚀 STARTING ${isFullRefresh ? 'FULL (10 pages = 20 calls)' : 'SMART DAILY (4 calls)'}...`);
 
   let freeTitles: any[] = [];
   let premiumTitles: any[] = [];
+  const seenFree = new Set();
+  const seenPremium = new Set();
   let totalCalls = 0;
-  let maxPages = isFullRefresh ? 60 : 2;   // ← safe & reliable
-  let consecutiveFailures = 0;
-
-  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+  const maxPages = isFullRefresh ? 10 : 2;
 
   // === FREE TITLES ===
   let page = 1;
-  while (page <= maxPages && consecutiveFailures < 3) {
+  while (page <= maxPages) {
     try {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
-
-      if (!res.ok) {
-        if (res.status === 429) {
-          console.log(`⏳ RATE LIMIT on free page ${page} — waiting 5s...`);
-          await sleep(5000);
-          continue;
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-
       const data = await res.json();
       const titles = data.titles || [];
-
-      if (page === 1 && data.total_pages) {
-        maxPages = Math.min(maxPages, data.total_pages);
-        console.log(`📊 FREE: API says ${data.total_pages} pages — using ${maxPages}`);
-      }
-
-      console.log(`✅ FREE page ${page}: ${titles.length} titles`);
-
       if (titles.length === 0) break;
-
-      freeTitles = [...freeTitles, ...titles];
+      const unique = titles.filter((t: any) => !seenFree.has(t.id) && seenFree.add(t.id));
+      freeTitles = [...freeTitles, ...unique];
       page++;
-      await sleep(800);
-      consecutiveFailures = 0;
-    } catch (e: any) {
-      console.error(`❌ FREE page ${page}:`, e.message);
-      consecutiveFailures++;
+      await new Promise(r => setTimeout(r, 400));
+    } catch (e) {
+      console.error(`Free page ${page} failed`, e);
       page++;
-      await sleep(2000);
     }
   }
 
   // === PREMIUM TITLES ===
   page = 1;
-  maxPages = isFullRefresh ? 60 : 2;
-  consecutiveFailures = 0;
-  while (page <= maxPages && consecutiveFailures < 3) {
+  while (page <= maxPages) {
     try {
       const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=sub&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
       const res = await fetch(url, { cache: 'no-store' });
       totalCalls++;
-
-      if (!res.ok) {
-        if (res.status === 429) {
-          console.log(`⏳ RATE LIMIT on premium page ${page} — waiting 5s...`);
-          await sleep(5000);
-          continue;
-        }
-        throw new Error(`HTTP ${res.status}`);
-      }
-
       const data = await res.json();
       const titles = data.titles || [];
-
-      if (page === 1 && data.total_pages) {
-        maxPages = Math.min(maxPages, data.total_pages);
-        console.log(`📊 PREMIUM: API says ${data.total_pages} pages — using ${maxPages}`);
-      }
-
-      console.log(`✅ PREMIUM page ${page}: ${titles.length} titles`);
-
       if (titles.length === 0) break;
-
-      premiumTitles = [...premiumTitles, ...titles];
+      const unique = titles.filter((t: any) => !seenPremium.has(t.id) && seenPremium.add(t.id));
+      premiumTitles = [...premiumTitles, ...unique];
       page++;
-      await sleep(800);
-      consecutiveFailures = 0;
-    } catch (e: any) {
-      console.error(`❌ PREMIUM page ${page}:`, e.message);
-      consecutiveFailures++;
+      await new Promise(r => setTimeout(r, 400));
+    } catch (e) {
+      console.error(`Premium page ${page} failed`, e);
       page++;
-      await sleep(2000);
     }
   }
 
-  // === SMART MERGE + 30-DAY SAVE ===
+  // === SMART MERGE FOR DAILY ===
   if (!isFullRefresh) {
     const oldFreeRaw = await kv.get('full_free_catalog');
     const oldPremiumRaw = await kv.get('full_premium_catalog');
@@ -117,10 +72,14 @@ export async function GET(request: Request) {
     const newFreeIds = new Set(freeTitles.map((t: any) => t.id));
     const newPremiumIds = new Set(premiumTitles.map((t: any) => t.id));
 
-    freeTitles = [...freeTitles, ...oldFree.filter((t: any) => !newFreeIds.has(t.id))];
-    premiumTitles = [...premiumTitles, ...oldPremium.filter((t: any) => !newPremiumIds.has(t.id))];
+    const oldFreeFiltered = oldFree.filter((t: any) => !newFreeIds.has(t.id));
+    const oldPremiumFiltered = oldPremium.filter((t: any) => !newPremiumIds.has(t.id));
+
+    freeTitles = [...freeTitles, ...oldFreeFiltered];
+    premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
   }
 
+  // === PROCESS & SAVE (30 days) ===
   const processTitle = (t: any) => ({
     ...t,
     poster: t.poster || t.image_url || null,
@@ -139,17 +98,19 @@ export async function GET(request: Request) {
   await kv.set('full_free_catalog', processedFree, { ex: 86400 * 30 });
   await kv.set('full_premium_catalog', processedPremium, { ex: 86400 * 30 });
 
-  if (isFullRefresh) await kv.set('lastFullRefresh', Date.now());
-  else await kv.set('lastDailyRefresh', Date.now());
+  if (isFullRefresh) {
+    await kv.set('lastFullRefresh', Date.now());
+  } else {
+    await kv.set('lastDailyRefresh', Date.now());
+  }
 
-  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL MONTHLY' : 'DAILY SMART'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
+  console.log(`🎉 DONE — ${isFullRefresh ? 'FULL (10 pages)' : 'DAILY'} | Free: ${processedFree.length} | Premium: ${processedPremium.length} | Calls: ${totalCalls}`);
 
   return NextResponse.json({
     success: true,
     mode: isFullRefresh ? 'full' : 'daily',
     freeTitles: processedFree.length,
     premiumTitles: processedPremium.length,
-    callsUsed: totalCalls,
-    message: isFullRefresh ? `Full monthly rebuilt (${totalCalls} calls — cached 30 days)` : 'Smart daily complete (4 calls)'
+    callsUsed: totalCalls
   });
 }
