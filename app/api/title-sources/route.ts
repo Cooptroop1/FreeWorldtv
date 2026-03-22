@@ -16,60 +16,72 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Missing title id' }, { status: 400 });
   }
 
-  const cacheKey = `sources:${titleId}:${region}:${paid ? 'paid' : 'free'}`;
+  // === UPDATED: single cache key for FULL sources (saves 50% of calls) ===
+  const cacheKey = `sources:${titleId}:${region}`;   // no paid/free in key
   const callTime = new Date().toISOString();
 
-  // === 48h SHARED CACHE (first check) ===
-  const cached = await kv.get(cacheKey);
-  if (cached) {
+  // === 30-DAY CACHE CHECK ===
+  const cachedFull = await kv.get<any[]>(cacheKey);
+  if (cachedFull) {
     console.log(`[${callTime}] CACHE HIT – sources for title ${titleId} (${region})`);
-    return NextResponse.json({ ...cached, fromCache: true });
+    
+    // Filter on-the-fly for whichever tab the user asked
+    const sourcesData = paid
+      ? cachedFull.filter((s: any) => s.type === 'sub' || s.subscription === true || (s.price && s.price > 0))
+      : cachedFull.filter((s: any) => s.type === 'free' || s.price === 0 || s.free_with_ads === true);
+
+    const responseData = {
+      success: true,
+      titleId,
+      allSources: cachedFull,
+      freeSources: paid ? [] : sourcesData,
+      paidSources: paid ? sourcesData : [],
+      sources: sourcesData,
+      message: sourcesData.length > 0
+        ? `${sourcesData.length} ${paid ? 'subscription' : 'free'} options found!`
+        : `No ${paid ? 'subscription' : 'free'} sources available in this region right now`,
+      isPaidTab: paid,
+      fromCache: true
+    };
+
+    return NextResponse.json(responseData);
   }
 
   console.log(`[${callTime}] CACHE MISS – calling Watchmode for title ${titleId} (${region})`);
 
   try {
-    const result = await client.title.getSources(titleId, {
-      regions: region,
-    });
+    const result = await client.title.getSources(titleId, { regions: region });
+    const fullSources = result.data || [];
 
-    let sourcesData: any[] = [];
-    let message = '';
-    if (paid) {
-      sourcesData = result.data?.filter((source: any) =>
-        source.type === 'sub' ||
-        source.subscription === true ||
-        (source.price && source.price > 0)
-      ) || [];
-      message = sourcesData.length > 0
-        ? `${sourcesData.length} subscription options found!`
-        : 'No subscription sources available in this region right now';
-    } else {
-      sourcesData = result.data?.filter((source: any) =>
-        source.type === 'free' || source.price === 0 || source.free_with_ads === true
-      ) || [];
-      message = sourcesData.length > 0
-        ? `${sourcesData.length} free options found!`
-        : 'No free sources available in this region right now';
-    }
+    // Filter for the current tab
+    const sourcesData = paid
+      ? fullSources.filter((s: any) => s.type === 'sub' || s.subscription === true || (s.price && s.price > 0))
+      : fullSources.filter((s: any) => s.type === 'free' || s.price === 0 || s.free_with_ads === true);
 
     const responseData = {
       success: true,
       titleId,
-      allSources: result.data || [],
+      allSources: fullSources,
       freeSources: paid ? [] : sourcesData,
       paidSources: paid ? sourcesData : [],
       sources: sourcesData,
-      message,
+      message: sourcesData.length > 0
+        ? `${sourcesData.length} ${paid ? 'subscription' : 'free'} options found!`
+        : `No ${paid ? 'subscription' : 'free'} sources available in this region right now`,
       isPaidTab: paid,
       fromCache: false
     };
 
-    // Save to 48h KV cache (shared for everyone)
-    await kv.set(cacheKey, sourcesData, { ex: 86400 * 7 }); // 7 days — safer for testing
+    // === UPDATED: cache FULL sources for 30 days ===
+    await kv.set(cacheKey, fullSources, { ex: 86400 * 30 });
+
     return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('Title sources error:', error);
+    
+    // Tiny safety: cache empty result for 1 hour so we don't retry spam
+    await kv.set(cacheKey, [], { ex: 3600 });
+
     return NextResponse.json({
       success: false,
       error: error.message || 'Failed to fetch sources'
