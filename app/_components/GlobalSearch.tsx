@@ -8,8 +8,8 @@ interface GlobalSearchProps {
   setSearchQuery: (query: string) => void;
   onTitleSelect: (title: any) => void;
   region: string;
-  contentType: string;     // "movie", "tv_series", or ""
-  paidOnly: boolean;       // ← NEW: true = search paid only, false = search free only
+  contentType: string;   // "movie", "tv_series", or "" (both)
+  paidOnly: boolean;     // true = paid catalog, false = free catalog
 }
 
 export default function GlobalSearch({
@@ -45,7 +45,7 @@ export default function GlobalSearch({
     localStorage.setItem(getCacheKey(query), JSON.stringify({ data: titles, timestamp: Date.now() }));
   };
 
-  // Main search — section-specific (free OR paid only)
+  // Main search — respects contentType filter
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (trimmed !== prevQueryRef.current) {
@@ -73,12 +73,19 @@ export default function GlobalSearch({
       try {
         const paidParam = paidOnly ? 'true' : 'false';
         const res = await fetch(
-          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&types=${contentType}&paid=${paidParam}&page=1`
+          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&types=${contentType || 'movie,tv_series'}&paid=${paidParam}&page=1`
         );
         const json = await res.json();
-        const results = json.success && Array.isArray(json.titles) ? json.titles : [];
-        setSuggestions(results.slice(0, 20));
-        if (results.length > 0) saveToCache(trimmed, results);
+        let results = json.success && Array.isArray(json.titles) ? json.titles : [];
+
+        // Extra safety filter (in case backend missed it)
+        if (contentType === 'movie' || contentType === 'tv_series') {
+          results = results.filter((t: any) => t.type === contentType);
+        }
+
+        const unique = results.slice(0, 20);
+        setSuggestions(unique);
+        if (unique.length > 0) saveToCache(trimmed, unique);
       } catch {
         setSuggestions([]);
       } finally {
