@@ -570,7 +570,8 @@ const deduplicateSources = (sources: any[]) => {
           setSearchQuery={setSearchQuery} 
           onTitleSelect={setSelectedTitle} 
           region={region} 
-          contentType={contentType} 
+          contentType={contentType}
+          paidOnly={false}          
         />
 
           {/* REGION SELECTOR — NOW FULLY ACCESSIBLE */}
