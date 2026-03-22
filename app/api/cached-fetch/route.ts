@@ -18,21 +18,37 @@ export async function GET(request: NextRequest) {
   const callTime = new Date().toISOString();
   console.log(`[${callTime}] WATCHMODE API CALL - cached-fetch - query: ${query || 'none'} - section: ${section || 'none'} - paid: ${paid} - page: ${page} - types: ${types}`);
 
-  // === FULLY AUTOMATIC REFRESH (no cron job needed) ===
+  // === FIXED FULLY AUTOMATIC REFRESH (no more 40 calls a day) ===
   try {
-    const lastRefresh = await kv.get<number>('lastFullRefresh') || 0;
+    const lastFull = await kv.get<number>('lastFullRefresh') || 0;
+    const lastDaily = await kv.get<number>('lastDailyRefresh') || 0;
     const now = Date.now();
-    let mode = '';
-    if (now - lastRefresh > FULL_INTERVAL_MS && !query && !paid) {
-      mode = 'full';
-    } else if (now - lastRefresh > DAILY_INTERVAL_MS && !query && !paid) {
-      mode = 'daily';
-    }
-    if (mode) {
-      const host = request.headers.get('host') || 'freestreamworld.com';
-      const url = `https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}&mode=${mode}`;
-      fetch(url, { cache: 'no-store' }).catch(() => {});
-      console.log(`[${callTime}] AUTO ${mode.toUpperCase()} REFRESH triggered (full snapshot or daily Trending/New Releases)`);
+
+    // Simple lock so only ONE refresh runs at a time
+    const lock = await kv.get('refresh_lock');
+    if (lock) {
+      console.log(`[${callTime}] Refresh already in progress (locked)`);
+    } else {
+      let mode = '';
+      if (now - lastFull > FULL_INTERVAL_MS && !query && !paid) {
+        mode = 'full';
+      } else if (now - lastDaily > DAILY_INTERVAL_MS && !query && !paid) {
+        mode = 'daily';
+      }
+
+      if (mode) {
+        await kv.set('refresh_lock', '1', { ex: 300 }); // 5-minute lock
+
+        const host = request.headers.get('host') || 'freestreamworld.com';
+        const url = `https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}&mode=${mode}`;
+        
+        // Fire the refresh (non-blocking)
+        fetch(url, { cache: 'no-store' })
+          .then(() => kv.del('refresh_lock'))
+          .catch(() => kv.del('refresh_lock'));
+
+        console.log(`[${callTime}] 🔥 AUTO ${mode.toUpperCase()} REFRESH triggered (locked for 5 min)`);
+      }
     }
   } catch (e) {
     console.error('Auto-refresh check failed:', e);
@@ -42,12 +58,9 @@ export async function GET(request: NextRequest) {
   if (!paid) {
     const raw = await kv.get('full_free_catalog');
     let catalog: any[] = Array.isArray(raw) ? raw : [];
-
-    // TYPES FILTER
     if (types !== 'movie,tv_series') {
       catalog = catalog.filter((t: any) => t.type === types);
     }
-    // YEAR + RATING FILTER (unchanged)
     const fromYear = parseInt(searchParams.get('fromYear') || '0', 10);
     const toYear = parseInt(searchParams.get('toYear') || '3000', 10);
     if (fromYear > 0 || toYear < 3000) {
@@ -63,15 +76,11 @@ export async function GET(request: NextRequest) {
         return rating >= minRating;
       });
     }
-
-    // TRENDING (24h cache enforced by KV)
     if (section === 'trending') {
       console.log(`[${callTime}] WATCHMODE CALL - TRENDING page ${page} - served from cache`);
       const sorted = [...catalog].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
       return NextResponse.json({ success: true, titles: sorted.slice(0, 20) });
     }
-
-    // NEW RELEASES (24h cache enforced by KV)
     if (section === 'new-releases') {
       console.log(`[${callTime}] WATCHMODE CALL - NEW RELEASES page ${page} - served from cache`);
       const previousRaw = await kv.get('previous_free_catalog');
@@ -81,8 +90,6 @@ export async function GET(request: NextRequest) {
       newTitles.sort((a, b) => (b.year || 0) - (a.year || 0));
       return NextResponse.json({ success: true, titles: newTitles.slice(0, 20) });
     }
-
-    // SEARCH
     if (query) {
       console.log(`[${callTime}] WATCHMODE CALL - SEARCH for "${query}" - page ${page}`);
       const filtered = catalog.filter((t: any) =>
@@ -93,7 +100,6 @@ export async function GET(request: NextRequest) {
         titles: filtered.slice((page - 1) * 48, page * 48)
       });
     }
-
     console.log(`[${callTime}] WATCHMODE CALL - MAIN GRID page ${page} - served from cache`);
     const start = (page - 1) * 48;
     return NextResponse.json({
@@ -102,17 +108,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-    // PREMIUM SECTION — now respects Movies Only / TV Shows Only filter
+  // PREMIUM SECTION
   const rawPremium = await kv.get('full_premium_catalog');
   let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
-
-  // === TYPES FILTER (exactly like Free section) ===
   if (types !== 'movie,tv_series') {
     catalogPremium = catalogPremium.filter((t: any) => t.type === types);
   }
-
   console.log(`[${callTime}] WATCHMODE CALL - PREMIUM page ${page} - served from cache (${catalogPremium.length} titles after filter)`);
-
   const start = (page - 1) * 48;
   return NextResponse.json({
     success: true,
