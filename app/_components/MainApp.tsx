@@ -327,31 +327,32 @@ useEffect(() => {
     };
   }, [selectedChannel]);
 
-    // Real Top 10 — pulls from your full 23k+ free catalog
+    // === REAL TOP 10 — always pulls from your full current catalog ===
 useEffect(() => {
   if (tab !== 'top10') return;
 
   const fetchRealTop10 = async () => {
     setTop10Loading(true);
     try {
-      const raw = await kv.get('full_free_catalog');   // ← your real catalog
-      let titles: any[] = Array.isArray(raw) ? raw : staticFallbackTitles;
+      // Force fresh trending from the full free catalog
+      const res = await fetch(`/api/cached-fetch?types=${encodeURIComponent(contentType)}&section=trending`);
+      const json = await res.json();
 
-      // Sort by popularity (real Top 10)
-      titles = titles
-        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
-        .slice(0, 10);
+      // Take the top 10 (real popularity sorted)
+      const realTop10 = json.success && json.titles?.length
+        ? json.titles.slice(0, 10)
+        : staticFallbackTitles.slice(0, 10);
 
-      setTop10Titles(titles);
+      setTop10Titles(realTop10);
     } catch (err) {
-      console.error(err);
+      console.error('Top 10 fetch failed:', err);
       setTop10Titles(staticFallbackTitles.slice(0, 10));
     }
     setTop10Loading(false);
   };
 
   fetchRealTop10();
-}, [tab]);
+}, [tab, contentType]);
 
             // === RADIO STATIONS (search + country filter — safe & separate) ===
   useEffect(() => {
