@@ -1434,13 +1434,17 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
-                                {logoUrl ? (
-                                  <img src={logoUrl} alt={source.name} className="max-w-[85%] max-h-[85%] object-contain" />
-                                ) : (
-                                  <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
-                                )}
-                              </div>
+                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600 p-2">
+  {logoUrl ? (
+    <img 
+      src={logoUrl} 
+      alt={source.name} 
+      className="w-full h-full object-contain" 
+    />
+  ) : (
+    <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+  )}
+</div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
                                 <div className="text-gray-400 text-xs">
@@ -1472,13 +1476,17 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600">
-                                {logoUrl ? (
-                                  <img src={logoUrl} alt={source.name} className="max-w-[85%] max-h-[85%] object-contain" />
-                                ) : (
-                                  <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
-                                )}
-                              </div>
+                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600 p-2">
+  {logoUrl ? (
+    <img 
+      src={logoUrl} 
+      alt={source.name} 
+      className="w-full h-full object-contain" 
+    />
+  ) : (
+    <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+  )}
+</div>
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
                                 <div className="text-gray-400 text-xs">Free with Ads{source.format && ` • ${source.format}`}</div>
