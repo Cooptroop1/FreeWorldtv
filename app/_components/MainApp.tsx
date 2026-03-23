@@ -1,4 +1,5 @@
 'use client';
+import Hls from 'hls.js';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Tv, Film, Radio, MonitorPlay, ChevronRight, ChevronDown, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
@@ -301,17 +302,36 @@ useEffect(() => {
   fetchSources();
 }, [selectedTitle, region, tab]);
 
-  // === SIMPLE NATIVE VIDEO PLAYER FOR MY LINKS (more reliable for HLS) ===
+  // === HLS.JS PLAYER FOR MY LINKS (much better compatibility) ===
 useEffect(() => {
   if (!selectedChannel) return;
 
-  // Dispose video.js if still there
-  if (playerRef.current) {
-    try {
-      playerRef.current.dispose();
-    } catch (e) {}
-    playerRef.current = null;
-  }
+  const videoElement = document.getElementById('custom-video-player') as HTMLVideoElement;
+  if (!videoElement) return;
+
+  let hls: any = null;
+
+  const loadStream = async () => {
+    if (Hls.isSupported()) {
+      hls = new Hls({
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        lowLatencyMode: true,
+      });
+      hls.loadSource(selectedChannel.url);
+      hls.attachMedia(videoElement);
+    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+      videoElement.src = selectedChannel.url;
+    }
+  };
+
+  loadStream();
+
+  return () => {
+    if (hls) {
+      hls.destroy();
+    }
+  };
 }, [selectedChannel]);
 
     // === REAL TOP 10 — always pulls from your full current catalog ===
@@ -1096,14 +1116,13 @@ const deduplicateSources = (sources: any[]) => {
           ×
         </button>
       </div>
-      <div className="aspect-video bg-black p-4">
+      <div className="aspect-video bg-black p-4 relative">
         <video
+          id="custom-video-player"
           controls
           autoPlay
           muted
           className="w-full h-full rounded-xl"
-          src={selectedChannel.url}
-          crossOrigin="anonymous"
         />
       </div>
     </div>
