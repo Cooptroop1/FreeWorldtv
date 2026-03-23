@@ -3,8 +3,6 @@ import Hls from 'hls.js';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Tv, Film, Radio, MonitorPlay, ChevronRight, ChevronDown, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
-import videojs from 'video.js';
-import 'video.js/dist/video-js.css';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 import InstallPrompt from './InstallPrompt';
 import OfflineMessage from './OfflineMessage';
