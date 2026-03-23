@@ -140,14 +140,30 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  // Favorites & custom links persistence
-  useEffect(() => {
-    const saved = localStorage.getItem('favorites');
-    if (saved) setFavorites(JSON.parse(saved));
-  }, []);
-  useEffect(() => {
-    localStorage.setItem('favorites', JSON.stringify(favorites));
-  }, [favorites]);
+  import { useUser } from '@clerk/nextjs';
+
+// ... inside your MainApp component, replace the old useEffects with:
+const { user } = useUser();
+
+useEffect(() => {
+  if (!user) {
+    setFavorites([]);
+    return;
+  }
+  fetch('/api/favorites')
+    .then(res => res.json())
+    .then(data => setFavorites(data.favorites || []));
+}, [user]);
+
+useEffect(() => {
+  if (user) {
+    fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ favorites })
+    });
+  }
+}, [favorites, user]);
   useEffect(() => {
     const saved = localStorage.getItem('customLinks');
     if (saved) setCustomLinks(JSON.parse(saved));
