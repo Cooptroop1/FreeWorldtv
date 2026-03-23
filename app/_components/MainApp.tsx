@@ -85,8 +85,6 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [top10Loading, setTop10Loading] = useState(false);
   const { user, isSignedIn } = useUser();
 
-    const { user, isSignedIn } = useUser();
-
   // === FIXED CLOUD FAVORITES (no more random disappearing!) ===
   const loadFavorites = async () => {
     if (!isSignedIn || !user?.id) {
