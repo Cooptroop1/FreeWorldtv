@@ -130,7 +130,7 @@ export default function RootLayout({
             Skip to main content
           </a>
 
-          <main id="main-content">
+         <main id="main-content" className="pt-20">
             {children}
           </main>
         </ClerkProvider>
