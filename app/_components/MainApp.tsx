@@ -110,7 +110,9 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [radioLoading, setRadioLoading] = useState(false);
   const [selectedRadio, setSelectedRadio] = useState<any>(null);
   const [radioSearch, setRadioSearch] = useState('');
+  const [radioFavorites, setRadioFavorites] = useState<any[]>([]);
   const [radioCountryCode, setRadioCountryCode] = useState('');
+  const [showRadioFavorites, setShowRadioFavorites] = useState(false);
   const [pauseInfiniteScroll, setPauseInfiniteScroll] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [tmdbDetails, setTmdbDetails] = useState<any>(null);
@@ -418,7 +420,31 @@ useEffect(() => {
     };
     fetchRadio();
   }, [tab, radioSearch, radioCountryCode]);
+  
+  // === CLOUD RADIO FAVORITES (syncs across devices) ===
+  useEffect(() => {
+    if (!user || !showRadioFavorites) {
+      setRadioFavorites([]);
+      return;
+    }
+    fetch('/api/radio-favorites')
+      .then(res => res.json())
+      .then(data => setRadioFavorites(data.favorites || []));
+  }, [user, showRadioFavorites]);
 
+  const toggleRadioFavorite = (station: any) => {
+    const isFav = radioFavorites.some(f => f.url_resolved === station.url_resolved);
+    let newFavs = isFav 
+      ? radioFavorites.filter(f => f.url_resolved !== station.url_resolved)
+      : [...radioFavorites, station];
+    setRadioFavorites(newFavs);
+
+    fetch('/api/radio-favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ favorites: newFavs })
+    });
+  };
   // === POSTER FETCHING FOR TOP 10 TAB (same as DiscoverTab) ===
 useEffect(() => {
   if (!top10Titles?.length || !TMDB_READ_TOKEN || tab !== 'top10') return;
@@ -822,19 +848,19 @@ const deduplicateSources = (sources: any[]) => {
               />
             )}
 
-                  {/* RADIO TAB — with search + country filter */}
+                        {/* RADIO TAB — with Favorites toggle */}
       {tab === 'radio' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
             📻 Worldwide Radio
           </h2>
-          <p className="text-yellow-400 mb-6 text-center text-sm">50,000+ real stations • Free • Legal • No sign-up</p>
+          <p className="text-yellow-400 mb-6 text-center text-sm">50,000+ real stations • Free • Legal • Cloud-synced favorites</p>
 
-          {/* Search & Country Filter */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8 max-w-md mx-auto">
+          {/* Search + Country + Favorites Button */}
+          <div className="flex flex-col md:flex-row gap-4 mb-8 max-w-md mx-auto items-end">
             <input
               type="text"
-              placeholder="Search station name (e.g. Radio 1)"
+              placeholder="Search station name"
               value={radioSearch}
               onChange={(e) => setRadioSearch(e.target.value)}
               className="flex-1 bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -856,22 +882,29 @@ const deduplicateSources = (sources: any[]) => {
               <option value="ES">🇪🇸 Spain</option>
               <option value="IT">🇮🇹 Italy</option>
             </select>
+
+            <button
+              onClick={() => setShowRadioFavorites(!showRadioFavorites)}
+              className={`px-6 py-3 rounded-2xl font-medium transition-all flex items-center gap-2 ${showRadioFavorites ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}
+            >
+              ❤️ {showRadioFavorites ? 'All Stations' : 'My Favorites'}
+            </button>
           </div>
 
           {radioLoading ? (
             <div className="flex flex-col items-center justify-center py-20">
               <Loader2 className="w-10 h-10 animate-spin text-orange-500 mb-4" />
-              <p className="text-xl">Loading stations...</p>
+              <p className="text-xl">Loading...</p>
             </div>
-          ) : radioStations.length > 0 ? (
+          ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {radioStations.map((station: any, index: number) => (
+              {(showRadioFavorites ? radioFavorites : radioStations).map((station: any, index: number) => (
                 <div
                   key={index}
                   onClick={() => setSelectedRadio(station)}
                   className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm flex flex-col"
                 >
-                   <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
+                  <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
                     <Radio className="w-16 h-16 text-orange-500 group-hover:text-orange-400 transition-colors" />
                   </div>
                   <div className="p-5 flex flex-col flex-grow">
@@ -881,16 +914,20 @@ const deduplicateSources = (sources: any[]) => {
                     <p className="text-gray-400 text-sm mb-4 line-clamp-1">
                       {station.country || 'Worldwide'}
                     </p>
-                    <button className="mt-auto w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-3 rounded-lg font-medium transition-all">
-                      Play Live Radio
-                    </button>
+                    <div className="flex gap-2 mt-auto">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); toggleRadioFavorite(station); }}
+                        className="text-red-400 hover:text-red-500"
+                      >
+                        ❤️
+                      </button>
+                      <button className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-3 rounded-lg font-medium transition-all">
+                        Play Live Radio
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 text-xl text-gray-400">
-              No stations found. Try a different search or country.
             </div>
           )}
         </section>
