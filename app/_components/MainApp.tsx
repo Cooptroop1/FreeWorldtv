@@ -8,7 +8,7 @@ import InstallPrompt from './InstallPrompt';
 import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
-import PremiumTab from './PremiumTab';
+import PremiumTab from './PremiumTab'; 
 import { getWatchmodeId, providerLogos } from '../../lib/watchmode-map';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
@@ -72,6 +72,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [relatedTitles, setRelatedTitles] = useState<any[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [favorites, setFavorites] = useState<any[]>([]);
+  const [continueWatching, setContinueWatching] = useState<any[]>([]);
   const [customLinks, setCustomLinks] = useState<{ id: number; name: string; url: string }[]>([]);
   const [newLinkName, setNewLinkName] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
@@ -111,6 +112,54 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
       loadFavorites();
     }
   }, [tab]);
+
+    // === CLOUD CONTINUE WATCHING (Netflix style – last 20 titles, auto-saves) ===
+  const loadContinueWatching = async () => {
+    if (!isSignedIn || !user?.id) {
+      setContinueWatching([]);
+      return;
+    }
+    try {
+      const res = await fetch('/api/continue-watching');
+      const data = await res.json();
+      setContinueWatching(data.continueWatching || []);
+    } catch (err) {
+      console.error("Failed to load continue watching", err);
+    }
+  };
+
+  // Load when user logs in
+  useEffect(() => {
+    loadContinueWatching();
+  }, [user?.id]);
+
+  // Auto-add to Continue Watching + save to cloud whenever user opens a title
+  const addToContinueWatching = (title: any) => {
+    if (!title?.id || !user) return;
+
+    const newItem = { ...title, watchedAt: new Date().toISOString() };
+
+    setContinueWatching(prev => {
+      const filtered = prev.filter((item: any) => item.id !== title.id);
+      const updated = [newItem, ...filtered].slice(0, 20);
+
+      // Save to Vercel KV instantly
+      fetch('/api/continue-watching', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ continueWatching: updated })
+      });
+
+      return updated;
+    });
+  };
+
+  // Trigger when title modal opens
+  useEffect(() => {
+    if (selectedTitle) {
+      addToContinueWatching(selectedTitle);
+    }
+  }, [selectedTitle?.id]);
   
     // === RADIO SECTION (new, doesn't touch anything else) ===
   const [radioStations, setRadioStations] = useState<any[]>([]);
