@@ -848,7 +848,7 @@ const deduplicateSources = (sources: any[]) => {
               />
             )}
 
-                        {/* RADIO TAB — with Favorites toggle */}
+                              {/* RADIO TAB — with Favorites toggle */}
       {tab === 'radio' && (
         <section className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
@@ -856,8 +856,8 @@ const deduplicateSources = (sources: any[]) => {
           </h2>
           <p className="text-yellow-400 mb-6 text-center text-sm">50,000+ real stations • Free • Legal • Cloud-synced favorites</p>
 
-          {/* Search + Country + Favorites Button */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8 max-w-md mx-auto items-end">
+          {/* Search + Country + Favorites Button (now matching style) */}
+          <div className="flex flex-col md:flex-row gap-4 mb-8 max-w-md mx-auto items-center">
             <input
               type="text"
               placeholder="Search station name"
@@ -885,7 +885,11 @@ const deduplicateSources = (sources: any[]) => {
 
             <button
               onClick={() => setShowRadioFavorites(!showRadioFavorites)}
-              className={`px-6 py-3 rounded-2xl font-medium transition-all flex items-center gap-2 ${showRadioFavorites ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}
+              className={`flex-1 md:flex-none px-6 py-3 rounded-2xl font-medium transition-all flex items-center justify-center gap-2 text-sm md:text-base ${
+                showRadioFavorites 
+                  ? 'bg-red-600 text-white' 
+                  : 'bg-gray-800 hover:bg-gray-700 border border-gray-700'
+              }`}
             >
               ❤️ {showRadioFavorites ? 'All Stations' : 'My Favorites'}
             </button>
@@ -898,36 +902,39 @@ const deduplicateSources = (sources: any[]) => {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-              {(showRadioFavorites ? radioFavorites : radioStations).map((station: any, index: number) => (
-                <div
-                  key={index}
-                  onClick={() => setSelectedRadio(station)}
-                  className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm flex flex-col"
-                >
-                  <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
-                    <Radio className="w-16 h-16 text-orange-500 group-hover:text-orange-400 transition-colors" />
-                  </div>
-                  <div className="p-5 flex flex-col flex-grow">
-                    <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-orange-300 transition-colors">
-                      {station.name}
-                    </h3>
-                    <p className="text-gray-400 text-sm mb-4 line-clamp-1">
-                      {station.country || 'Worldwide'}
-                    </p>
-                    <div className="flex gap-2 mt-auto">
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); toggleRadioFavorite(station); }}
-                        className="text-red-400 hover:text-red-500"
-                      >
-                        ❤️
-                      </button>
-                      <button className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-3 rounded-lg font-medium transition-all">
-                        Play Live Radio
-                      </button>
+              {(showRadioFavorites ? radioFavorites : radioStations).map((station: any, index: number) => {
+                const isFavorited = radioFavorites.some(f => f.url_resolved === station.url_resolved);
+                return (
+                  <div
+                    key={index}
+                    onClick={() => setSelectedRadio(station)}
+                    className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm flex flex-col"
+                  >
+                    <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
+                      <Radio className="w-16 h-16 text-orange-500 group-hover:text-orange-400 transition-colors" />
+                    </div>
+                    <div className="p-5 flex flex-col flex-grow">
+                      <h3 className="font-semibold text-lg mb-1 line-clamp-2 group-hover:text-orange-300 transition-colors">
+                        {station.name}
+                      </h3>
+                      <p className="text-gray-400 text-sm mb-4 line-clamp-1">
+                        {station.country || 'Worldwide'}
+                      </p>
+                      <div className="flex gap-2 mt-auto">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleRadioFavorite(station); }}
+                          className="text-2xl transition-all hover:scale-110"
+                        >
+                          {isFavorited ? '❤️' : '♡'}
+                        </button>
+                        <button className="flex-1 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white py-3 rounded-lg font-medium transition-all">
+                          Play Live Radio
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
