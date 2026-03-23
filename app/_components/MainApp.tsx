@@ -85,26 +85,34 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [top10Loading, setTop10Loading] = useState(false);
   const { user, isSignedIn } = useUser();
 
-  // Stable Cloud Favorites - never disappears on tab switch
-  useEffect(() => {
-    if (!isSignedIn || !user) {
+    const { user, isSignedIn } = useUser();
+
+  // === FIXED CLOUD FAVORITES (no more random disappearing!) ===
+  const loadFavorites = async () => {
+    if (!isSignedIn || !user?.id) {
       setFavorites([]);
       return;
     }
-    fetch('/api/favorites')
-      .then(res => res.json())
-      .then(data => setFavorites(data.favorites || []));
-  }, [user?.id]);   // ← this line fixes the disappearing bug
+    try {
+      const res = await fetch('/api/favorites');
+      const data = await res.json();
+      setFavorites(data.favorites || []);
+    } catch (err) {
+      console.error("Failed to load favorites", err);
+    }
+  };
 
+  // Load on login
   useEffect(() => {
-    if (!isSignedIn || !user) return;
+    loadFavorites();
+  }, [user?.id]);
 
-    fetch('/api/favorites', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ favorites })
-    });
-  }, [favorites, user?.id]);
+  // Refresh every time you switch to Favorites tab (this is the key fix!)
+  useEffect(() => {
+    if (tab === 'favorites') {
+      loadFavorites();
+    }
+  }, [tab]);
   
     // === RADIO SECTION (new, doesn't touch anything else) ===
   const [radioStations, setRadioStations] = useState<any[]>([]);
