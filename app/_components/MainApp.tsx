@@ -301,7 +301,7 @@ useEffect(() => {
   fetchSources();
 }, [selectedTitle, region, tab]);
 
-  // === SAFER VIDEO PLAYER FOR CUSTOM LINKS (My Links) ===
+  // === STRONGER VIDEO PLAYER FOR CUSTOM HLS LINKS ===
 useEffect(() => {
   if (!selectedChannel || !videoRef.current) return;
 
@@ -317,7 +317,7 @@ useEffect(() => {
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
     playerRef.current = videojs(videoRef.current, {
-      autoplay: false,           // changed to false for stability
+      autoplay: false,
       muted: true,
       controls: true,
       fluid: true,
@@ -326,7 +326,9 @@ useEffect(() => {
         vhs: {
           overrideNative: !isSafari,
           withCredentials: false,
-          bandwidth: 2000000
+          bandwidth: 5000000,        // higher bandwidth for better streams
+          maxPlaylistRetries: 3,
+          handlePartialData: true,
         },
         nativeAudioTracks: isSafari,
         nativeVideoTracks: isSafari,
@@ -336,8 +338,13 @@ useEffect(() => {
         type: 'application/x-mpegURL'
       }]
     });
+
+    // Extra error handling
+    playerRef.current.on('error', (err) => {
+      console.error('Video player error:', err);
+    });
   } catch (e) {
-    console.error('Video player failed to start:', e);
+    console.error('Player failed to start:', e);
   }
 
   return () => {
