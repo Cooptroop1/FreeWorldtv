@@ -14,7 +14,7 @@ export default function AuthHeader() {
           Sign Up Free
         </button>
       </SignUpButton>
-      <UserButton afterSignOutUrl="/" />
+      <UserButton />
     </header>
   );
 }
