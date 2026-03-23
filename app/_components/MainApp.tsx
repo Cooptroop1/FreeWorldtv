@@ -83,9 +83,9 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [minRatingFilter, setMinRatingFilter] = useState(0);
   const [top10Titles, setTop10Titles] = useState<any[]>([]);
   const [top10Loading, setTop10Loading] = useState(false);
-      const { user, isSignedIn } = useUser();
+  const { user, isSignedIn } = useUser();
 
-  // Cloud Favorites - fixed so they never disappear when switching tabs
+  // Stable Cloud Favorites - never disappears on tab switch
   useEffect(() => {
     if (!isSignedIn || !user) {
       setFavorites([]);
@@ -94,7 +94,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     fetch('/api/favorites')
       .then(res => res.json())
       .then(data => setFavorites(data.favorites || []));
-  }, [isSignedIn, user]);
+  }, [user?.id]);   // ← this line fixes the disappearing bug
 
   useEffect(() => {
     if (!isSignedIn || !user) return;
@@ -104,7 +104,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ favorites })
     });
-  }, [favorites, isSignedIn, user]);
+  }, [favorites, user?.id]);
   
     // === RADIO SECTION (new, doesn't touch anything else) ===
   const [radioStations, setRadioStations] = useState<any[]>([]);
