@@ -160,6 +160,21 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
       addToContinueWatching(selectedTitle);
     }
   }, [selectedTitle?.id]);
+    // === REMOVE FROM CONTINUE WATCHING (cloud sync) ===
+  const removeFromContinueWatching = (id: number) => {
+    setContinueWatching(prev => {
+      const updated = prev.filter((item: any) => item.id !== id);
+
+      // Save to Vercel KV instantly
+      fetch('/api/continue-watching', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ continueWatching: updated })
+      });
+
+      return updated;
+    });
+  };
   
     // === RADIO SECTION (new, doesn't touch anything else) ===
   const [radioStations, setRadioStations] = useState<any[]>([]);
