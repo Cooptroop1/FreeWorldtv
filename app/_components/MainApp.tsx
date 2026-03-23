@@ -1078,10 +1078,15 @@ const deduplicateSources = (sources: any[]) => {
         </section>
       )}
 
-      // The modal (replace the entire {selectedChannel && ( ... )} block with this)
-{selectedChannel && (
-  <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-    <div className="w-full max-w-5xl bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
+      {selectedChannel && (
+  <div 
+    className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md"
+    onClick={() => setSelectedChannel(null)}
+  >
+    <div 
+      className="w-full max-w-5xl bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="flex justify-between items-center p-5 border-b border-gray-800">
         <h2 className="text-2xl font-bold">{selectedChannel.name || 'Custom Stream'}</h2>
         <button 
@@ -1098,7 +1103,7 @@ const deduplicateSources = (sources: any[]) => {
           muted
           className="w-full h-full rounded-xl"
           src={selectedChannel.url}
-          type="application/x-mpegURL"
+          crossOrigin="anonymous"
         />
       </div>
     </div>
