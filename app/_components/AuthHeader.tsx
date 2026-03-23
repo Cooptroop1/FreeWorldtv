@@ -5,8 +5,8 @@ export default function AuthHeader() {
   const { isSignedIn } = useUser();
 
   return (
-    <header className="flex justify-end items-center p-4 gap-3 border-b border-zinc-800 bg-[#111827] sticky top-0 z-50">
-      {/* Show buttons only when NOT logged in */}
+    <header className="fixed top-0 right-0 z-[100] flex items-center gap-3 p-4 bg-[#111827] border-b border-zinc-800">
+      {/* Buttons only when logged out */}
       {!isSignedIn && (
         <>
           <SignInButton mode="modal">
@@ -23,7 +23,7 @@ export default function AuthHeader() {
         </>
       )}
 
-      {/* Show ONLY the profile icon when logged in */}
+      {/* ONLY the profile icon when logged in — always visible */}
       {isSignedIn && (
         <UserButton 
           appearance={{
