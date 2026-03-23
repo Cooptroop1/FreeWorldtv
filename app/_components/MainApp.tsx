@@ -11,6 +11,7 @@ import DiscoverTab from './DiscoverTab';
 import PremiumTab from './PremiumTab';
 import { getWatchmodeId, providerLogos } from '../../lib/watchmode-map';
 import { usePathname, useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -82,6 +83,27 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [minRatingFilter, setMinRatingFilter] = useState(0);
   const [top10Titles, setTop10Titles] = useState<any[]>([]);
   const [top10Loading, setTop10Loading] = useState(false);
+    const { user } = useUser();
+
+  useEffect(() => {
+    if (!user) {
+      setFavorites([]);
+      return;
+    }
+    fetch('/api/favorites')
+      .then(res => res.json())
+      .then(data => setFavorites(data.favorites || []));
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ favorites })
+      });
+    }
+  }, [favorites, user]);
   
     // === RADIO SECTION (new, doesn't touch anything else) ===
   const [radioStations, setRadioStations] = useState<any[]>([]);
@@ -140,30 +162,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  import { useUser } from '@clerk/nextjs';
 
-// ... inside your MainApp component, replace the old useEffects with:
-const { user } = useUser();
-
-useEffect(() => {
-  if (!user) {
-    setFavorites([]);
-    return;
-  }
-  fetch('/api/favorites')
-    .then(res => res.json())
-    .then(data => setFavorites(data.favorites || []));
-}, [user]);
-
-useEffect(() => {
-  if (user) {
-    fetch('/api/favorites', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ favorites })
-    });
-  }
-}, [favorites, user]);
   useEffect(() => {
     const saved = localStorage.getItem('customLinks');
     if (saved) setCustomLinks(JSON.parse(saved));
