@@ -787,32 +787,84 @@ const deduplicateSources = (sources: any[]) => {
       <InstallPrompt />
       <OfflineMessage />
 
-      {/* DISCOVER TAB */}
-            {tab === 'discover' && (
-        <DiscoverTab
-  searchQuery={searchQuery}
-  setSearchQuery={setSearchQuery}
-  debouncedSearch={debouncedSearch}
-  region={region}
-  contentType={contentType}
-  favorites={favorites}
-  toggleFavorite={toggleFavorite}
-  selectedTitle={selectedTitle}
-  setSelectedTitle={setSelectedTitle}
-  minYearFilter={minYearFilter}
-  maxYearFilter={maxYearFilter}
-  minRatingFilter={minRatingFilter}
-  lastUpdated={lastUpdated}
-  setLastUpdated={setLastUpdated}
-  surpriseMe={surpriseMe}
-  showFilters={showFilters}
-  setShowFilters={setShowFilters}
-  setMinYearFilter={setMinYearFilter}
-  setMaxYearFilter={setMaxYearFilter}
-  setMinRatingFilter={setMinRatingFilter}
-  setContentType={setContentType}
-  pauseInfiniteScroll={pauseInfiniteScroll}
-/>
+            {/* DISCOVER TAB + CONTINUE WATCHING ROW (Netflix style) */}
+      {tab === 'discover' && (
+        <>
+          {/* === CONTINUE WATCHING ROW — only shows if logged in and has items === */}
+          {continueWatching.length > 0 && (
+            <section className="max-w-7xl mx-auto mb-12">
+              <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
+                ▶️ Continue Watching
+              </h2>
+              <div className="flex gap-6 overflow-x-auto pb-6 snap-x snap-mandatory scrollbar-hide">
+                {continueWatching
+                  .sort((a: any, b: any) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime())
+                  .map((title: any, index: number) => (
+                    <div
+                      key={title.id}
+                      onClick={() => setSelectedTitle(title)}
+                      className="group flex-shrink-0 w-48 cursor-pointer snap-start"
+                    >
+                      <div className="relative aspect-[2/3] rounded-xl overflow-hidden shadow-xl bg-gray-800">
+                        {title.poster_path ? (
+                          <Image
+                            src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                            alt={title.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform"
+                            sizes="192px"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Film className="w-16 h-16 text-gray-600" />
+                          </div>
+                        )}
+                        {/* Remove button */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeFromContinueWatching(title.id); }}
+                          className="absolute top-2 right-2 bg-black/70 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="mt-3 text-sm font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
+                        {title.title}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {title.year} • Watched {new Date(title.watchedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
+
+          {/* The original DiscoverTab (still works exactly the same) */}
+          <DiscoverTab
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            debouncedSearch={debouncedSearch}
+            region={region}
+            contentType={contentType}
+            favorites={favorites}
+            toggleFavorite={toggleFavorite}
+            selectedTitle={selectedTitle}
+            setSelectedTitle={setSelectedTitle}
+            minYearFilter={minYearFilter}
+            maxYearFilter={maxYearFilter}
+            minRatingFilter={minRatingFilter}
+            lastUpdated={lastUpdated}
+            setLastUpdated={setLastUpdated}
+            surpriseMe={surpriseMe}
+            showFilters={showFilters}
+            setShowFilters={setShowFilters}
+            setMinYearFilter={setMinYearFilter}
+            setMaxYearFilter={setMaxYearFilter}
+            setMinRatingFilter={setMinRatingFilter}
+            setContentType={setContentType}
+            pauseInfiniteScroll={pauseInfiniteScroll}
+          />
+        </>
       )}
 
       {/* TOP 10 TAB */}
