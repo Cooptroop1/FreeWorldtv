@@ -301,60 +301,17 @@ useEffect(() => {
   fetchSources();
 }, [selectedTitle, region, tab]);
 
-  // === STRONGER VIDEO PLAYER FOR CUSTOM HLS LINKS ===
+  // === SIMPLE NATIVE VIDEO PLAYER FOR MY LINKS (more reliable for HLS) ===
 useEffect(() => {
-  if (!selectedChannel || !videoRef.current) return;
+  if (!selectedChannel) return;
 
-  // Dispose previous player safely
+  // Dispose video.js if still there
   if (playerRef.current) {
     try {
       playerRef.current.dispose();
     } catch (e) {}
     playerRef.current = null;
   }
-
-  try {
-    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-
-    playerRef.current = videojs(videoRef.current, {
-      autoplay: false,
-      muted: true,
-      controls: true,
-      fluid: true,
-      bigPlayButton: true,
-      html5: {
-        vhs: {
-          overrideNative: !isSafari,
-          withCredentials: false,
-          bandwidth: 5000000,
-          maxPlaylistRetries: 3,
-          handlePartialData: true,
-        },
-        nativeAudioTracks: isSafari,
-        nativeVideoTracks: isSafari,
-      },
-      sources: [{
-        src: selectedChannel.url,
-        type: 'application/x-mpegURL'
-      }]
-    });
-
-    // Extra error handling (fixed TypeScript)
-    playerRef.current.on('error', (err: any) => {
-      console.error('Video player error:', err);
-    });
-  } catch (e) {
-    console.error('Player failed to start:', e);
-  }
-
-  return () => {
-    if (playerRef.current) {
-      try {
-        playerRef.current.dispose();
-      } catch (e) {}
-      playerRef.current = null;
-    }
-  };
 }, [selectedChannel]);
 
     // === REAL TOP 10 — always pulls from your full current catalog ===
@@ -1121,23 +1078,32 @@ const deduplicateSources = (sources: any[]) => {
         </section>
       )}
 
-      {/* PLAYER MODAL */}
-      {selectedChannel && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
-          <div className="w-full max-w-6xl bg-gray-900/95 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
-            <div className="flex justify-between items-center p-5 border-b border-gray-800">
-              <h2 className="text-2xl font-bold flex items-center gap-3">
-                <Radio size={24} className="text-purple-400" />
-                {selectedChannel.name}
-              </h2>
-              <button onClick={() => setSelectedChannel(null)} className="text-gray-400 hover:text-white text-4xl leading-none">×</button>
-            </div>
-            <div data-vjs-player className="aspect-video bg-black">
-              <video ref={videoRef} className="video-js vjs-big-play-centered vjs-fluid" playsInline />
-            </div>
-          </div>
-        </div>
-      )}
+      // The modal (replace the entire {selectedChannel && ( ... )} block with this)
+{selectedChannel && (
+  <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+    <div className="w-full max-w-5xl bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 shadow-2xl">
+      <div className="flex justify-between items-center p-5 border-b border-gray-800">
+        <h2 className="text-2xl font-bold">{selectedChannel.name || 'Custom Stream'}</h2>
+        <button 
+          onClick={() => setSelectedChannel(null)}
+          className="text-gray-400 hover:text-white text-4xl leading-none"
+        >
+          ×
+        </button>
+      </div>
+      <div className="aspect-video bg-black p-4">
+        <video
+          controls
+          autoPlay
+          muted
+          className="w-full h-full rounded-xl"
+          src={selectedChannel.url}
+          type="application/x-mpegURL"
+        />
+      </div>
+    </div>
+  </div>
+)}
 
             {/* RADIO PLAYER MODAL (simple audio — doesn't touch video player) */}
       {selectedRadio && (
