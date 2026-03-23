@@ -3,6 +3,8 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 import Script from 'next/script';
 import './globals.css';
+import { ClerkProvider } from '@clerk/nextjs';
+import AuthHeader from './_components/AuthHeader';   // ← this line is new
 
 export const metadata: Metadata = {
   title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio (Legal)',
@@ -115,21 +117,28 @@ export default function RootLayout({
           }}
         />
       </head>
-       <body className="antialiased dark bg-[#111827]">
-        {/* Skip to main content - Accessibility boost */}
-        <a
-          href="#main-content"
-          className="sr-only focus:not-sr-only fixed top-4 left-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300"
-        >
-          Skip to main content
-        </a>
-        <main id="main-content">
-          {children}
-        </main>
+      <body className="antialiased dark bg-[#111827]">
+        <ClerkProvider>
+          {/* Login Header - This is what shows the Sign In / Sign Up buttons */}
+          <AuthHeader />
+
+          {/* Skip to main content - Accessibility boost */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only fixed top-4 left-4 z-50 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-300"
+          >
+            Skip to main content
+          </a>
+
+          <main id="main-content">
+            {children}
+          </main>
+        </ClerkProvider>
+
         <SpeedInsights />
         <Analytics />
-       
-                {/* Google AdSense - Lazy Loaded */}
+
+        {/* Google AdSense - Lazy Loaded */}
         <Script
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
           strategy="lazyOnload"
