@@ -19,7 +19,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "video.js": "^8.23.7",
-    "hls.js": "^1.5.15"     // ← this line will be added automatically
+    "hls.js": "^1.5.15"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
