@@ -326,7 +326,7 @@ useEffect(() => {
         vhs: {
           overrideNative: !isSafari,
           withCredentials: false,
-          bandwidth: 5000000,        // higher bandwidth for better streams
+          bandwidth: 5000000,
           maxPlaylistRetries: 3,
           handlePartialData: true,
         },
@@ -339,8 +339,8 @@ useEffect(() => {
       }]
     });
 
-    // Extra error handling
-    playerRef.current.on('error', (err) => {
+    // Extra error handling (fixed TypeScript)
+    playerRef.current.on('error', (err: any) => {
       console.error('Video player error:', err);
     });
   } catch (e) {
