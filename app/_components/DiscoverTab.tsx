@@ -27,7 +27,10 @@ interface DiscoverTabProps {
   setMaxYearFilter: (year: string) => void;
   setMinRatingFilter: (rating: number) => void;
   setContentType: (type: string) => void;
-  pauseInfiniteScroll: boolean;   // ← NEW (this fixes the error)
+  pauseInfiniteScroll: boolean;
+  // === NEW CLOUD CONTINUE WATCHING ===
+  continueWatching: any[];
+  removeFromContinueWatching: (id: number) => void;
 }
 
 export default function DiscoverTab({
@@ -250,8 +253,6 @@ export default function DiscoverTab({
     // Backend already handles filtering (only Content Type)
   const filteredTitles = allTitles;
 
-  const continueWatching = favorites.length > 0 ? favorites : filteredTitles.slice(0, 20);
-
   // SEO JSON-LD
   const jsonLd = useMemo(() => JSON.stringify({
     "@context": "https://schema.org",
@@ -467,7 +468,56 @@ export default function DiscoverTab({
             </div>
           )}
 
-          <HorizontalCarousel title="Continue Watching" items={continueWatching} loadingKey="initial" />
+                    {/* === NEW CLOUD CONTINUE WATCHING (Netflix-style – cloud synced) === */}
+          {continueWatching.length > 0 && (
+            <section className="mb-10 relative" aria-labelledby="continue-heading">
+              <h2 id="continue-heading" className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
+                ▶️ Continue Watching ({continueWatching.length})
+              </h2>
+              <div className="relative group">
+                <div className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {continueWatching
+                    .sort((a: any, b: any) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime())
+                    .map((title: any) => (
+                      <button
+                        key={title.id}
+                        type="button"
+                        onClick={() => setSelectedTitle(title)}
+                        className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col"
+                      >
+                        <div className="relative aspect-[2/3] bg-gray-700 rounded-xl overflow-hidden shadow-lg group-hover:scale-105 transition-transform flex-shrink-0">
+                          {title.poster_path ? (
+                            <Image
+                              src={`https://image.tmdb.org/t/p/w342${title.poster_path}`}
+                              alt={`${title.title} poster`}
+                              fill
+                              className="object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                              sizes="160px"
+                              quality={75}
+                              loading="lazy"
+                              unoptimized={true}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-zinc-800 animate-pulse" />
+                          )}
+                          {/* Remove button */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeFromContinueWatching(title.id); }}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 hover:bg-red-600 text-white transition-colors"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="flex-1 flex flex-col justify-end mt-2">
+                          <p className="text-sm line-clamp-2 text-center text-gray-200 group-hover:text-white">{title.title}</p>
+                          <p className="text-xs text-center text-gray-400">{title.year} • Watched {new Date(title.watchedAt).toLocaleDateString()}</p>
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            </section>
+          )}
           <HorizontalCarousel title="Trending Now" items={trendingItems} loadingKey="initial" />
           <HorizontalCarousel title="New Today" items={newReleasesItems} loadingKey="initial" />
          {favorites.length > 0 && <HorizontalCarousel title="Because You Favorited..." items={favorites.slice(0, 20)} loadingKey="initial" />}
