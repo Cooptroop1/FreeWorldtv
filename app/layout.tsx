@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
+import Script from 'next/script';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -128,12 +129,12 @@ export default function RootLayout({
         <SpeedInsights />
         <Analytics />
        
-        {/* Google AdSense */}
-        <script
-          async
+                {/* Google AdSense - Lazy Loaded */}
+        <Script
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
+          strategy="lazyOnload"
           crossOrigin="anonymous"
-        ></script>
+        />
       </body>
     </html>
   );
