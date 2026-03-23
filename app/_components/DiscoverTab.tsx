@@ -40,7 +40,10 @@ export default function DiscoverTab({
   lastUpdated, setLastUpdated,
   surpriseMe, showFilters, setShowFilters,
   setMinYearFilter, setMaxYearFilter, setMinRatingFilter, setContentType,
-  pauseInfiniteScroll   // ← NEW (this fixes the error)
+  pauseInfiniteScroll,
+  // === NEW CLOUD CONTINUE WATCHING ===
+  continueWatching,
+  removeFromContinueWatching
 }: DiscoverTabProps) {
   const [allTitles, setAllTitles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
