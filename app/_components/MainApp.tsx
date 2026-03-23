@@ -878,6 +878,8 @@ const deduplicateSources = (sources: any[]) => {
             setMinRatingFilter={setMinRatingFilter}
             setContentType={setContentType}
             pauseInfiniteScroll={pauseInfiniteScroll}
+            continueWatching={continueWatching}
+            removeFromContinueWatching={removeFromContinueWatching}
           />
         </>
       )}
