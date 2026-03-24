@@ -271,11 +271,15 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Providers & related titles
-  useEffect(() => {
+    useEffect(() => {
     fetch('/api/providers')
       .then(res => res.json())
-      .then(data => setAllProviders(Array.isArray(data) ? data : (data.providers || [])))
+      .then(data => {
+        const providers = Array.isArray(data) ? data : (data.providers || []);
+        console.log("=== FULL 191 EXACT PROVIDER NAMES FROM WATCHMODE ===", providers.map((p: any) => p.name));
+        console.log("Total count:", providers.length);
+        setAllProviders(providers);
+      })
       .catch(() => setAllProviders([]));
   }, []);
 
