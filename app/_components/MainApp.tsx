@@ -585,46 +585,64 @@ useEffect(() => {
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
   console.log(`📦 Loaded ${safeProviders.length} providers from Watchmode API`);
 
-  // SUPER loose matching + common aliases for the exact names that were failing
+  // One-time debug: show the actual names Watchmode is using
+  if (safeProviders.length > 0 && !(window as any).providersLogged) {
+    console.log('🔍 ACTUAL Watchmode Provider Names (first 20):', safeProviders.slice(0, 20).map((p: any) => p.name));
+    (window as any).providersLogged = true;
+  }
+
+  // Expanded aliases + super-loose matching
   const aliases: Record<string, string> = {
     'hulu': 'Hulu',
     'fubotv': 'fubo',
+    'fubo': 'fubo',
     'amazon': 'Prime Video',
+    'prime video': 'Prime Video',
+    'prime': 'Prime Video',
     'vudu': 'Vudu',
     'appletv': 'Apple TV',
     'apple tv': 'Apple TV',
-    'prime video': 'Prime Video',
+    'fx': 'FX',
+    'spectrum': 'Spectrum On Demand',
+    'spectrum on demand': 'Spectrum On Demand',
     'disney': 'Disney+',
     'tubi': 'Tubi',
-    'pluto': 'Pluto TV'
+    'pluto': 'Pluto TV',
+    'apple tv+': 'Apple TV'
   };
 
   const searchTerm = aliases[name] || name;
 
   const matched = safeProviders.find((p: any) => {
     if (!p.name) return false;
-    const providerName = p.name.toLowerCase().replace(/\s*\(.*?\)/g, '').trim();
+    const providerName = p.name.toLowerCase()
+      .replace(/\s*\(.*?\)/g, '')   // remove (US), (UK) etc.
+      .trim()
+      .replace(/[^a-z0-9]/g, '');   // remove all punctuation
+
+    const cleanSearch = searchTerm.replace(/[^a-z0-9]/g, '');
+
     return (
-      providerName === searchTerm ||
-      providerName.includes(searchTerm) ||
-      searchTerm.includes(providerName) ||
-      providerName.split(' ').some((word: string) => searchTerm.includes(word)) ||
-      searchTerm.split(' ').some((word: string) => providerName.includes(word))
+      providerName === cleanSearch ||
+      providerName.includes(cleanSearch) ||
+      cleanSearch.includes(providerName) ||
+      providerName.split(' ').some((w: string) => cleanSearch.includes(w)) ||
+      cleanSearch.split(' ').some((w: string) => providerName.includes(w))
     );
   });
 
   if (matched?.logo_url) {
-    console.log(`✅ Using REAL Watchmode logo for ${sourceName}`);
+    console.log(`✅ SUCCESS – Using REAL Watchmode logo for ${sourceName}`);
     return {
       logoUrl: matched.logo_url,
       initials: name.slice(0, 2).toUpperCase(),
       color: 'from-indigo-500 to-purple-600'
     };
   } else {
-    console.log(`❌ Still no Watchmode match for "${sourceName}"`);
+    console.log(`❌ No Watchmode match for "${sourceName}"`);
   }
 
-  // Fallback to local GitHub logos (only if really needed)
+  // Fallback to local GitHub logos only if needed
   for (const [key, logoPath] of Object.entries(providerLogos)) {
     if (name.includes(key.toLowerCase()) || key.toLowerCase().includes(name)) {
       console.log(`📁 Using local GitHub logo for ${sourceName}`);
@@ -636,7 +654,7 @@ useEffect(() => {
     }
   }
 
-  console.log(`⚠️ No logo found for "${sourceName}" - using initials`);
+  console.log(`⚠️ No logo found for "${sourceName}"`);
   return {
     logoUrl: null,
     initials: name.slice(0, 2).toUpperCase(),
