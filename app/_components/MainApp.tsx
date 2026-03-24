@@ -583,59 +583,37 @@ useEffect(() => {
   }
 
   const name = sourceName.toLowerCase().trim();
+  console.log(`🔍 Looking for logo for: "${sourceName}"`);
 
-  // PRIORITY 1: Use the real 191 official logos from Watchmode (no more GitHub fallback)
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
+  console.log(`📦 Loaded ${safeProviders.length} providers from Watchmode API`);
 
-  const aliases: Record<string, string> = {
-    'hulu': 'Hulu',
-    'fubotv': 'fuboTV',
-    'fubo': 'fuboTV',
-    'amazon': 'Prime Video',
-    'prime video': 'Prime Video',
-    'vudu': 'Vudu',
-    'appletv': 'AppleTV+',
-    'apple tv': 'AppleTV+',
-    'fx': 'FX',
-    'spectrum': 'Spectrum On Demand',
-    'spectrum on demand': 'Spectrum On Demand',
-    'disney': 'Disney+',
-    'tubi': 'Tubi TV',
-    'pluto': 'Pluto TV',
-    'max': 'Max',
-    'paramount': 'Paramount+',
-    'peacock': 'Peacock',
-    'crave': 'Crave',
-    'amazon freevee': 'Amazon Freevee'
-  };
+  // Show the structure of the first provider so we can see the exact field names
+  if (safeProviders.length > 0 && !(window as any).debugLogged) {
+    console.log("🔎 FIRST PROVIDER STRUCTURE (name + logo field):", safeProviders[0]);
+    (window as any).debugLogged = true;
+  }
 
-  const searchTerm = aliases[name] || name;
-
+  // Very loose matching using your exact list
   const matched = safeProviders.find((p: any) => {
     if (!p.name) return false;
-    const providerName = p.name.toLowerCase()
-      .replace(/\s*\(.*?\)/g, '')
-      .trim()
-      .replace(/[^a-z0-9]/g, '');
+    const pName = p.name.toLowerCase().replace(/\s*\(.*?\)/g, '').trim();
+    const search = name.replace(/[^a-z0-9]/g, '');
+    const pClean = pName.replace(/[^a-z0-9]/g, '');
 
-    const cleanSearch = searchTerm.replace(/[^a-z0-9]/g, '');
-
-    return (
-      providerName === cleanSearch ||
-      providerName.includes(cleanSearch) ||
-      cleanSearch.includes(providerName)
-    );
+    return pName.includes(name) || name.includes(pName) || pClean === search || pClean.includes(search) || search.includes(pClean);
   });
 
-  if (matched?.logo_url) {
+  if (matched) {
+    console.log(`✅ MATCH FOUND! Using Watchmode logo for "${sourceName}" → ${matched.logo_url || matched.logoUrl || 'NO URL FOUND'}`);
     return {
-      logoUrl: matched.logo_url,
+      logoUrl: matched.logo_url || matched.logoUrl || null,
       initials: name.slice(0, 2).toUpperCase(),
       color: 'from-indigo-500 to-purple-600'
     };
   }
 
-  // No fallback — just initials if nothing matches
+  console.log(`❌ No match for "${sourceName}" — falling back to initials`);
   return {
     logoUrl: null,
     initials: name.slice(0, 2).toUpperCase(),
