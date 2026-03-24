@@ -585,29 +585,46 @@ useEffect(() => {
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
   console.log(`📦 Loaded ${safeProviders.length} providers from Watchmode API`);
 
+  // SUPER loose matching + common aliases for the exact names that were failing
+  const aliases: Record<string, string> = {
+    'hulu': 'Hulu',
+    'fubotv': 'fubo',
+    'amazon': 'Prime Video',
+    'vudu': 'Vudu',
+    'appletv': 'Apple TV',
+    'apple tv': 'Apple TV',
+    'prime video': 'Prime Video',
+    'disney': 'Disney+',
+    'tubi': 'Tubi',
+    'pluto': 'Pluto TV'
+  };
+
+  const searchTerm = aliases[name] || name;
+
   const matched = safeProviders.find((p: any) => {
     if (!p.name) return false;
-    const providerName = p.name.toLowerCase();
+    const providerName = p.name.toLowerCase().replace(/\s*\(.*?\)/g, '').trim();
     return (
-      providerName.includes(name) ||
-      name.includes(providerName) ||
-      providerName.includes(name.split(' ')[0]) ||
-      name.split(' ').some(word => providerName.includes(word))
+      providerName === searchTerm ||
+      providerName.includes(searchTerm) ||
+      searchTerm.includes(providerName) ||
+      providerName.split(' ').some(word => searchTerm.includes(word)) ||
+      searchTerm.split(' ').some(word => providerName.includes(word))
     );
   });
 
   if (matched?.logo_url) {
-    console.log(`✅ Using Watchmode API logo for ${sourceName}`);
+    console.log(`✅ Using REAL Watchmode logo for ${sourceName}`);
     return {
       logoUrl: matched.logo_url,
       initials: name.slice(0, 2).toUpperCase(),
       color: 'from-indigo-500 to-purple-600'
     };
   } else {
-    console.log(`❌ No Watchmode match for "${sourceName}"`);
+    console.log(`❌ Still no Watchmode match for "${sourceName}"`);
   }
 
-  // PRIORITY 2: Fallback to local GitHub logos
+  // Fallback to local GitHub logos (only if really needed)
   for (const [key, logoPath] of Object.entries(providerLogos)) {
     if (name.includes(key.toLowerCase()) || key.toLowerCase().includes(name)) {
       console.log(`📁 Using local GitHub logo for ${sourceName}`);
