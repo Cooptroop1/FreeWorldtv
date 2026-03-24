@@ -1434,12 +1434,12 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-28 h-28 flex-shrink-0 bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 group-hover:border-blue-500 transition-all">
+                              <div className="w-36 h-24 flex-shrink-0 bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 group-hover:border-blue-500 transition-all">
   {logoUrl ? (
     <img 
       src={logoUrl} 
       alt={source.name} 
-      className="w-full h-full object-cover" 
+      className="w-full h-full object-contain p-2" 
     />
   ) : (
     <div className={`w-full h-full flex items-center justify-center text-white font-bold text-3xl bg-gradient-to-br ${color}`}>
@@ -1478,12 +1478,12 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-28 h-28 flex-shrink-0 bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 group-hover:border-blue-500 transition-all">
+                              <div className="w-36 h-24 flex-shrink-0 bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 group-hover:border-blue-500 transition-all">
   {logoUrl ? (
     <img 
       src={logoUrl} 
       alt={source.name} 
-      className="w-full h-full object-cover" 
+      className="w-full h-full object-contain p-2" 
     />
   ) : (
     <div className={`w-full h-full flex items-center justify-center text-white font-bold text-3xl bg-gradient-to-br ${color}`}>
