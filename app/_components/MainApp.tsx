@@ -1434,7 +1434,7 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-24 h-20 flex-shrink-0 bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden flex items-center justify-center p-3 group-hover:border-blue-500 transition-all">
+                              <div className="w-24 h-20 flex-shrink-0 bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden group-hover:border-blue-500 transition-all">
   {logoUrl ? (
     <img 
       src={logoUrl} 
@@ -1478,7 +1478,7 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-24 h-20 flex-shrink-0 bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden flex items-center justify-center p-3 group-hover:border-blue-500 transition-all">
+                              <div className="w-24 h-20 flex-shrink-0 bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden group-hover:border-blue-500 transition-all">
   {logoUrl ? (
     <img 
       src={logoUrl} 
