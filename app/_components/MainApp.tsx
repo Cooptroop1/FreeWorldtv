@@ -584,17 +584,15 @@ useEffect(() => {
 
   const name = sourceName.toLowerCase().trim();
 
-  // PRIORITY 1: Use the real 191 official logos from Watchmode (using exact names you just gave me)
+  // PRIORITY 1: Use the real 191 official logos from Watchmode (no more GitHub fallback)
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
 
-  // Expanded aliases based on your exact 191 names
   const aliases: Record<string, string> = {
     'hulu': 'Hulu',
     'fubotv': 'fuboTV',
     'fubo': 'fuboTV',
     'amazon': 'Prime Video',
     'prime video': 'Prime Video',
-    'prime': 'Prime Video',
     'vudu': 'Vudu',
     'appletv': 'AppleTV+',
     'apple tv': 'AppleTV+',
@@ -607,7 +605,8 @@ useEffect(() => {
     'max': 'Max',
     'paramount': 'Paramount+',
     'peacock': 'Peacock',
-    'crave': 'Crave'
+    'crave': 'Crave',
+    'amazon freevee': 'Amazon Freevee'
   };
 
   const searchTerm = aliases[name] || name;
@@ -624,9 +623,7 @@ useEffect(() => {
     return (
       providerName === cleanSearch ||
       providerName.includes(cleanSearch) ||
-      cleanSearch.includes(providerName) ||
-      providerName.split(' ').some((w: string) => cleanSearch.includes(w)) ||
-      cleanSearch.split(' ').some((w: string) => providerName.includes(w))
+      cleanSearch.includes(providerName)
     );
   });
 
@@ -638,17 +635,7 @@ useEffect(() => {
     };
   }
 
-  // Fallback to your local GitHub logos only if needed
-  for (const [key, logoPath] of Object.entries(providerLogos)) {
-    if (name.includes(key.toLowerCase()) || key.toLowerCase().includes(name)) {
-      return {
-        logoUrl: logoPath,
-        initials: name.slice(0, 2).toUpperCase(),
-        color: 'from-emerald-500 to-teal-600'
-      };
-    }
-  }
-
+  // No fallback — just initials if nothing matches
   return {
     logoUrl: null,
     initials: name.slice(0, 2).toUpperCase(),
