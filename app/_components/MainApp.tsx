@@ -577,24 +577,40 @@ useEffect(() => {
   if (!sourceName) {
     return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
   }
-  const name = sourceName.toLowerCase().trim();
 
-  // === PRIORITY 1: Use the real 191 official logos from Watchmode API (this is what Vercel is fetching) ===
+  const name = sourceName.toLowerCase().trim();
+  console.log(`🔍 Looking for logo for: "${sourceName}"`);
+
+  // PRIORITY 1: Use the real 191 official logos from Watchmode API
   const safeProviders = Array.isArray(allProviders) ? allProviders : [];
-  const matched = safeProviders.find((p: any) =>
-    p.name?.toLowerCase().includes(name) || name.includes(p.name?.toLowerCase())
-  );
+  console.log(`📦 Loaded ${safeProviders.length} providers from Watchmode API`);
+
+  const matched = safeProviders.find((p: any) => {
+    if (!p.name) return false;
+    const providerName = p.name.toLowerCase();
+    return (
+      providerName.includes(name) ||
+      name.includes(providerName) ||
+      providerName.includes(name.split(' ')[0]) ||
+      name.split(' ').some(word => providerName.includes(word))
+    );
+  });
+
   if (matched?.logo_url) {
+    console.log(`✅ Using Watchmode API logo for ${sourceName}`);
     return {
       logoUrl: matched.logo_url,
       initials: name.slice(0, 2).toUpperCase(),
       color: 'from-indigo-500 to-purple-600'
     };
+  } else {
+    console.log(`❌ No Watchmode match for "${sourceName}"`);
   }
 
-  // PRIORITY 2: Fallback to our clean local GitHub logos (only if API doesn't have it)
+  // PRIORITY 2: Fallback to local GitHub logos
   for (const [key, logoPath] of Object.entries(providerLogos)) {
     if (name.includes(key.toLowerCase()) || key.toLowerCase().includes(name)) {
+      console.log(`📁 Using local GitHub logo for ${sourceName}`);
       return {
         logoUrl: logoPath,
         initials: name.slice(0, 2).toUpperCase(),
@@ -603,7 +619,7 @@ useEffect(() => {
     }
   }
 
-  // Final fallback (just initials)
+  console.log(`⚠️ No logo found for "${sourceName}" - using initials`);
   return {
     logoUrl: null,
     initials: name.slice(0, 2).toUpperCase(),
