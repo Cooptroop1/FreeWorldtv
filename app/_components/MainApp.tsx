@@ -271,15 +271,11 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-    useEffect(() => {
+  // Providers & related titles
+  useEffect(() => {
     fetch('/api/providers')
       .then(res => res.json())
-      .then(data => {
-        const providers = Array.isArray(data) ? data : (data.providers || []);
-        console.log("=== FULL 191 EXACT PROVIDER NAMES FROM WATCHMODE ===", providers.map((p: any) => p.name));
-        console.log("Total count:", providers.length);
-        setAllProviders(providers);
-      })
+      .then(data => setAllProviders(Array.isArray(data) ? data : (data.providers || [])))
       .catch(() => setAllProviders([]));
   }, []);
 
@@ -583,37 +579,47 @@ useEffect(() => {
   }
 
   const name = sourceName.toLowerCase().trim();
-  console.log(`🔍 Looking for logo for: "${sourceName}"`);
 
-  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
-  console.log(`📦 Loaded ${safeProviders.length} providers from Watchmode API`);
-
-  // Show the structure of the first provider so we can see the exact field names
-  if (safeProviders.length > 0 && !(window as any).debugLogged) {
-    console.log("🔎 FIRST PROVIDER STRUCTURE (name + logo field):", safeProviders[0]);
-    (window as any).debugLogged = true;
+  // PRIORITY 1: Use our clean local logos (this fixes Tubi, Pluto TV, Freevee)
+  for (const [key, logoPath] of Object.entries(providerLogos)) {
+    if (name.includes(key.toLowerCase()) || key.toLowerCase().includes(name)) {
+      return { 
+        logoUrl: logoPath, 
+        initials: name.slice(0, 2).toUpperCase(), 
+        color: 'from-emerald-500 to-teal-600' 
+      };
+    }
   }
 
-  // Very loose matching using your exact list
-  const matched = safeProviders.find((p: any) => {
-    if (!p.name) return false;
-    const pName = p.name.toLowerCase().replace(/\s*\(.*?\)/g, '').trim();
-    const search = name.replace(/[^a-z0-9]/g, '');
-    const pClean = pName.replace(/[^a-z0-9]/g, '');
-
-    return pName.includes(name) || name.includes(pName) || pClean === search || pClean.includes(search) || search.includes(pClean);
-  });
-
-  if (matched) {
-    console.log(`✅ MATCH FOUND! Using Watchmode logo for "${sourceName}" → ${matched.logo_url || matched.logoUrl || 'NO URL FOUND'}`);
+  // PRIORITY 2: Try providers from the /api/providers API
+  const safeProviders = Array.isArray(allProviders) ? allProviders : [];
+  const matched = safeProviders.find((p: any) =>
+    p.name?.toLowerCase().includes(name) || name.includes(p.name?.toLowerCase())
+  );
+  if (matched?.logo_url) {
     return {
-      logoUrl: matched.logo_url || matched.logoUrl || null,
+      logoUrl: matched.logo_url,
       initials: name.slice(0, 2).toUpperCase(),
       color: 'from-indigo-500 to-purple-600'
     };
   }
 
-  console.log(`❌ No match for "${sourceName}" — falling back to initials`);
+  // PRIORITY 3: Safe external fallbacks for other providers (BBC, ITVX, etc.)
+  const logoMap: Record<string, { url: string; color: string }> = {
+    'bbc iplayer': { url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/BBC_iPlayer_2023.svg/1280px-BBC_iPlayer_2023.svg.png', color: 'from-blue-600 to-cyan-500' },
+    'itvx': { url: 'https://www.itv.com/_next/static/media/itv-logo.4c3d7c0a.svg', color: 'from-red-600 to-pink-600' },
+    'channel 4': { url: 'https://www.channel4.com/static/images/logo/channel4-logo-white.svg', color: 'from-black to-gray-800' },
+    'my5': { url: 'https://www.my5.tv/assets/images/my5-logo-white.png', color: 'from-blue-700 to-cyan-600' },
+    'uktv play': { url: 'https://www.uktv.co.uk/sites/default/files/2023-02/UKTV-Play-Logo-White.png', color: 'from-emerald-600 to-teal-500' },
+  };
+
+  for (const [key, value] of Object.entries(logoMap)) {
+    if (name.includes(key)) {
+      return { logoUrl: value.url, initials: name.slice(0, 2).toUpperCase(), color: value.color };
+    }
+  }
+
+  // Final fallback (just initials)
   return {
     logoUrl: null,
     initials: name.slice(0, 2).toUpperCase(),
