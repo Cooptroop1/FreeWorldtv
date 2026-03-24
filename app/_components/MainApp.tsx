@@ -608,8 +608,8 @@ useEffect(() => {
       providerName === searchTerm ||
       providerName.includes(searchTerm) ||
       searchTerm.includes(providerName) ||
-      providerName.split(' ').some(word => searchTerm.includes(word)) ||
-      searchTerm.split(' ').some(word => providerName.includes(word))
+      providerName.split(' ').some((word: string) => searchTerm.includes(word)) ||
+      searchTerm.split(' ').some((word: string) => providerName.includes(word))
     );
   });
 
