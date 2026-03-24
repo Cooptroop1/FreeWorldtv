@@ -1434,7 +1434,7 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600 p-2">
+                              <div className="w-24 h-20 flex-shrink-0 bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden flex items-center justify-center p-3 group-hover:border-blue-500 transition-all">
   {logoUrl ? (
     <img 
       src={logoUrl} 
@@ -1442,7 +1442,9 @@ const deduplicateSources = (sources: any[]) => {
       className="w-full h-full object-contain" 
     />
   ) : (
-    <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+    <div className={`w-full h-full flex items-center justify-center text-white font-bold text-3xl bg-gradient-to-br ${color}`}>
+      {initials}
+    </div>
   )}
 </div>
                               <div className="flex-1 min-w-0">
@@ -1476,7 +1478,7 @@ const deduplicateSources = (sources: any[]) => {
                               rel="noopener noreferrer"
                               className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
                             >
-                              <div className="w-16 h-16 flex-shrink-0 bg-gray-800 rounded-2xl overflow-hidden flex items-center justify-center relative border border-gray-600 p-2">
+                              <div className="w-24 h-20 flex-shrink-0 bg-gray-900 rounded-2xl border border-gray-700 overflow-hidden flex items-center justify-center p-3 group-hover:border-blue-500 transition-all">
   {logoUrl ? (
     <img 
       src={logoUrl} 
@@ -1484,7 +1486,9 @@ const deduplicateSources = (sources: any[]) => {
       className="w-full h-full object-contain" 
     />
   ) : (
-    <div className={`w-full h-full bg-gradient-to-br ${color} flex items-center justify-center text-white font-bold text-3xl shadow-inner`}>{initials}</div>
+    <div className={`w-full h-full flex items-center justify-center text-white font-bold text-3xl bg-gradient-to-br ${color}`}>
+      {initials}
+    </div>
   )}
 </div>
                               <div className="flex-1 min-w-0">
