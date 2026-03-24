@@ -95,7 +95,7 @@ export const providerLogos: Record<string, string> = {
   "netflix": "/providers/netflix.png",
   "Disney+": "/providers/disney-plus.png",
   "disney plus": "/providers/disney-plus.png",
-  "Disney Plus": "/providers/disney-plus.png",
+  "Disney Plus": "/providers/Disney-plus.png",
   "Apple TV": "/providers/apple-tv.png",
   "appletv": "/providers/apple-tv.png",
   "FuboTV": "/providers/fubo-tv.png",
