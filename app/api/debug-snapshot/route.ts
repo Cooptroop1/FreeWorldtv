@@ -17,13 +17,18 @@ export async function GET() {
       if (!isNaN(ts)) lastRefreshDate = new Date(ts).toISOString();
     }
 
-    // Show 3 sample titles so you can literally see what's downloaded
-    const freeSample = Array.isArray(freeRaw) && freeRaw.length > 0 
-      ? freeRaw.slice(0, 3).map((t: any) => ({ id: t.id, title: t.title, year: t.year })) 
+    // === DAILY WATCHMODE CALL COUNTER ===
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const dailyKey = `daily_calls:${today}`;
+    let dailyCalls = await kv.get<number>(dailyKey) || 0;
+
+    // Show 3 sample titles
+    const freeSample = Array.isArray(freeRaw) && freeRaw.length > 0
+      ? freeRaw.slice(0, 3).map((t: any) => ({ id: t.id, title: t.title, year: t.year }))
       : [];
 
-    const premiumSample = Array.isArray(premiumRaw) && premiumRaw.length > 0 
-      ? premiumRaw.slice(0, 3).map((t: any) => ({ id: t.id, title: t.title, year: t.year })) 
+    const premiumSample = Array.isArray(premiumRaw) && premiumRaw.length > 0
+      ? premiumRaw.slice(0, 3).map((t: any) => ({ id: t.id, title: t.title, year: t.year }))
       : [];
 
     return NextResponse.json({
@@ -32,12 +37,13 @@ export async function GET() {
       premiumTitlesSaved: premiumCount,
       totalTitlesSaved: totalTitles,
       lastFullRefresh: lastRefreshDate,
+      todayWatchmodeCalls: dailyCalls,
       expectedFor60Pages: "≈15,000+ total titles (60 pages each)",
       freeSampleTitles: freeSample,
       premiumSampleTitles: premiumSample,
       note: "This is what is actually stored in cache. Refresh still uses 0 extra calls here.",
-      advice: freeCount > 10000 
-        ? "✅ Catalog looks healthy!" 
+      advice: freeCount > 10000
+        ? "✅ Catalog looks healthy!"
         : "Run the full refresh link if numbers are low"
     });
   } catch (e: any) {
