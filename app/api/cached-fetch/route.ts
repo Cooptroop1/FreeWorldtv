@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const callTime = new Date().toISOString();
   console.log(`[${callTime}] WATCHMODE API CALL - cached-fetch - query: ${query || 'none'} - section: ${section || 'none'} - paid: ${paid} - page: ${page} - types: ${types}`);
 
-  // === STRONGEST ATOMIC DAILY REFRESH (prevents multiple triggers) ===
+  // === STRONGEST ATOMIC DAILY REFRESH ===
   try {
     const lastDaily = await kv.get<number>('lastDailyRefresh') || 0;
     const now = Date.now();
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     if (now - lastDaily > DAILY_INTERVAL_MS && !query && !paid) {
       const lockKey = 'refresh_lock';
 
-      // Atomic set-if-not-exists (nx) + long lock
+      // Atomic lock: set only if it doesn't already exist
       const lockAcquired = await kv.set(lockKey, '1', { ex: 600, nx: true });
 
       if (lockAcquired) {
