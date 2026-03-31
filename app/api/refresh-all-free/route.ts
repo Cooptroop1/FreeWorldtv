@@ -86,14 +86,18 @@ export async function GET(request: Request) {
     premiumTitles = [...premiumTitles, ...oldPremiumFiltered];
   }
 
-  // === PROCESS TITLES ===
-  const processTitle = (t: any) => ({
-    ...t,
-    poster: t.poster || t.image_url || null,
-    title: t.title || t.name || "Unknown Title",
-    genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
-  });
-
+ // === PROCESS TITLES (smaller size to stay under 10MB limit) ===
+const processTitle = (t: any) => ({
+  id: t.id,
+  title: t.title || t.name || "Unknown Title",
+  year: t.year,
+  type: t.type,
+  poster: t.poster || t.image_url || null,
+  popularity: t.popularity || 0,
+  genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
+  tmdb_id: t.tmdb_id,
+});
+  
   const processedFree = freeTitles.map(processTitle);
   const processedPremium = premiumTitles.map(processTitle);
 
