@@ -15,25 +15,26 @@ export async function GET(request: NextRequest) {
   const callTime = new Date().toISOString();
   console.log(`[${callTime}] WATCHMODE API CALL - cached-fetch - query: ${query || 'none'} - section: ${section || 'none'} - paid: ${paid} - page: ${page} - types: ${types}`);
 
-  // === STRONG ATOMIC DAILY REFRESH (no more multiple triggers) ===
+  // === STRONGEST ATOMIC DAILY REFRESH (prevents multiple triggers) ===
   try {
     const lastDaily = await kv.get<number>('lastDailyRefresh') || 0;
     const now = Date.now();
 
     if (now - lastDaily > DAILY_INTERVAL_MS && !query && !paid) {
-      // Atomic lock using nx (set if not exists)
-      const lockSet = await kv.set('refresh_lock', '1', { ex: 600, nx: true });
+      const lockKey = 'refresh_lock';
 
-      if (lockSet) {
-        // Lock acquired — only one request does the refresh
+      // Atomic set-if-not-exists (nx) + long lock
+      const lockAcquired = await kv.set(lockKey, '1', { ex: 600, nx: true });
+
+      if (lockAcquired) {
+        console.log(`[${callTime}] 🔥 AUTO DAILY REFRESH triggered (atomic lock acquired)`);
+
         const host = request.headers.get('host') || 'freestreamworld.com';
         const url = `https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}&mode=daily`;
 
         fetch(url, { cache: 'no-store' })
-          .then(() => kv.del('refresh_lock'))
-          .catch(() => kv.del('refresh_lock'));
-
-        console.log(`[${callTime}] 🔥 AUTO DAILY REFRESH triggered (atomic lock acquired)`);
+          .then(() => kv.del(lockKey))
+          .catch(() => kv.del(lockKey));
       } else {
         console.log(`[${callTime}] Refresh already in progress (atomic lock skipped)`);
       }
