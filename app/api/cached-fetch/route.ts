@@ -1,7 +1,10 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 
-const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// === AUTO REFRESH SETTINGS — 30-day full rebuild (clean files) ===
+const DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000;     // daily → 4 calls
+const FULL_INTERVAL_MS = 30 * 24 * 60 * 60 * 1000; // every 30 days → full 20 pages
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'fallback-secret-for-local-dev-only';
 
 export async function GET(request: NextRequest) {
@@ -15,35 +18,41 @@ export async function GET(request: NextRequest) {
   const callTime = new Date().toISOString();
   console.log(`[${callTime}] WATCHMODE API CALL - cached-fetch - query: ${query || 'none'} - section: ${section || 'none'} - paid: ${paid} - page: ${page} - types: ${types}`);
 
-  // === STRONGEST ATOMIC DAILY REFRESH ===
+  // === AUTOMATIC REFRESH (30-day full + daily smart) ===
   try {
+    const lastFull = await kv.get<number>('lastFullRefresh') || 0;
     const lastDaily = await kv.get<number>('lastDailyRefresh') || 0;
     const now = Date.now();
 
-    if (now - lastDaily > DAILY_INTERVAL_MS && !query && !paid) {
-      const lockKey = 'refresh_lock';
+    const lock = await kv.get('refresh_lock');
+    if (lock) {
+      console.log(`[${callTime}] Refresh already in progress (locked)`);
+    } else {
+      let mode = '';
+      if (now - lastFull > FULL_INTERVAL_MS && !query && !paid) {
+        mode = 'full';          // ← full rebuild every 30 days
+      } else if (now - lastDaily > DAILY_INTERVAL_MS && !query && !paid) {
+        mode = 'daily';
+      }
 
-      // Atomic lock: set only if it doesn't already exist
-      const lockAcquired = await kv.set(lockKey, '1', { ex: 600, nx: true });
-
-      if (lockAcquired) {
-        console.log(`[${callTime}] 🔥 AUTO DAILY REFRESH triggered (atomic lock acquired)`);
+      if (mode) {
+        await kv.set('refresh_lock', '1', { ex: 300 });
 
         const host = request.headers.get('host') || 'freestreamworld.com';
-        const url = `https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}&mode=daily`;
-
+        const url = `https://${host}/api/refresh-all-free?secret=${REFRESH_SECRET}&mode=${mode}`;
+        
         fetch(url, { cache: 'no-store' })
-          .then(() => kv.del(lockKey))
-          .catch(() => kv.del(lockKey));
-      } else {
-        console.log(`[${callTime}] Refresh already in progress (atomic lock skipped)`);
+          .then(() => kv.del('refresh_lock'))
+          .catch(() => kv.del('refresh_lock'));
+
+        console.log(`[${callTime}] 🔥 AUTO ${mode.toUpperCase()} REFRESH triggered (locked for 5 min)`);
       }
     }
   } catch (e) {
     console.error('Auto-refresh check failed:', e);
   }
 
-  // FREE SECTION
+  // FREE SECTION (unchanged)
   if (!paid) {
     const raw = await kv.get('full_free_catalog');
     let catalog: any[] = Array.isArray(raw) ? raw : [];
@@ -93,7 +102,7 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // PREMIUM SECTION
+  // PREMIUM SECTION (unchanged)
   const rawPremium = await kv.get('full_premium_catalog');
   let catalogPremium: any[] = Array.isArray(rawPremium) ? rawPremium : [];
   if (types !== 'movie,tv_series') {
