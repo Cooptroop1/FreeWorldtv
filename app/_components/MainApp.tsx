@@ -244,12 +244,25 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     localStorage.setItem('customLinks', JSON.stringify(customLinks));
   }, [customLinks]);
 
-  const toggleFavorite = (title: any) => {
+    const toggleFavorite = async (title: any) => {
     const isFav = favorites.some(fav => fav.id === title.id);
-    if (isFav) {
-      setFavorites(favorites.filter(fav => fav.id !== title.id));
-    } else {
-      setFavorites([...favorites, title]);
+    let newFavorites = isFav
+      ? favorites.filter(fav => fav.id !== title.id)
+      : [...favorites, title];
+
+    setFavorites(newFavorites); // update immediately
+
+    // Only try to save if logged in
+    if (isSignedIn && user?.id) {
+      try {
+        await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ favorites: newFavorites }),
+        });
+      } catch (err) {
+        console.error("Failed to save favorite to cloud", err);
+      }
     }
   };
 
