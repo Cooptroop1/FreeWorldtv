@@ -158,11 +158,11 @@ export default function DiscoverTab({
     return () => observerRef.current?.disconnect();
   }, [loadMore, hasMore, loadingMore, loading, pauseInfiniteScroll]);
 
-  // Optimized poster fetching
+    // Optimized poster fetching (FIXED - now works for both type and tmdb_type)
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
     const titlesNeedingPoster = allTitles.filter((title: any) =>
-      title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+      title.tmdb_id && (title.tmdb_type || title.type) && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
     );
     if (titlesNeedingPoster.length === 0) return;
 
@@ -171,7 +171,8 @@ export default function DiscoverTab({
       const updates = await Promise.all(
         batch.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
-          const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
+          const t = title.tmdb_type || title.type;
+          const endpoint = (t === 'movie' || t === 'movies') ? 'movie' : 'tv';
           try {
             const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
               headers: { accept: 'application/json', Authorization: `Bearer ${TMDB_READ_TOKEN}` },
@@ -188,13 +189,13 @@ export default function DiscoverTab({
     };
     fetchWithLimit();
   }, [allTitles, TMDB_READ_TOKEN]);
-    // Poster fetching for Trending & New Releases carousels (fixes black images)
+        // Poster fetching for Trending & New Releases carousels (FIXED)
   useEffect(() => {
     if (!TMDB_READ_TOKEN) return;
 
     const carouselItems = [...trendingItems, ...newReleasesItems];
     const titlesNeedingPoster = carouselItems.filter((title: any) =>
-      title.tmdb_id && title.tmdb_type && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
+      title.tmdb_id && (title.tmdb_type || title.type) && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
     );
 
     if (titlesNeedingPoster.length === 0) return;
@@ -204,7 +205,8 @@ export default function DiscoverTab({
       const updates = await Promise.all(
         batch.map(async (title: any) => {
           postersFetched.current.add(title.tmdb_id);
-          const endpoint = title.tmdb_type === 'movie' ? 'movie' : 'tv';
+          const t = title.tmdb_type || title.type;
+          const endpoint = (t === 'movie' || t === 'movies') ? 'movie' : 'tv';
           try {
             const res = await fetch(`https://api.themoviedb.org/3/${endpoint}/${title.tmdb_id}?language=en-US`, {
               headers: { accept: 'application/json', Authorization: `Bearer ${TMDB_READ_TOKEN}` },
