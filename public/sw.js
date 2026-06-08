@@ -1,4 +1,4 @@
-// public/sw.js - v9 (safe version - no more image caching spam)
+// public/sw.js - v9 (safe version - no more image caching spam) 
 const CACHE_NAME = 'freestreamworld-v9';
 const urlsToCache = [
   '/',
