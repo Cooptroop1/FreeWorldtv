@@ -1,5 +1,5 @@
-// public/sw.js - v9 (safe version - no more image caching spam) 
-const CACHE_NAME = 'freestreamworld-v9';
+// public/sw.js - v10 (Fixed & Improved)
+const CACHE_NAME = 'freestreamworld-v10';
 const urlsToCache = [
   '/',
   '/logo.png',
@@ -13,7 +13,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Installing v9 - pre-caching static assets only');
+        console.log('[SW] Installing v10 - pre-caching static assets only');
         return cache.addAll(urlsToCache);
       })
   );
@@ -40,19 +40,21 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // NEVER cache the background refresh endpoint
+  // Never cache background refresh
   if (url.pathname.includes('/api/refresh-all-free')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Network-First for all API calls (cached-fetch, title-sources, etc.)
+  // Network-First for all API calls (with cache fallback)
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
           const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
           return networkResponse;
         })
         .catch(() => caches.match(event.request))
@@ -60,24 +62,38 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // IMPORTANT: SKIP caching for ALL external images (TMDB posters, etc.)
-  // This is what was causing the QuotaExceededError
-  if (url.hostname.includes('image.tmdb.org') || 
-      url.pathname.endsWith('.jpg') || 
-      url.pathname.endsWith('.png') || 
-      url.pathname.endsWith('.webp')) {
+  // Skip caching for all external images (TMDB etc.)
+  if (
+    url.hostname.includes('image.tmdb.org') ||
+    url.pathname.endsWith('.jpg') ||
+    url.pathname.endsWith('.png') ||
+    url.pathname.endsWith('.webp') ||
+    url.pathname.endsWith('.gif')
+  ) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Stale-While-Revalidate ONLY for static HTML/pages and your own assets
+  // Safe Stale-While-Revalidate for everything else
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        const responseClone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
-        return networkResponse;
-      }).catch(() => cachedResponse);
+      const fetchPromise = fetch(event.request)
+        .then((networkResponse) => {
+          // Only cache successful responses
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          // Return cached version if network fails
+          return cachedResponse;
+        });
+
+      // Return cached version immediately if available, otherwise wait for network
       return cachedResponse || fetchPromise;
     })
   );
