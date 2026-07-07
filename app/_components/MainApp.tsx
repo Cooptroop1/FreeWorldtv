@@ -714,24 +714,24 @@ const deduplicateSources = (sources: any[]) => {
         />
 
           {/* REGION SELECTOR — NOW FULLY ACCESSIBLE */}
-          <div className="flex flex-col">
-            <label htmlFor="region-select" className="sr-only">Select your region</label>
-            <select
-              id="region-select"
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              className="bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Choose streaming region"
-            >
-              <option value="US">🇺🇸 United States</option>
-              <option value="GB">🇬🇧 United Kingdom</option>
-              <option value="CA">🇨🇦 Canada</option>
-              <option value="AU">🇦🇺 Australia</option>
-              <option value="DE">🇩🇪 Germany</option>
-              <option value="FR">🇫🇷 France</option>
-              <option value="IN">🇮🇳 India</option>
-            </select>
-          </div>
+<div className="flex flex-col">
+  <label htmlFor="region-select" className="sr-only">Select your region</label>
+  <select
+    id="region-select"
+    value={region}
+    onChange={(e) => setRegion(e.target.value)}
+    className="bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+    aria-label="Choose streaming region"
+  >
+    <option value="US">🇺🇸 United States</option>
+    <option value="GB">🇬🇧 United Kingdom</option>
+    <option value="CA">🇨🇦 Canada</option>
+    <option value="AU">🇦🇺 Australia</option>
+    <option value="IN">🇮🇳 India</option>
+    <option value="ES">🇪🇸 Spain</option>
+    <option value="BR">🇧🇷 Brazil</option>
+  </select>
+</div>
 
           <button onClick={surpriseMe} className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 px-6 py-3 rounded-xl font-medium transition-all">
             <Shuffle size={20} /> Surprise Me
