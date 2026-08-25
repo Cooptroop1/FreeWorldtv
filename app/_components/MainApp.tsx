@@ -415,7 +415,14 @@ useEffect(() => {
     let watchmodeId = selectedTitle.needsWatchmodeLookup ? null : selectedTitle.id;
     if ((!watchmodeId || selectedTitle.needsWatchmodeLookup) && selectedTitle.tmdb_id) {
       try {
-        const mapRes = await fetch(`/api/watchmode-map?tmdb_id=${selectedTitle.tmdb_id}`);
+        const tmdbType = selectedTitle.tmdb_type === 'tv' || selectedTitle.tmdb_type === 'tv_series'
+          ? 'tv'
+          : selectedTitle.tmdb_type === 'movie'
+            ? 'movie'
+            : '';
+        const mapRes = await fetch(
+          `/api/watchmode-map?tmdb_id=${selectedTitle.tmdb_id}${tmdbType ? `&type=${tmdbType}` : ''}`
+        );
         if (mapRes.ok) {
           const mapped = await mapRes.json();
           watchmodeId = mapped.watchmodeId;
