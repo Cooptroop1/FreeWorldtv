@@ -1,32 +1,31 @@
 import { NextResponse } from 'next/server';
+import { isAdminRequest } from '@/lib/admin-auth';
 
-const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || process.env.NEXT_PUBLIC_WATCHMODE_API_KEY || '';
+export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  if (!WATCHMODE_API_KEY) {
-    return NextResponse.json({ error: 'WATCHMODE_API_KEY is NOT set in Vercel!' });
+export async function GET(request: Request) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=free&regions=US&types=movie,tv_series&sort_by=popularity_desc&page=1&limit=10`;
+  const key = process.env.WATCHMODE_API_KEY || '';
+  if (!key) {
+    return NextResponse.json({ error: 'WATCHMODE_API_KEY is not set' }, { status: 500 });
+  }
+
+  const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${key}&source_types=free&regions=GB&types=movie,tv_series&sort_by=popularity_desc&page=1&limit=5`;
 
   try {
     const res = await fetch(url, { cache: 'no-store' });
-    const rawText = await res.text();
-    let data;
-    try {
-      data = JSON.parse(rawText);
-    } catch {
-      data = { rawText };
-    }
-
+    const data = await res.json();
     return NextResponse.json({
       status: res.status,
-      apiKeyPresent: !!WATCHMODE_API_KEY,
-      urlUsed: url.replace(WATCHMODE_API_KEY, '***HIDDEN***'),
-      watchmodeResponse: data,
-      message: data.titles?.length || data.results?.length ? 'Success - titles received' : 'EMPTY - Watchmode returned nothing'
+      apiKeyPresent: true,
+      titleCount: data.titles?.length || 0,
+      message: data.titles?.length ? 'Success' : 'Watchmode returned nothing',
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Request failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

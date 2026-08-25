@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { Film, Loader2, Star, Heart } from 'lucide-react';
-import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 import GlobalSearch from './GlobalSearch';   // ← FIXED import
 
 interface PremiumTabProps {
@@ -51,13 +50,12 @@ export default function PremiumTab({
         const json = await res.json();
         let titles = json.success && json.titles?.length
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
-          : staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
+          : [];
         setPremiumTitles(titles);
         setHasMore(titles.length >= 48);
       } catch (err) {
         console.error('Premium fetch failed:', err);
-        const fallback = staticFallbackTitles.slice(0, 48).map(t => ({ ...t, fromPremium: true }));
-        setPremiumTitles(fallback);
+        setPremiumTitles([]);
         setHasMore(false);
       }
       setLoading(false);
@@ -152,7 +150,7 @@ export default function PremiumTab({
               quality={75}
               priority={index < 3}
               loading={index < 3 ? "eager" : "lazy"}
-              unoptimized={true}
+              quality={75}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600" /></div>

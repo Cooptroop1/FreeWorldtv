@@ -53,7 +53,7 @@ export default function GlobalSearch({
         const typesParam = contentType || 'movie,tv_series';
 
         const res = await fetch(
-          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&types=${typesParam}&paid=${paidParam}&page=1`
+          `/api/cached-fetch?query=${encodeURIComponent(trimmed)}&types=${typesParam}&paid=${paidParam}&page=1&region=${region}`
         );
         const json = await res.json();
         let results = json.success && Array.isArray(json.titles) ? json.titles : [];
@@ -71,7 +71,7 @@ export default function GlobalSearch({
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, contentType, paidOnly]);
+  }, [searchQuery, contentType, paidOnly, region]);
 
   useEffect(() => {
     if (!TMDB_READ_TOKEN || suggestions.length === 0) return;
@@ -157,10 +157,10 @@ export default function GlobalSearch({
                       sizes="48px"
                       loading="lazy"
                       quality={75}
-                      unoptimized={true}
+                      quality={75}
                     />
                   ) : (
-                    <img src="/fallback-poster.jpg" alt={title.title} className="w-full h-full object-cover" />
+                    <div className="w-full h-full bg-zinc-800" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

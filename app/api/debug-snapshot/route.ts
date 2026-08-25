@@ -1,14 +1,37 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
+import { isAdminRequest } from '@/lib/admin-auth';
+import { ALLOWED_REGIONS, catalogKey } from '@/lib/regions';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
-    const freeRaw = await kv.get('full_free_catalog');
-    const premiumRaw = await kv.get('full_premium_catalog');
+    const regions: Record<string, { free: number; premium: number; freeSample: { id: number; title: string; year?: number }[] }> = {};
+    let totalFree = 0;
+    let totalPremium = 0;
 
-    const freeCount = Array.isArray(freeRaw) ? freeRaw.length : 0;
-    const premiumCount = Array.isArray(premiumRaw) ? premiumRaw.length : 0;
-    const totalTitles = freeCount + premiumCount;
+    for (const region of ALLOWED_REGIONS) {
+      const freeRaw = await kv.get(catalogKey(false, region));
+      const premiumRaw = await kv.get(catalogKey(true, region));
+      const free = Array.isArray(freeRaw) ? freeRaw : [];
+      const premium = Array.isArray(premiumRaw) ? premiumRaw : [];
+      totalFree += free.length;
+      totalPremium += premium.length;
+      regions[region] = {
+        free: free.length,
+        premium: premium.length,
+        freeSample: free.slice(0, 3).map((t: { id: number; title: string; year?: number }) => ({
+          id: t.id,
+          title: t.title,
+          year: t.year,
+        })),
+      };
+    }
 
     const lastRefreshRaw = await kv.get('lastFullRefresh');
     let lastRefreshDate = 'never';
@@ -17,36 +40,17 @@ export async function GET() {
       if (!isNaN(ts)) lastRefreshDate = new Date(ts).toISOString();
     }
 
-    // === DAILY WATCHMODE CALL COUNTER ===
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const dailyKey = `daily_calls:${today}`;
-    let dailyCalls = await kv.get<number>(dailyKey) || 0;
-
-    // Show 3 sample titles
-    const freeSample = Array.isArray(freeRaw) && freeRaw.length > 0
-      ? freeRaw.slice(0, 3).map((t: any) => ({ id: t.id, title: t.title, year: t.year }))
-      : [];
-
-    const premiumSample = Array.isArray(premiumRaw) && premiumRaw.length > 0
-      ? premiumRaw.slice(0, 3).map((t: any) => ({ id: t.id, title: t.title, year: t.year }))
-      : [];
-
     return NextResponse.json({
-      status: "✅ SNAPSHOT CHECK",
-      freeTitlesSaved: freeCount,
-      premiumTitlesSaved: premiumCount,
-      totalTitlesSaved: totalTitles,
+      status: 'SNAPSHOT CHECK',
+      catalogKeys: 'free_catalog:{region} / premium_catalog:{region}',
+      regions,
+      totalFree,
+      totalPremium,
       lastFullRefresh: lastRefreshDate,
-      todayWatchmodeCalls: dailyCalls,
-      expectedFor60Pages: "≈15,000+ total titles (60 pages each)",
-      freeSampleTitles: freeSample,
-      premiumSampleTitles: premiumSample,
-      note: "This is what is actually stored in cache. Refresh still uses 0 extra calls here.",
-      advice: freeCount > 10000
-        ? "✅ Catalog looks healthy!"
-        : "Run the full refresh link if numbers are low"
+      advice: totalFree > 1000 ? 'Catalog looks healthy' : 'Run a full refresh if numbers are low',
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'KV read failed' }, { status: 500 });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'KV read failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

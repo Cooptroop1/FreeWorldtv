@@ -1,37 +1,39 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
+import { isAdminRequest } from '@/lib/admin-auth';
+import { ALLOWED_REGIONS, CACHE_TTL_SECONDS, catalogKey } from '@/lib/regions';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const secret = searchParams.get('secret');
-  if (secret !== process.env.REFRESH_SECRET) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
 
-  const freeRaw = await kv.get('full_free_catalog');
-  const premiumRaw = await kv.get('full_premium_catalog');
+  const results: Record<string, { beforeFree: number; afterFree: number; beforePremium: number; afterPremium: number }> = {};
 
-  const free: any[] = Array.isArray(freeRaw) ? freeRaw : [];
-  const premium: any[] = Array.isArray(premiumRaw) ? premiumRaw : [];
+  for (const region of ALLOWED_REGIONS) {
+    for (const paid of [false, true]) {
+      const key = catalogKey(paid, region);
+      const raw = await kv.get<{ id: number }[]>(key);
+      const list = Array.isArray(raw) ? raw : [];
+      const seen = new Set<number>();
+      const clean = list.filter((t) => t?.id && !seen.has(t.id) && seen.add(t.id));
+      if (clean.length !== list.length) {
+        await kv.set(key, clean, { ex: CACHE_TTL_SECONDS });
+      }
+      if (!results[region]) {
+        results[region] = { beforeFree: 0, afterFree: 0, beforePremium: 0, afterPremium: 0 };
+      }
+      if (paid) {
+        results[region].beforePremium = list.length;
+        results[region].afterPremium = clean.length;
+      } else {
+        results[region].beforeFree = list.length;
+        results[region].afterFree = clean.length;
+      }
+    }
+  }
 
-  const freeIds = new Set();
-  const premiumIds = new Set();
-
-  const cleanFree = free.filter(t => !freeIds.has(t.id) && freeIds.add(t.id));
-  const cleanPremium = premium.filter(t => !premiumIds.has(t.id) && premiumIds.add(t.id));
-
-  const removedFree = free.length - cleanFree.length;
-  const removedPremium = premium.length - cleanPremium.length;
-
-  await kv.set('full_free_catalog', cleanFree, { ex: 86400 * 30 });
-  await kv.set('full_premium_catalog', cleanPremium, { ex: 86400 * 30 });
-
-  return NextResponse.json({
-    success: true,
-    beforeFree: free.length,
-    beforePremium: premium.length,
-    afterFree: cleanFree.length,
-    afterPremium: cleanPremium.length,
-    removedFree,
-    removedPremium,
-    message: `Duplicates removed: ${removedFree} free + ${removedPremium} premium. Now clean!`
-  });
+  return NextResponse.json({ success: true, results });
 }

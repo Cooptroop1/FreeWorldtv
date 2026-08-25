@@ -1,40 +1,33 @@
 import { NextResponse } from 'next/server';
-import { WatchmodeClient } from '@watchmode/api-client';
+import { kv } from '@vercel/kv';
+import { catalogKey, isAllowedRegion } from '@/lib/regions';
 
-const client = new WatchmodeClient({
-  apiKey: process.env.WATCHMODE_API_KEY || '',
-});
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const region = searchParams.get('region') || 'US';
-  const page = parseInt(searchParams.get('page') || '1', 10);
+  const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
+  const page = Math.min(Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1), 50);
   const contentType = searchParams.get('type') || 'movie,tv_series';
 
-  try {
-    const listResult = await client.title.list({
-      regions: region,
-      sourceTypes: 'free',
-      sortBy: 'popularity_desc',
-      page: page,
-      limit: 20,
-      types: contentType,
-    });
-
-    return NextResponse.json({ 
-      success: true,
-      region,
-      page,
-      titles: listResult.data?.titles || [],
-      totalPages: listResult.data?.total_pages || 1,
-      totalResults: listResult.data?.total_results || (listResult.data?.titles?.length || 0),
-      message: `Found ${listResult.data?.titles?.length || 0} popular free titles (${contentType}) in ${region}`
-    });
-  } catch (error: any) {
-    console.error('Popular-free error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message 
-    }, { status: 500 });
+  if (!isAllowedRegion(regionRaw)) {
+    return NextResponse.json({ success: false, error: 'Unsupported region' }, { status: 400 });
   }
+
+  let titles = ((await kv.get<{ type?: string; popularity?: number }[]>(catalogKey(false, regionRaw))) || []);
+  if (contentType !== 'movie,tv_series') {
+    titles = titles.filter((t) => t.type === contentType);
+  }
+  titles = [...titles].sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+  const pageSize = 20;
+  const slice = titles.slice((page - 1) * pageSize, page * pageSize);
+
+  return NextResponse.json({
+    success: true,
+    region: regionRaw,
+    page,
+    titles: slice,
+    totalResults: titles.length,
+    message: 'Served from catalog cache (no live Watchmode call)',
+  });
 }
