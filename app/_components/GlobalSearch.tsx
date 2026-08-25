@@ -157,7 +157,6 @@ export default function GlobalSearch({
                       sizes="48px"
                       loading="lazy"
                       quality={75}
-                      quality={75}
                     />
                   ) : (
                     <div className="w-full h-full bg-zinc-800" />

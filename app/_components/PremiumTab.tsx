@@ -150,7 +150,6 @@ export default function PremiumTab({
               quality={75}
               priority={index < 3}
               loading={index < 3 ? "eager" : "lazy"}
-              quality={75}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600" /></div>

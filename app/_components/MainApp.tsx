@@ -952,7 +952,6 @@ const deduplicateSources = (sources: any[]) => {
                                       quality={75}
                                       priority={index < 3}
                                       loading={index < 3 ? "eager" : "lazy"}
-                                      quality={75}
                                     />
                                   ) : (
                               <div className="w-full h-full flex items-center justify-center">
@@ -1274,7 +1273,6 @@ const deduplicateSources = (sources: any[]) => {
                           quality={75}
                           priority={index < 3}
                           loading={index < 3 ? "eager" : "lazy"}
-                          quality={75}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -1675,9 +1673,8 @@ const deduplicateSources = (sources: any[]) => {
                               fill
                               className="object-cover group-hover:scale-105 transition-transform"
                               sizes="(max-width: 640px) 28vw, 128px"
-                              quality={80}
-                              loading="lazy"
                               quality={75}
+                              loading="lazy"
                             />
                           ) : (
                             <>
