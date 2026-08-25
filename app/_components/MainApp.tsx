@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Tv, Film, Radio, MonitorPlay, ChevronRight, ChevronDown, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
-import InstallPrompt from './InstallPrompt';
 import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
@@ -885,7 +884,6 @@ const deduplicateSources = (sources: any[]) => {
         </div>
       </header>
 
-      <InstallPrompt />
       <OfflineMessage />
 
             {/* DISCOVER TAB + CONTINUE WATCHING ROW (Netflix style) */}
