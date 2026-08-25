@@ -4,15 +4,14 @@ import { useEffect, useState } from 'react';
 import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-
-const STORAGE_KEY = 'fsw-cookie-consent';
+import { ADSENSE_CLIENT, CONSENT_EVENT, CONSENT_STORAGE_KEY } from '@/lib/ads';
 
 type Consent = { ads: boolean; analytics: boolean };
 
 function readConsent(): Consent | null {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(CONSENT_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (typeof parsed?.ads === 'boolean' && typeof parsed?.analytics === 'boolean') {
@@ -42,9 +41,10 @@ export function CookieConsent() {
   }, []);
 
   const save = (next: Consent) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...next, ts: Date.now() }));
+    localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify({ ...next, ts: Date.now() }));
     setConsent(next);
     setOpen(false);
+    window.dispatchEvent(new CustomEvent(CONSENT_EVENT, { detail: next }));
   };
 
   if (!ready) return null;
@@ -59,9 +59,21 @@ export function CookieConsent() {
       )}
       {consent?.ads && (
         <Script
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7060442609132196"
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
           strategy="lazyOnload"
           crossOrigin="anonymous"
+          onLoad={() => {
+            try {
+              const w = window as Window & { adsbygoogle?: unknown[] };
+              w.adsbygoogle = w.adsbygoogle || [];
+              w.adsbygoogle.push({
+                google_ad_client: ADSENSE_CLIENT,
+                enable_page_level_ads: true,
+              } as unknown);
+            } catch {
+              /* ignore */
+            }
+          }}
         />
       )}
 

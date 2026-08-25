@@ -5,6 +5,7 @@ import AuthHeader from './_components/AuthHeader';
 import { CookieConsent } from './_components/CookieConsent';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://freestreamworld.com'),
   title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio (Legal)',
   description: '100% legal free movies, TV shows, live channels and 50,000+ worldwide radio stations. Direct links to Tubi, Pluto TV, BBC iPlayer, ITVX and more. No sign-up needed.',
   keywords: ['free streaming', 'legal free movies', 'free TV shows', 'tubi', 'pluto tv', 'bbc iplayer', 'free live tv', 'free radio', 'internet radio', 'live radio stations', 'worldwide radio'],

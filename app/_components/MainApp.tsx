@@ -11,49 +11,38 @@ import { providerLogos } from '../../lib/provider-logos';
 import { isSafeHttpUrl } from '../../lib/safe-url';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import AdSlot from './AdSlot';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
 // === IMPROVED FREE LIVE TV (Watchmode-powered) ===
 const liveChannels = [
-  // UK Live & Catch-up (your favorites — kept)
   { id: 1, name: 'BBC iPlayer', category: 'UK Live & Catch-up', officialUrl: 'https://www.bbc.co.uk/iplayer' },
   { id: 2, name: 'ITVX', category: 'UK Live & Catch-up', officialUrl: 'https://www.itv.com/watch' },
   { id: 3, name: 'Channel 4', category: 'UK Live & Catch-up', officialUrl: 'https://www.channel4.com' },
   { id: 4, name: 'My5', category: 'UK Live & Catch-up', officialUrl: 'https://www.my5.tv' },
-  { id: 5, name: 'UKTV Play', category: 'UK Live & Catch-up', officialUrl: 'https://www.uktvplay.co.uk' },
+  { id: 5, name: 'UKTV Play', category: 'UK Live & Catch-up', officialUrl: 'https://uktvplay.co.uk' },
+  { id: 6, name: 'STV Player', category: 'UK Live & Catch-up', officialUrl: 'https://player.stv.tv' },
+  { id: 7, name: 'S4C Clic', category: 'UK Live & Catch-up', officialUrl: 'https://www.s4c.cymru/clic' },
+  { id: 8, name: 'BBC News', category: 'UK News', officialUrl: 'https://www.bbc.co.uk/news' },
+  { id: 9, name: 'Sky News', category: 'UK News', officialUrl: 'https://news.sky.com/watch-live' },
+  { id: 10, name: 'Together TV', category: 'UK Live', officialUrl: 'https://www.togethertv.com' },
 ];
 
 const freeWorldwideServices = [
-  { name: 'Tubi TV', officialUrl: 'https://tubitv.com' },
   { name: 'Pluto TV', officialUrl: 'https://pluto.tv' },
-  { name: 'Amazon Freevee', officialUrl: 'https://www.amazon.com/gp/video/storefront/' },
-  { name: 'Peacock', officialUrl: 'https://www.peacocktv.com' },
+  { name: 'Tubi TV', officialUrl: 'https://tubitv.com' },
+  { name: 'Amazon Freevee', officialUrl: 'https://www.amazon.co.uk/gp/video/storefront/' },
+  { name: 'Rakuten TV', officialUrl: 'https://rakuten.tv' },
+  { name: 'Plex', officialUrl: 'https://watch.plex.tv' },
+  { name: 'Fawesome', officialUrl: 'https://fawesome.tv' },
   { name: 'Roku Channel', officialUrl: 'https://therokuchannel.roku.com' },
   { name: 'CBC Gem', officialUrl: 'https://gem.cbc.ca' },
-  { name: 'MAX Free', officialUrl: 'https://www.max.com' },
-  { name: 'All 4', officialUrl: 'https://www.channel4.com' },
-  { name: 'Fawesome', officialUrl: 'https://fawesome.tv' },
-  { name: 'YouTube Premium Free Tier', officialUrl: 'https://www.youtube.com' },
-  { name: 'Plex', officialUrl: 'https://www.plex.tv' },
   { name: 'PBS', officialUrl: 'https://www.pbs.org' },
-  { name: 'Syfy', officialUrl: 'https://www.syfy.com' },
+  { name: 'YouTube', officialUrl: 'https://www.youtube.com' },
+  { name: 'Crunchyroll', officialUrl: 'https://www.crunchyroll.com' },
   { name: '7plus', officialUrl: 'https://7plus.com.au' },
   { name: '9Now', officialUrl: 'https://www.9now.com.au' },
-  { name: 'Crunchyroll', officialUrl: 'https://www.crunchyroll.com' },
-  { name: 'Popcornflix', officialUrl: 'https://www.popcornflix.com' },
-  { name: 'Shout! Factory TV', officialUrl: 'https://www.shoutfactorytv.com' },
-  { name: 'South Park Studios', officialUrl: 'https://southpark.cc.com' },
-  // ... and all the others you listed — I included the main ones for brevity
-];
-
-const genres = [
-  { id: 28, name: 'Action' }, { id: 12, name: 'Adventure' }, { id: 16, name: 'Animation' },
-  { id: 35, name: 'Comedy' }, { id: 80, name: 'Crime' }, { id: 99, name: 'Documentary' },
-  { id: 18, name: 'Drama' }, { id: 10751, name: 'Family' }, { id: 14, name: 'Fantasy' },
-  { id: 36, name: 'History' }, { id: 27, name: 'Horror' }, { id: 10402, name: 'Music' },
-  { id: 9648, name: 'Mystery' }, { id: 10749, name: 'Romance' }, { id: 878, name: 'Science Fiction' },
-  { id: 53, name: 'Thriller' }, { id: 10752, name: 'War' }, { id: 37, name: 'Western' },
 ];
 
 export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' }) {
@@ -77,7 +66,6 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [newLinkUrl, setNewLinkUrl] = useState('');
   const [allProviders, setAllProviders] = useState<any[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedGenresFilter, setSelectedGenresFilter] = useState<number[]>([]);
   const [minYearFilter, setMinYearFilter] = useState('');
   const [maxYearFilter, setMaxYearFilter] = useState('');
   const [minRatingFilter, setMinRatingFilter] = useState(0);
@@ -657,14 +645,6 @@ useEffect(() => {
     setSelectedTitle(sourceList[randomIndex]);
   };
 
-  const toggleGenreFilter = (genreId: number) => {
-    if (selectedGenresFilter.includes(genreId)) {
-      setSelectedGenresFilter(selectedGenresFilter.filter(id => id !== genreId));
-    } else {
-      setSelectedGenresFilter([...selectedGenresFilter, genreId]);
-    }
-  };
-
   const getProviderLogo = (sourceName: string) => {
   if (!sourceName) {
     return { logoUrl: null, initials: '??', color: 'from-gray-500 to-gray-600' };
@@ -771,6 +751,7 @@ const deduplicateSources = (sources: any[]) => {
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
+        <AdSlot className="mb-6" />
 
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
@@ -1447,6 +1428,11 @@ const deduplicateSources = (sources: any[]) => {
                   <h2 className="text-2xl md:text-3xl font-bold pr-10">
                     {selectedTitle.title} ({selectedTitle.year})
                   </h2>
+                  {selectedTitle.id && (
+                    <a href={`/title/${selectedTitle.id}`} className="text-xs text-blue-400 hover:underline mt-1 inline-block">
+                      Open title page
+                    </a>
+                  )}
 
                   {/* TMDB Score */}
                   {tmdbDetails?.vote_average && (
@@ -1502,6 +1488,7 @@ const deduplicateSources = (sources: any[]) => {
                   </p>
                 </div>
               )}
+              <AdSlot className="mb-8" />
                             {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : paidSources.length > 0 || freeSources.length > 0 ? (

@@ -81,10 +81,13 @@ export default function HorizontalCarousel({
             items.map((item) => {
               const isFavorite = favorites.some((fav) => fav.id === item.id);
               return (
-                <button
+                <a
                   key={item.id}
-                  type="button"
-                  onClick={() => setSelectedTitle(item)}
+                  href={`/title/${item.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setSelectedTitle(item);
+                  }}
                   className="flex-shrink-0 w-40 snap-start cursor-pointer group text-left flex flex-col"
                   aria-label={`View details for ${item.title} (${item.year || ''})`}
                 >
@@ -105,11 +108,13 @@ export default function HorizontalCarousel({
                       role="button"
                       tabIndex={0}
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         toggleFavorite(item);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
+                          e.preventDefault();
                           e.stopPropagation();
                           toggleFavorite(item);
                         }
@@ -124,7 +129,7 @@ export default function HorizontalCarousel({
                     <p className="text-sm line-clamp-2 text-center text-gray-200 group-hover:text-white">{item.title}</p>
                     <p className="text-xs text-center text-gray-400">{item.year}</p>
                   </div>
-                </button>
+                </a>
               );
             })
           ) : (

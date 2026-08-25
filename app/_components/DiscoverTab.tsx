@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
 import Image from 'next/image';
 import { Film, Loader2, MonitorPlay, Heart, Filter, X } from 'lucide-react';
 import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 import HorizontalCarousel from './HorizontalCarousel';
+import AdSlot from './AdSlot';
 
 interface DiscoverTabProps {
   searchQuery: string;
@@ -41,6 +42,7 @@ function catalogUrl(opts: {
   maxYear?: string;
   minRating?: number;
   section?: string;
+  genre?: string;
 }) {
   const params = new URLSearchParams();
   params.set('region', opts.region);
@@ -51,8 +53,11 @@ function catalogUrl(opts: {
   if (opts.maxYear) params.set('toYear', opts.maxYear);
   if (opts.minRating) params.set('minRating', String(opts.minRating));
   if (opts.section) params.set('section', opts.section);
+  if (opts.genre) params.set('genre', opts.genre);
   return `/api/cached-fetch?${params.toString()}`;
 }
+
+const GENRE_OPTIONS = ['Action', 'Comedy', 'Drama', 'Horror', 'Thriller', 'Romance', 'Animation', 'Documentary', 'Crime', 'Family', 'Sci-Fi'];
 
 export default function DiscoverTab({
   searchQuery, setSearchQuery, debouncedSearch, region, contentType,
@@ -74,6 +79,8 @@ export default function DiscoverTab({
   const [trendingItems, setTrendingItems] = useState<any[]>([]);
   const [newReleasesItems, setNewReleasesItems] = useState<any[]>([]);
   const [carouselsLoading, setCarouselsLoading] = useState(false);
+  const [genreFilter, setGenreFilter] = useState('');
+  const [catalogEmpty, setCatalogEmpty] = useState(false);
 
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -104,6 +111,7 @@ export default function DiscoverTab({
       setPage(1);
       setHasMore(true);
       setIsUsingFallback(false);
+      setCatalogEmpty(false);
       try {
         const url = catalogUrl({
           region,
@@ -113,10 +121,12 @@ export default function DiscoverTab({
           minYear: minYearFilter,
           maxYear: maxYearFilter,
           minRating: minRatingFilter,
+          genre: genreFilter,
         });
         const res = await fetch(url);
         const json = await res.json();
         let newTitles: any[] = json.success && json.titles?.length ? json.titles : [];
+        if (json.catalogEmpty) setCatalogEmpty(true);
         if (newTitles.length === 0) {
           if (debouncedSearch) {
             newTitles = [];
@@ -137,7 +147,7 @@ export default function DiscoverTab({
       setLoading(false);
     };
     fetchData();
-  }, [debouncedSearch, region, contentType, minYearFilter, maxYearFilter, minRatingFilter, setLastUpdated]);
+  }, [debouncedSearch, region, contentType, minYearFilter, maxYearFilter, minRatingFilter, genreFilter, setLastUpdated]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || isUsingFallback) return;
@@ -151,6 +161,7 @@ export default function DiscoverTab({
         minYear: minYearFilter,
         maxYear: maxYearFilter,
         minRating: minRatingFilter,
+        genre: genreFilter,
       });
       const res = await fetch(url);
       const json = await res.json();
@@ -165,7 +176,7 @@ export default function DiscoverTab({
     } finally {
       setLoadingMore(false);
     }
-  }, [page, debouncedSearch, region, contentType, loadingMore, hasMore, isUsingFallback, minYearFilter, maxYearFilter, minRatingFilter]);
+  }, [page, debouncedSearch, region, contentType, loadingMore, hasMore, isUsingFallback, minYearFilter, maxYearFilter, minRatingFilter, genreFilter]);
 
   useEffect(() => {
     if (observerRef.current) observerRef.current.disconnect();
@@ -291,6 +302,7 @@ export default function DiscoverTab({
     setMaxYearFilter('');
     setMinRatingFilter(0);
     setContentType('movie,tv_series');
+    setGenreFilter('');
   };
 
   const MovieCardSkeleton = () => (
@@ -508,6 +520,28 @@ export default function DiscoverTab({
                     </select>
                   </label>
                 </div>
+                <div>
+                  <p className="text-sm text-gray-400 mb-3">Genre</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setGenreFilter('')}
+                      className={`px-4 py-2 rounded-2xl text-sm ${genreFilter === '' ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    >
+                      All
+                    </button>
+                    {GENRE_OPTIONS.map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setGenreFilter(g)}
+                        className={`px-4 py-2 rounded-2xl text-sm ${genreFilter === g ? 'bg-white text-black' : 'bg-gray-700 hover:bg-gray-600'}`}
+                      >
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -517,6 +551,12 @@ export default function DiscoverTab({
               <MonitorPlay className="text-green-400" size={32} /> All Free Titles
             </h3>
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
+            {catalogEmpty && (
+              <p className="text-center text-sm text-amber-300 mb-4">
+                The full {region} catalogue is still warming up. Showing classic public-domain titles until the daily refresh finishes.
+              </p>
+            )}
+            <AdSlot className="mb-8" />
 
             <div aria-live="polite" className="text-gray-400 mb-8 text-lg">
               {loading ? 'Searching free titles...' : `Found ${filteredTitles.length} titles • Scroll for more`}
@@ -528,11 +568,11 @@ export default function DiscoverTab({
               ) : (
                 filteredTitles.map((title: any, index: number) => {
                   const isFavorite = favorites.some((fav) => fav.id === title.id);
-                  const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
+                  const shareUrl = `https://freestreamworld.com/title/${title.id}`;
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
                   return (
+                    <Fragment key={`${title.id}-${index}`}>
                     <button
-                      key={`${title.id}-${index}`}
                       onClick={() => setSelectedTitle(title)}
                       className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative flex flex-col h-full text-left"
                       aria-label={`View free sources for ${title.title} (${title.year})`}
@@ -575,6 +615,12 @@ export default function DiscoverTab({
                         </span>
                       </div>
                     </button>
+                    {(index + 1) % 12 === 0 && (
+                      <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-5 xl:col-span-6">
+                        <AdSlot />
+                      </div>
+                    )}
+                    </Fragment>
                   );
                 })
               )}

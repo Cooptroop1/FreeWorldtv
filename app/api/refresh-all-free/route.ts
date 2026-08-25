@@ -52,7 +52,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get('mode') || 'full';
-  const regionRaw = (searchParams.get('region') || 'US').toUpperCase();
+  const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
   if (!isAllowedRegion(regionRaw)) {
     return NextResponse.json({ error: 'Unsupported region' }, { status: 400 });
   }
