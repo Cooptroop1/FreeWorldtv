@@ -1,50 +1,31 @@
 import { NextResponse } from 'next/server';
-import { WatchmodeClient } from '@watchmode/api-client';
+import { kv } from '@vercel/kv';
+import { catalogKey, isAllowedRegion } from '@/lib/regions';
 
-const client = new WatchmodeClient({
-  apiKey: process.env.WATCHMODE_API_KEY || '',
-});
+export const dynamic = 'force-dynamic';
 
+// Cache-only search. Never calls Watchmode (the old version did 1+N live API calls).
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('query')?.trim();
-  const region = searchParams.get('region') || 'US';
+  const query = searchParams.get('query')?.trim().slice(0, 80);
+  const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
+  const paid = searchParams.get('paid') === 'true';
 
   if (!query) {
     return NextResponse.json({ success: false, error: 'Missing search query' }, { status: 400 });
   }
-
-  try {
-    // Search by name (no limit/page - Watchmode returns up to ~50 results)
-    const searchResult = await client.search.byName(query);
-
-    // Filter to only free titles
-    const freeTitles = [];
-    const titlesToCheck = Array.isArray(searchResult.data) ? searchResult.data : [];
-
-    for (const title of titlesToCheck) {
-      try {
-        const sourcesResult = await client.title.getSources(title.id, { regions: region });
-        const sources = sourcesResult.data || [];
-        const hasFree = sources.some((s: any) => 
-          s.type === 'free' || s.price === 0 || s.free_with_ads === true
-        );
-        if (hasFree) {
-          freeTitles.push(title);
-        }
-      } catch (err) {
-        // Skip if source fetch fails
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      titles: freeTitles,
-      totalResults: freeTitles.length,
-      message: `Found ${freeTitles.length} free matches for "${query}" in ${region}`,
-    });
-  } catch (error: any) {
-    console.error('Search error:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Internal server error' }, { status: 500 });
+  if (!isAllowedRegion(regionRaw)) {
+    return NextResponse.json({ success: false, error: 'Unsupported region' }, { status: 400 });
   }
+
+  const catalog = (await kv.get<{ id: number; title: string }[]>(catalogKey(paid, regionRaw))) || [];
+  const q = query.toLowerCase();
+  const titles = catalog.filter((t) => t.title?.toLowerCase().includes(q)).slice(0, 50);
+
+  return NextResponse.json({
+    success: true,
+    titles,
+    totalResults: titles.length,
+    message: `Found ${titles.length} matches for "${query}" in ${regionRaw} catalog`,
+  });
 }

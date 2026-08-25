@@ -1,25 +1,26 @@
 import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
+import { isAdminRequest } from '@/lib/admin-auth';
 
-export async function GET() {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
+  if (!isAdminRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const lastRefreshRaw = await kv.get('lastFullRefresh');
-    const lastRefresh = typeof lastRefreshRaw === 'number'
-      ? lastRefreshRaw
-      : (Number(lastRefreshRaw) || 0);
-
+    const lastRefresh = typeof lastRefreshRaw === 'number' ? lastRefreshRaw : Number(lastRefreshRaw) || 0;
     const now = Date.now();
-    const daysSince = ((now - lastRefresh) / (1000 * 60 * 60 * 24)).toFixed(2);
-    const daysUntilNext = (30 - parseFloat(daysSince)).toFixed(2);   // ← changed to 30
+    const daysSince = lastRefresh > 0 ? ((now - lastRefresh) / 86400000).toFixed(2) : 'never';
 
     return NextResponse.json({
       lastFullRefresh: lastRefresh > 0 ? new Date(lastRefresh).toISOString() : 'never',
       daysSinceLastFullRefresh: daysSince,
-      daysUntilNextFullSnapshot: daysUntilNext,
-      nextFullSnapshotApprox: new Date(now + (parseFloat(daysUntilNext) * 86400000)).toISOString(),
-      message: "Debug from KV — 30-day full refresh cycle (matches production)"
+      message: 'Reads lastFullRefresh from KV. Catalog keys are free_catalog:{region}.',
     });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: 'KV read failed' }, { status: 500 });
   }
 }

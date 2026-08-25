@@ -1,6 +1,6 @@
 {
-  "name": "my-free-tv-app",
-  "version": "0.1.0",
+  "name": "freestream-world",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",

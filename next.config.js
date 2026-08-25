@@ -9,15 +9,12 @@ const nextConfig = {
       },
     ],
     formats: ['image/avif', 'image/webp'],
-    qualities: [75, 85],                    // ← Required in Next.js 16
-    minimumCacheTTL: 60 * 60 * 24 * 30,     // 30 days
-
-    // Smarter responsive sizes (cuts image sizes dramatically)
+    qualities: [75, 85],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 
-  // Long-term cache for all optimized images (kills the cache warning)
   async headers() {
     return [
       {
@@ -27,6 +24,15 @@ const nextConfig = {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable',
           },
+        ],
+      },
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
     ];

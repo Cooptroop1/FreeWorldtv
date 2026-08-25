@@ -1,50 +1,54 @@
+import type { Metadata } from 'next';
+import { CookieSettingsLink } from '../_components/CookieConsent';
+
+export const metadata: Metadata = {
+  title: 'Terms of Service | FreeStream World',
+  description: 'Terms of use for FreeStream World, a legal streaming discovery directory.',
+};
+
 export default function TermsOfService() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-12">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-12">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
-        <p className="text-gray-300 mb-6">Last updated: February 24, 2026</p>
+        <p className="text-gray-300 mb-6">Last updated: 25 August 2026</p>
 
-        <div className="prose prose-invert max-w-none space-y-6">
+        <div className="space-y-6 text-gray-300 leading-relaxed">
           <p>
-            Welcome to FreeStream World ("we", "us", or "our"). By accessing or using https://freestreamworld.com (the "Site"), you agree to be bound by these Terms of Service ("Terms").
-            If you do not agree, do not use the Site.
+            By using https://freestreamworld.com you agree to these terms. If you do not agree, do not use the site.
           </p>
 
-          <h2 className="text-2xl font-semibold">1. Use of the Site</h2>
+          <h2 className="text-2xl font-semibold text-white">1. What this site is</h2>
           <ul className="list-disc pl-6 space-y-2">
-            <li>The Site is a directory that links to publicly available free streaming content from third-party services (Tubi, Pluto TV, Freevee, BBC iPlayer, etc.).</li>
-            <li>We do not host, stream, or own any video content.</li>
-            <li>All content belongs to its respective owners. We are not responsible for the availability, quality, or legality of third-party streams.</li>
+            <li>FreeStream World is a directory of links to official, legal streaming services (for example Tubi, Pluto TV, BBC iPlayer, ITVX).</li>
+            <li>We do not host, stream, embed or control any video playback.</li>
+            <li>Availability, geo-restrictions, TV licences and account requirements are the responsibility of the original provider.</li>
           </ul>
 
-          <h2 className="text-2xl font-semibold">2. User-Generated Content (Custom Links)</h2>
+          <h2 className="text-2xl font-semibold text-white">2. Accounts</h2>
+          <p>An account is optional. It is only needed if you want favourites and continue-watching to sync across devices. You must keep your login details safe.</p>
+
+          <h2 className="text-2xl font-semibold text-white">3. My Links (user-added streams)</h2>
           <ul className="list-disc pl-6 space-y-2">
-            <li>Users may add their own stream URLs in the "My Links" section. These links are stored locally in your browser only.</li>
-            <li>You are solely responsible for the legality of any links you add. Do not add copyrighted or illegal streams.</li>
-            <li>We do not review, approve, or endorse user-added links.</li>
+            <li>Custom stream URLs are stored in your browser only unless you later choose to sync them.</li>
+            <li>You are solely responsible for any URL you add. Do not add pirated or illegal streams.</li>
+            <li>We do not review or endorse user-added links.</li>
           </ul>
 
-          <h2 className="text-2xl font-semibold">3. Ads & Third-Party Services</h2>
-          <p>We may display advertisements (including Google AdSense). Third-party services (Watchmode, TMDB, Google) may collect anonymized data per their policies.</p>
+          <h2 className="text-2xl font-semibold text-white">4. Ads</h2>
+          <p>We may show Google AdSense ads if you consent to advertising cookies. Ads are provided by Google, not by us.</p>
 
-          <h2 className="text-2xl font-semibold">4. Intellectual Property</h2>
-          <p>All trademarks, logos, and content on the Site belong to their owners. You may not copy or reproduce Site content without permission.</p>
+          <h2 className="text-2xl font-semibold text-white">5. Intellectual property</h2>
+          <p>Title names, posters and trademarks belong to their owners. TMDB data is used under TMDB's terms. This site is not endorsed by TMDB, Watchmode or any streaming service.</p>
 
-          <h2 className="text-2xl font-semibold">5. Disclaimer & Limitation of Liability</h2>
-          <p>The Site is provided "as is" without warranties. We are not liable for any damages arising from use of the Site or third-party streams, including but not limited to data loss, malware, or legal issues from user-added links.</p>
+          <h2 className="text-2xl font-semibold text-white">6. Disclaimer</h2>
+          <p>The site is provided "as is". We are not liable for third-party outages, geo-blocks, or anything you do with user-added links.</p>
 
-          <h2 className="text-2xl font-semibold">6. Changes to Terms</h2>
-          <p>We may update these Terms. Continued use after changes constitutes acceptance.</p>
-
-          <h2 className="text-2xl font-semibold">7. Governing Law</h2>
-          <p>These Terms are governed by the laws of [your country/state, e.g. United States].</p>
-
-          <p className="mt-8 text-sm text-gray-500">
-            This is a basic Terms of Service generated for informational purposes. For legal advice, consult a professional.
-          </p>
+          <h2 className="text-2xl font-semibold text-white">7. Governing law</h2>
+          <p>These terms are governed by the laws of England and Wales. The courts of England and Wales have exclusive jurisdiction.</p>
+          <p className="mt-6"><CookieSettingsLink /></p>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

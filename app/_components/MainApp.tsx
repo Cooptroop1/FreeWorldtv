@@ -1,5 +1,4 @@
 'use client';
-import Hls from 'hls.js';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Tv, Film, Radio, MonitorPlay, ChevronRight, ChevronDown, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
@@ -9,7 +8,8 @@ import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
 import PremiumTab from './PremiumTab'; 
-import { getWatchmodeId, providerLogos } from '../../lib/watchmode-map';
+import { providerLogos } from '../../lib/provider-logos';
+import { isSafeHttpUrl } from '../../lib/safe-url';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 
@@ -59,7 +59,7 @@ const genres = [
 
 export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' }) {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio'>(defaultTab);
-  const [region, setRegion] = useState('US');
+  const [region, setRegion] = useState('GB');
   const [contentType, setContentType] = useState('movie,tv_series');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -89,13 +89,38 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   // === FIXED CLOUD FAVORITES (no more random disappearing!) ===
   const loadFavorites = async () => {
     if (!isSignedIn || !user?.id) {
-      setFavorites([]);
+      try {
+        const saved = localStorage.getItem('favorites');
+        setFavorites(saved ? JSON.parse(saved) : []);
+      } catch {
+        setFavorites([]);
+      }
       return;
     }
     try {
       const res = await fetch('/api/favorites');
       const data = await res.json();
-      setFavorites(data.favorites || []);
+      const cloud = data.favorites || [];
+      let local: any[] = [];
+      try {
+        local = JSON.parse(localStorage.getItem('favorites') || '[]');
+      } catch {
+        local = [];
+      }
+      const map = new Map();
+      [...local, ...cloud].forEach((t: any) => {
+        if (t?.id) map.set(t.id, t);
+      });
+      const merged = Array.from(map.values());
+      setFavorites(merged);
+      if (local.length) {
+        await fetch('/api/favorites', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ favorites: merged }),
+        });
+        localStorage.removeItem('favorites');
+      }
     } catch (err) {
       console.error("Failed to load favorites", err);
     }
@@ -116,7 +141,12 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     // === CLOUD CONTINUE WATCHING (Netflix style – last 20 titles, auto-saves) ===
   const loadContinueWatching = async () => {
     if (!isSignedIn || !user?.id) {
-      setContinueWatching([]);
+      try {
+        const saved = localStorage.getItem('continueWatching');
+        setContinueWatching(saved ? JSON.parse(saved) : []);
+      } catch {
+        setContinueWatching([]);
+      }
       return;
     }
     try {
@@ -143,12 +173,14 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
       const filtered = prev.filter((item: any) => item.id !== title.id);
       const updated = [newItem, ...filtered].slice(0, 20);
 
-      // Save to Vercel KV instantly
-      fetch('/api/continue-watching', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ continueWatching: updated })
-      });
+      if (user) {
+        fetch('/api/continue-watching', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ continueWatching: updated })
+        });
+      }
+      try { localStorage.setItem('continueWatching', JSON.stringify(updated)); } catch { /* ignore */ }
 
       return updated;
     });
@@ -165,12 +197,14 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     setContinueWatching(prev => {
       const updated = prev.filter((item: any) => item.id !== id);
 
-      // Save to Vercel KV instantly
-      fetch('/api/continue-watching', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ continueWatching: updated })
-      });
+      if (user) {
+        fetch('/api/continue-watching', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ continueWatching: updated })
+        });
+      }
+      try { localStorage.setItem('continueWatching', JSON.stringify(updated)); } catch { /* ignore */ }
 
       return updated;
     });
@@ -181,6 +215,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [radioLoading, setRadioLoading] = useState(false);
   const [selectedRadio, setSelectedRadio] = useState<any>(null);
   const [radioSearch, setRadioSearch] = useState('');
+  const [debouncedRadioSearch, setDebouncedRadioSearch] = useState('');
   const [radioFavorites, setRadioFavorites] = useState<any[]>([]);
   const [radioCountryCode, setRadioCountryCode] = useState('');
   const [showRadioFavorites, setShowRadioFavorites] = useState(false);
@@ -195,6 +230,21 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     // === CLEAN URL SUPPORT WITH NEXT.JS ROUTER ===
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const saved = localStorage.getItem('region');
+    if (saved) setRegion(saved);
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('title') || params.get('search') || params.get('q');
+    if (q) setSearchQuery(q);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('region', region);
+  }, [region]);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedRadioSearch(radioSearch.trim()), 400);
+    return () => clearTimeout(t);
+  }, [radioSearch]);
 
     const getTabFromPath = (path: string) => {
     switch (path) {
@@ -251,6 +301,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
       : [...favorites, title];
 
     setFavorites(newFavorites); // update immediately
+    try { localStorage.setItem('favorites', JSON.stringify(newFavorites)); } catch { /* ignore */ }
 
     // Only try to save if logged in
     if (isSignedIn && user?.id) {
@@ -267,7 +318,7 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   };
 
   const addCustomLink = () => {
-    if (newLinkName.trim() && newLinkUrl.trim().startsWith('http')) {
+    if (newLinkName.trim() && isSafeHttpUrl(newLinkUrl)) {
       setCustomLinks([...customLinks, { id: Date.now(), name: newLinkName.trim(), url: newLinkUrl.trim() }]);
       setNewLinkName('');
       setNewLinkUrl('');
@@ -362,9 +413,17 @@ useEffect(() => {
   const fetchSources = async () => {
     setSourcesLoading(true);
 
-    let watchmodeId = selectedTitle.id;
-    if (!watchmodeId && selectedTitle.tmdb_id) {
-      watchmodeId = await getWatchmodeId(selectedTitle.tmdb_id);
+    let watchmodeId = selectedTitle.needsWatchmodeLookup ? null : selectedTitle.id;
+    if ((!watchmodeId || selectedTitle.needsWatchmodeLookup) && selectedTitle.tmdb_id) {
+      try {
+        const mapRes = await fetch(`/api/watchmode-map?tmdb_id=${selectedTitle.tmdb_id}`);
+        if (mapRes.ok) {
+          const mapped = await mapRes.json();
+          watchmodeId = mapped.watchmodeId;
+        }
+      } catch {
+        watchmodeId = watchmodeId || null;
+      }
     }
     if (!watchmodeId) {
       setPaidSources([]);
@@ -409,8 +468,11 @@ useEffect(() => {
   if (!videoElement) return;
 
   let hls: any = null;
+  let cancelled = false;
 
   const loadStream = async () => {
+    const { default: Hls } = await import('hls.js');
+    if (cancelled) return;
     if (Hls.isSupported()) {
       hls = new Hls({
         maxBufferLength: 30,
@@ -427,6 +489,7 @@ useEffect(() => {
   loadStream();
 
   return () => {
+    cancelled = true;
     if (hls) {
       hls.destroy();
     }
@@ -471,8 +534,8 @@ useEffect(() => {
       try {
         let url = 'https://de1.api.radio-browser.info/json/stations/search?limit=120&order=votes&reverse=true&hidebroken=true';
         
-        if (radioSearch.trim()) {
-          url += `&name=${encodeURIComponent(radioSearch.trim())}`;
+        if (debouncedRadioSearch) {
+          url += `&name=${encodeURIComponent(debouncedRadioSearch)}`;
         }
         if (radioCountryCode) {
           url += `&countrycode=${radioCountryCode}`;
@@ -503,7 +566,7 @@ useEffect(() => {
       }
     };
     fetchRadio();
-  }, [tab, radioSearch, radioCountryCode]);
+  }, [tab, debouncedRadioSearch, radioCountryCode]);
   
   // === CLOUD RADIO FAVORITES (syncs across devices) ===
   useEffect(() => {
@@ -568,7 +631,17 @@ useEffect(() => {
   fetchPosters();
 }, [top10Titles, tab, TMDB_READ_TOKEN]);
 
-  const surpriseMe = () => {
+  const surpriseMe = async () => {
+    try {
+      const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&section=random`);
+      const json = await res.json();
+      if (json.success && json.titles?.[0]) {
+        setSelectedTitle(json.titles[0]);
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
     const sourceList = favorites.length > 0 ? favorites : staticFallbackTitles;
     if (sourceList.length === 0) {
       alert("No titles available yet – browse Discover first!");
@@ -687,7 +760,7 @@ const deduplicateSources = (sources: any[]) => {
   }, [tab, debouncedSearch, favorites.length]);
 
   return (
-        <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white pt-20 p-6 md:p-8">
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
       <header className="max-w-7xl mx-auto mb-10">
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
@@ -881,7 +954,7 @@ const deduplicateSources = (sources: any[]) => {
                                       quality={75}
                                       priority={index < 3}
                                       loading={index < 3 ? "eager" : "lazy"}
-                                      unoptimized={true}
+                                      quality={75}
                                     />
                                   ) : (
                               <div className="w-full h-full flex items-center justify-center">
@@ -1125,7 +1198,7 @@ const deduplicateSources = (sources: any[]) => {
             </div>
             <button
               onClick={addCustomLink}
-              disabled={!newLinkName.trim() || !newLinkUrl.trim().startsWith('http')}
+              disabled={!newLinkName.trim() || !isSafeHttpUrl(newLinkUrl)}
               className="mt-4 px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add Link
@@ -1203,7 +1276,7 @@ const deduplicateSources = (sources: any[]) => {
                           quality={75}
                           priority={index < 3}
                           loading={index < 3 ? "eager" : "lazy"}
-                          unoptimized={true}
+                          quality={75}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -1559,7 +1632,7 @@ const deduplicateSources = (sources: any[]) => {
                               className="object-cover"
                               loading="lazy"
                               sizes="(max-width: 640px) 20vw, 92px"
-                              unoptimized={true}
+                              quality={75}
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-700 flex items-center justify-center text-4xl">👤</div>
@@ -1590,7 +1663,8 @@ const deduplicateSources = (sources: any[]) => {
                             tmdb_id: rel.id,
                             tmdb_type: rel.media_type || (rel.title ? 'movie' : 'tv'),
                             poster_path: rel.poster_path,
-                            fromPremium: selectedTitle.fromPremium
+                            fromPremium: selectedTitle.fromPremium,
+                            needsWatchmodeLookup: true,
                           });
                         }}
                         className="snap-start flex-shrink-0 w-28 cursor-pointer group"
@@ -1605,7 +1679,7 @@ const deduplicateSources = (sources: any[]) => {
                               sizes="(max-width: 640px) 28vw, 128px"
                               quality={80}
                               loading="lazy"
-                              unoptimized={true}
+                              quality={75}
                             />
                           ) : (
                             <>
@@ -1668,10 +1742,11 @@ const deduplicateSources = (sources: any[]) => {
         <p className="mt-2">
           <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> |
           <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> |
-          <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a>
+          <a href="/terms" className="text-blue-400 hover:underline mx-2">Terms of Service</a> |
+          <button type="button" onClick={() => window.dispatchEvent(new Event('fsw:open-cookies'))} className="text-blue-400 hover:underline mx-2">Cookie settings</button>
         </p>
         <p className="mt-2">Powered by Watchmode & TMDB • Not affiliated with any streaming service.</p>
       </footer>
-    </main>
+    </div>
   );
 }

@@ -1,51 +1,78 @@
+import type { Metadata } from 'next';
+import { CookieSettingsLink } from '../_components/CookieConsent';
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy | FreeStream World',
+  description: 'How FreeStream World collects and uses data, including accounts, analytics and ads.',
+};
+
 export default function PrivacyPolicy() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-12">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-12">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
-        <p className="text-gray-300 mb-6">Last updated: February 24, 2026</p>
+        <p className="text-gray-300 mb-6">Last updated: 25 August 2026</p>
 
-        <div className="prose prose-invert max-w-none space-y-6">
+        <div className="space-y-6 text-gray-300 leading-relaxed">
           <p>
-            FreeStream World ("we", "us", or "our") operates https://freestreamworld.com (the "Site").
-            This Privacy Policy explains what information we collect, how we use it, and your rights.
+            FreeStream World ("we", "us") operates https://freestreamworld.com.
+            We are based in the United Kingdom. This policy explains what we collect and why.
           </p>
 
-          <h2 className="text-2xl font-semibold">1. Information We Collect</h2>
-          <p>We collect **no personal information** such as names, emails, or IP addresses unless you voluntarily provide it.</p>
+          <h2 className="text-2xl font-semibold text-white">1. Information we collect</h2>
           <ul className="list-disc pl-6 space-y-2">
-            <li>Local browser storage (localStorage) for your favorites and custom links (not sent to us)</li>
-            <li>Anonymous usage data from third-party APIs (Watchmode, TMDB) for titles and posters</li>
+            <li><strong>Account data</strong> if you sign in (name, email, user id) via Clerk.</li>
+            <li><strong>Saved lists</strong> (favourites, continue watching, radio favourites) stored against your account so they sync across devices.</li>
+            <li><strong>Local storage</strong> on your device for guest favourites, custom links, region choice and cookie preferences. Guest lists stay on your device unless you sign in.</li>
+            <li><strong>Usage analytics</strong> (Vercel Analytics / Speed Insights) only if you accept analytics cookies.</li>
+            <li><strong>Advertising data</strong> via Google AdSense only if you accept ads cookies.</li>
+            <li><strong>Title metadata</strong> requested from Watchmode and TMDB to show posters, plots and official watch links. We do not host video.</li>
           </ul>
 
-          <h2 className="text-2xl font-semibold">2. Third-Party Services & Ads</h2>
-          <p>We use:</p>
+          <h2 className="text-2xl font-semibold text-white">2. Legal bases (UK GDPR)</h2>
           <ul className="list-disc pl-6 space-y-2">
-            <li>Watchmode API — to find streaming sources</li>
-            <li>TMDB API — to display posters</li>
-            <li>Google AdSense (if enabled) — to display ads</li>
-          </ul>
-          <p>These services may collect anonymized data per their own policies. See:</p>
-          <ul className="list-disc pl-6">
-            <li>Watchmode: https://api.watchmode.com/privacy</li>
-            <li>TMDB: https://www.themoviedb.org/privacy-policy</li>
-            <li>Google AdSense: https://policies.google.com/privacy</li>
+            <li>Contract / legitimate interests — running the directory and optional accounts.</li>
+            <li>Consent — analytics and advertising cookies. You can change this any time via Cookie settings in the footer.</li>
           </ul>
 
-          <h2 className="text-2xl font-semibold">3. Cookies & Tracking</h2>
-          <p>We use minimal local storage for user preferences (favorites, custom links). No tracking cookies or analytics are used unless you enable ads.</p>
-
-          <h2 className="text-2xl font-semibold">4. Your Rights</h2>
-          <p>You can clear localStorage in your browser settings to remove saved favorites/links. We do not store or share personal data.</p>
-
-          <h2 className="text-2xl font-semibold">5. Changes</h2>
-          <p>We may update this policy. Check back for changes.</p>
-
-          <p className="mt-8 text-sm text-gray-500">
-            This is a basic policy generated for informational purposes. For legal advice, consult a professional.
+          <h2 className="text-2xl font-semibold text-white">3. Cookies</h2>
+          <p>
+            Strictly necessary cookies keep sign-in and security working. Analytics and advertising cookies are off until you opt in.
+            We do not sell your personal data.
           </p>
+
+          <h2 className="text-2xl font-semibold text-white">4. Third parties</h2>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>Clerk — authentication</li>
+            <li>Vercel — hosting, optional analytics</li>
+            <li>Watchmode — where titles can be watched</li>
+            <li>TMDB — posters, plots, trailers, cast</li>
+            <li>Google AdSense — ads, only with consent</li>
+            <li>radio-browser.info — public radio station directory</li>
+          </ul>
+          <p>
+            Their privacy policies apply to data they process:{' '}
+            <a className="text-blue-400 underline" href="https://clerk.com/privacy">Clerk</a>,{' '}
+            <a className="text-blue-400 underline" href="https://vercel.com/legal/privacy-policy">Vercel</a>,{' '}
+            <a className="text-blue-400 underline" href="https://www.themoviedb.org/privacy-policy">TMDB</a>,{' '}
+            <a className="text-blue-400 underline" href="https://policies.google.com/privacy">Google</a>.
+          </p>
+
+          <h2 className="text-2xl font-semibold text-white">5. Your rights</h2>
+          <p>
+            You can access, correct or delete account data by deleting your Clerk account or contacting us.
+            You can clear localStorage in your browser to remove guest favourites and custom links.
+            You may complain to the ICO (ico.org.uk) if you are unhappy with how we handle your data.
+          </p>
+
+          <h2 className="text-2xl font-semibold text-white">6. Retention</h2>
+          <p>Account lists are stored for up to 12 months of inactivity, then expire. Cookie choices stay on your device until you change them.</p>
+
+          <h2 className="text-2xl font-semibold text-white">7. Contact</h2>
+          <p>Questions about this policy: see <a className="text-blue-400 underline" href="/about">About</a>.</p>
+          <p className="mt-6"><CookieSettingsLink /></p>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
