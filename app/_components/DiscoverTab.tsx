@@ -84,7 +84,8 @@ export default function DiscoverTab({
 
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadLock = useRef(false);
+  const pageRef = useRef(1);
   const prevSearchRef = useRef(debouncedSearch);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -100,6 +101,7 @@ export default function DiscoverTab({
       prevSearchRef.current = debouncedSearch;
       setAllTitles([]);
       setPage(1);
+      pageRef.current = 1;
       setHasMore(true);
     }
   }, [debouncedSearch]);
@@ -109,6 +111,7 @@ export default function DiscoverTab({
       setLoading(true);
       setAllTitles([]);
       setPage(1);
+      pageRef.current = 1;
       setHasMore(true);
       setIsUsingFallback(false);
       setCatalogEmpty(false);
@@ -150,13 +153,15 @@ export default function DiscoverTab({
   }, [debouncedSearch, region, contentType, minYearFilter, maxYearFilter, minRatingFilter, genreFilter, setLastUpdated]);
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore || isUsingFallback) return;
+    if (loadLock.current || loading || !hasMore || isUsingFallback || pauseInfiniteScroll) return;
+    loadLock.current = true;
     setLoadingMore(true);
     try {
+      const nextPage = pageRef.current + 1;
       const url = catalogUrl({
         region,
         contentType,
-        page: page + 1,
+        page: nextPage,
         search: debouncedSearch,
         minYear: minYearFilter,
         maxYear: maxYearFilter,
@@ -167,30 +172,64 @@ export default function DiscoverTab({
       const json = await res.json();
       const newTitles = json.success && json.titles?.length ? json.titles : [];
       if (newTitles.length) {
-        setAllTitles((prev) => [...prev, ...newTitles]);
-        setPage((prev) => prev + 1);
+        setAllTitles((prev) => {
+          const seen = new Set(prev.map((t) => t.id));
+          return [...prev, ...newTitles.filter((t: any) => !seen.has(t.id))];
+        });
+        pageRef.current = nextPage;
+        setPage(nextPage);
       }
       setHasMore(Boolean(json.hasMore && newTitles.length));
     } catch {
       setHasMore(false);
     } finally {
       setLoadingMore(false);
+      loadLock.current = false;
     }
-  }, [page, debouncedSearch, region, contentType, loadingMore, hasMore, isUsingFallback, minYearFilter, maxYearFilter, minRatingFilter, genreFilter]);
+  }, [
+    loading,
+    hasMore,
+    isUsingFallback,
+    pauseInfiniteScroll,
+    region,
+    contentType,
+    debouncedSearch,
+    minYearFilter,
+    maxYearFilter,
+    minRatingFilter,
+    genreFilter,
+  ]);
 
+  const attachSentinel = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+      if (!node || !hasMore || loading || pauseInfiniteScroll) return;
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) loadMore();
+        },
+        { root: null, rootMargin: '900px 0px', threshold: 0 }
+      );
+      observerRef.current.observe(node);
+    },
+    [hasMore, loading, pauseInfiniteScroll, loadMore]
+  );
+
+  // Observer only fires when crossing the threshold. After a page loads the
+  // sentinel may still be on-screen — keep fetching until it is pushed down.
   useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfiniteScroll) {
-          loadMore();
-        }
-      },
-      { threshold: 0.5 }
-    );
-    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
-    return () => observerRef.current?.disconnect();
-  }, [loadMore, hasMore, loadingMore, loading, pauseInfiniteScroll]);
+    if (loading || loadingMore || !hasMore || pauseInfiniteScroll || isUsingFallback) return;
+    const id = window.setTimeout(() => {
+      const el = document.getElementById('discover-scroll-sentinel');
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      if (top < window.innerHeight + 900) loadMore();
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [allTitles.length, loading, loadingMore, hasMore, pauseInfiniteScroll, isUsingFallback, loadMore]);
 
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
@@ -628,12 +667,27 @@ export default function DiscoverTab({
 
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
 
-            {hasMore && (
-              <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12" aria-live="polite">
-                {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
-              </div>
-            )}
-            {!hasMore && <p className="text-center text-gray-400 py-12">End of results • Try a different search or filter</p>}
+            <div
+              id="discover-scroll-sentinel"
+              ref={attachSentinel}
+              className="min-h-24 flex flex-col items-center justify-center mt-12 gap-3"
+              aria-live="polite"
+            >
+              {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-blue-500" />}
+              {hasMore && !loading && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="px-6 py-2.5 rounded-2xl bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium disabled:opacity-50"
+                >
+                  {loadingMore ? 'Loading…' : 'Load more titles'}
+                </button>
+              )}
+              {!hasMore && !loading && (
+                <p className="text-center text-gray-400 py-8">End of results • Try a different search or filter</p>
+              )}
+            </div>
           </div>
         </section>
       )}

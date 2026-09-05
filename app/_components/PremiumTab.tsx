@@ -30,7 +30,8 @@ export default function PremiumTab({
   const [page, setPage] = useState(1);
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadLock = useRef(false);
+  const pageRef = useRef(1);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
   // Search state for Premium tab only
@@ -42,6 +43,7 @@ export default function PremiumTab({
       setLoading(true);
       setPremiumTitles([]);
       setPage(1);
+      pageRef.current = 1;
       setHasMore(true);
       try {
         const res = await fetch(
@@ -52,7 +54,7 @@ export default function PremiumTab({
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
           : [];
         setPremiumTitles(titles);
-        setHasMore(titles.length >= 48);
+        setHasMore(Boolean(json.hasMore));
       } catch (err) {
         console.error('Premium fetch failed:', err);
         setPremiumTitles([]);
@@ -65,40 +67,62 @@ export default function PremiumTab({
 
   // Load more (unchanged)
   const loadMore = useCallback(async () => {
-    if (loadingMore || !hasMore || pauseInfiniteScroll) return;
+    if (loadLock.current || loading || !hasMore || pauseInfiniteScroll) return;
+    loadLock.current = true;
     setLoadingMore(true);
     try {
+      const nextPage = pageRef.current + 1;
       const res = await fetch(
-        `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${page + 1}&paid=true`
+        `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${nextPage}&paid=true`
       );
       const json = await res.json();
       const newTitles = json.success && json.titles?.length
         ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
         : [];
-      setPremiumTitles(prev => [...prev, ...newTitles]);
-      setPage(prev => prev + 1);
-      setHasMore(newTitles.length >= 48);
+      if (newTitles.length) {
+        setPremiumTitles((prev) => {
+          const seen = new Set(prev.map((t) => t.id));
+          return [...prev, ...newTitles.filter((t: any) => !seen.has(t.id))];
+        });
+        pageRef.current = nextPage;
+        setPage(nextPage);
+      }
+      setHasMore(Boolean(json.hasMore && newTitles.length));
     } catch {
       setHasMore(false);
     } finally {
       setLoadingMore(false);
+      loadLock.current = false;
     }
-  }, [page, region, contentType, loadingMore, hasMore, pauseInfiniteScroll]);
+  }, [loading, hasMore, pauseInfiniteScroll, region, contentType]);
 
-  // Infinite scroll (unchanged)
+  const attachSentinel = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+      }
+      if (!node || !hasMore || loading || pauseInfiniteScroll) return;
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting) loadMore();
+        },
+        { root: null, rootMargin: '900px 0px', threshold: 0 }
+      );
+      observerRef.current.observe(node);
+    },
+    [hasMore, loading, pauseInfiniteScroll, loadMore]
+  );
+
   useEffect(() => {
-    if (observerRef.current) observerRef.current.disconnect();
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading && !pauseInfiniteScroll) {
-          loadMore();
-        }
-      },
-      { threshold: 0.5 }
-    );
-    if (sentinelRef.current) observerRef.current.observe(sentinelRef.current);
-    return () => observerRef.current?.disconnect();
-  }, [loadMore, hasMore, loadingMore, loading, pauseInfiniteScroll]);
+    if (loading || loadingMore || !hasMore || pauseInfiniteScroll) return;
+    const id = window.setTimeout(() => {
+      const el = document.getElementById('premium-scroll-sentinel');
+      if (!el) return;
+      if (el.getBoundingClientRect().top < window.innerHeight + 900) loadMore();
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [premiumTitles.length, loading, loadingMore, hasMore, pauseInfiniteScroll, loadMore]);
 
   // Poster enrichment (unchanged)
   useEffect(() => {
@@ -208,12 +232,26 @@ export default function PremiumTab({
           <div key={contentType} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
             {premiumTitles.map((title, index) => MovieCard(title, index))}
           </div>
-          {hasMore && (
-            <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-12">
-              {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-purple-500" />}
-            </div>
-          )}
-          {!hasMore && <p className="text-center text-gray-400 py-12">End of premium titles • Try changing region or content type</p>}
+          <div
+            id="premium-scroll-sentinel"
+            ref={attachSentinel}
+            className="min-h-24 flex flex-col items-center justify-center mt-12 gap-3"
+          >
+            {loadingMore && <Loader2 className="w-8 h-8 animate-spin text-purple-500" />}
+            {hasMore && !loading && (
+              <button
+                type="button"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-6 py-2.5 rounded-2xl bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium disabled:opacity-50"
+              >
+                {loadingMore ? 'Loading…' : 'Load more titles'}
+              </button>
+            )}
+            {!hasMore && (
+              <p className="text-center text-gray-400 py-8">End of premium titles • Try changing region or content type</p>
+            )}
+          </div>
         </>
       )}
     </section>
