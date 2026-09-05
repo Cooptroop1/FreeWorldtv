@@ -3,7 +3,7 @@ import { CookieSettingsLink } from '../_components/CookieConsent';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | FreeStream World',
-  description: 'How FreeStream World collects and uses data, including accounts, analytics and ads.',
+  description: 'How FreeStream World collects and uses data, including accounts and optional analytics.',
 };
 
 export default function PrivacyPolicy() {
@@ -25,19 +25,18 @@ export default function PrivacyPolicy() {
             <li><strong>Saved lists</strong> (favourites, continue watching, radio favourites) stored against your account so they sync across devices.</li>
             <li><strong>Local storage</strong> on your device for guest favourites, custom links, region choice and cookie preferences. Guest lists stay on your device unless you sign in.</li>
             <li><strong>Usage analytics</strong> (Vercel Analytics / Speed Insights) only if you accept analytics cookies.</li>
-            <li><strong>Advertising data</strong> via Google AdSense only if you accept ads cookies.</li>
             <li><strong>Title metadata</strong> requested from Watchmode and TMDB to show posters, plots and official watch links. We do not host video.</li>
           </ul>
 
           <h2 className="text-2xl font-semibold text-white">2. Legal bases (UK GDPR)</h2>
           <ul className="list-disc pl-6 space-y-2">
             <li>Contract / legitimate interests — running the directory and optional accounts.</li>
-            <li>Consent — analytics and advertising cookies. You can change this any time via Cookie settings in the footer.</li>
+            <li>Consent — optional analytics cookies. You can change this any time via Cookie settings in the footer.</li>
           </ul>
 
           <h2 className="text-2xl font-semibold text-white">3. Cookies</h2>
           <p>
-            Strictly necessary cookies keep sign-in and security working. Analytics and advertising cookies are off until you opt in.
+            Strictly necessary cookies keep sign-in and security working. Analytics cookies are off until you opt in.
             We do not sell your personal data.
           </p>
 
@@ -47,15 +46,13 @@ export default function PrivacyPolicy() {
             <li>Vercel — hosting, optional analytics</li>
             <li>Watchmode — where titles can be watched</li>
             <li>TMDB — posters, plots, trailers, cast</li>
-            <li>Google AdSense — ads, only with consent</li>
             <li>radio-browser.info — public radio station directory</li>
           </ul>
           <p>
             Their privacy policies apply to data they process:{' '}
             <a className="text-blue-400 underline" href="https://clerk.com/privacy">Clerk</a>,{' '}
             <a className="text-blue-400 underline" href="https://vercel.com/legal/privacy-policy">Vercel</a>,{' '}
-            <a className="text-blue-400 underline" href="https://www.themoviedb.org/privacy-policy">TMDB</a>,{' '}
-            <a className="text-blue-400 underline" href="https://policies.google.com/privacy">Google</a>.
+            <a className="text-blue-400 underline" href="https://www.themoviedb.org/privacy-policy">TMDB</a>.
           </p>
 
           <h2 className="text-2xl font-semibold text-white">5. Your rights</h2>

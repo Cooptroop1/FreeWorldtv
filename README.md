@@ -6,7 +6,7 @@ Links out to official free and subscription providers (Tubi, Pluto TV, BBC iPlay
 
 ## Stack
 
-Next.js 16 · Clerk · Vercel KV · Watchmode · TMDB · AdSense (consent-gated)
+Next.js 16 · Clerk · Vercel KV · Watchmode · TMDB
 
 ## Environment variables (Vercel)
 
@@ -16,7 +16,6 @@ Next.js 16 · Clerk · Vercel KV · Watchmode · TMDB · AdSense (consent-gated)
 - `KV_REST_API_URL` / `KV_REST_API_TOKEN`
 - Clerk keys (`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`)
 - `NEXT_PUBLIC_TMDB_READ_TOKEN` — used in the browser to enrich posters
-- `NEXT_PUBLIC_ADSENSE_SLOT` — optional AdSense display unit id
 
 ## Admin
 

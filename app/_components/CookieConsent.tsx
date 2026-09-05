@@ -1,12 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Script from 'next/script';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { ADSENSE_CLIENT, CONSENT_EVENT, CONSENT_STORAGE_KEY } from '@/lib/ads';
+import { CONSENT_EVENT, CONSENT_STORAGE_KEY } from '@/lib/ads';
 
-type Consent = { ads: boolean; analytics: boolean };
+type Consent = { analytics: boolean };
 
 function readConsent(): Consent | null {
   if (typeof window === 'undefined') return null;
@@ -14,8 +13,8 @@ function readConsent(): Consent | null {
     const raw = localStorage.getItem(CONSENT_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    if (typeof parsed?.ads === 'boolean' && typeof parsed?.analytics === 'boolean') {
-      return { ads: parsed.ads, analytics: parsed.analytics };
+    if (typeof parsed?.analytics === 'boolean') {
+      return { analytics: parsed.analytics };
     }
   } catch {
     /* ignore */
@@ -32,11 +31,11 @@ export function CookieConsent() {
     const saved = readConsent();
     setConsent(saved);
     setOpen(!saved);
-    setReady(true);
     const reopen = () => {
       setOpen(true);
     };
     window.addEventListener('fsw:open-cookies', reopen);
+    setReady(true);
     return () => window.removeEventListener('fsw:open-cookies', reopen);
   }, []);
 
@@ -57,25 +56,6 @@ export function CookieConsent() {
           <SpeedInsights />
         </>
       )}
-      {consent?.ads && (
-        <Script
-          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
-          strategy="lazyOnload"
-          crossOrigin="anonymous"
-          onLoad={() => {
-            try {
-              const w = window as Window & { adsbygoogle?: unknown[] };
-              w.adsbygoogle = w.adsbygoogle || [];
-              w.adsbygoogle.push({
-                google_ad_client: ADSENSE_CLIENT,
-                enable_page_level_ads: true,
-              } as unknown);
-            } catch {
-              /* ignore */
-            }
-          }}
-        />
-      )}
 
       {open && (
         <div className="fixed inset-x-0 bottom-0 z-[100000] p-4 md:p-6">
@@ -83,27 +63,21 @@ export function CookieConsent() {
             <h2 className="text-lg font-semibold mb-2">Cookies & privacy</h2>
             <p className="text-sm text-gray-300 mb-4 leading-relaxed">
               We use strictly necessary cookies to keep the site working (including sign-in if you use it).
-              Analytics and ads cookies are optional and only load if you accept them. See our{' '}
+              Optional analytics cookies only load if you accept them. See our{' '}
               <a href="/privacy" className="text-blue-400 underline">Privacy Policy</a>.
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
               <button
-                onClick={() => save({ ads: true, analytics: true })}
+                onClick={() => save({ analytics: true })}
                 className="flex-1 bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-4 py-2.5 text-sm font-medium"
               >
-                Accept all
+                Accept analytics
               </button>
               <button
-                onClick={() => save({ ads: false, analytics: false })}
+                onClick={() => save({ analytics: false })}
                 className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-4 py-2.5 text-sm font-medium"
               >
                 Necessary only
-              </button>
-              <button
-                onClick={() => save({ ads: false, analytics: true })}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-4 py-2.5 text-sm font-medium"
-              >
-                Analytics only
               </button>
             </div>
           </div>

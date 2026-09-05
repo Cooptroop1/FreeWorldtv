@@ -35,8 +35,8 @@ export default function TermsOfService() {
             <li>We do not review or endorse user-added links.</li>
           </ul>
 
-          <h2 className="text-2xl font-semibold text-white">4. Ads</h2>
-          <p>We may show Google AdSense ads if you consent to advertising cookies. Ads are provided by Google, not by us.</p>
+          <h2 className="text-2xl font-semibold text-white">4. Advertising</h2>
+          <p>We do not currently show third-party ads on FreeStream World.</p>
 
           <h2 className="text-2xl font-semibold text-white">5. Intellectual property</h2>
           <p>Title names, posters and trademarks belong to their owners. TMDB data is used under TMDB's terms. This site is not endorsed by TMDB, Watchmode or any streaming service.</p>

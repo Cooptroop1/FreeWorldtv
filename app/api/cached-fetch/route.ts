@@ -94,7 +94,11 @@ export async function GET(request: NextRequest) {
   const genre = searchParams.get('genre')?.trim().slice(0, 40) || null;
 
   const key = catalogKey(paid, region);
-  const catalog: Title[] = (await kv.get<Title[]>(key)) || [];
+  let catalog: Title[] = (await kv.get<Title[]>(key)) || [];
+  if (catalog.length === 0 && !paid) {
+    const previousRaw = await kv.get(previousCatalogKey(region));
+    catalog = Array.isArray(previousRaw) ? previousRaw : [];
+  }
   const catalogEmpty = catalog.length === 0;
 
   if (catalogEmpty) {

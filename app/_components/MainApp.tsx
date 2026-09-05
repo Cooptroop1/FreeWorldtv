@@ -2,16 +2,14 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Tv, Film, Radio, MonitorPlay, ChevronRight, ChevronDown, Search, Loader2, Plus, Trash2, Heart, Star, Shuffle, Filter } from 'lucide-react';
-import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
-import PremiumTab from './PremiumTab'; 
+import PremiumTab from './PremiumTab';
 import { providerLogos } from '../../lib/provider-logos';
 import { isSafeHttpUrl } from '../../lib/safe-url';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import AdSlot from './AdSlot';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -504,12 +502,12 @@ useEffect(() => {
       // Take the top 10 (real popularity sorted)
       const realTop10 = json.success && json.titles?.length
         ? json.titles.slice(0, 10)
-        : staticFallbackTitles.slice(0, 10);
+        : [];
 
       setTop10Titles(realTop10);
     } catch (err) {
       console.error('Top 10 fetch failed:', err);
-      setTop10Titles(staticFallbackTitles.slice(0, 10));
+      setTop10Titles([]);
     }
     setTop10Loading(false);
   };
@@ -636,7 +634,7 @@ useEffect(() => {
     } catch {
       /* fall through */
     }
-    const sourceList = favorites.length > 0 ? favorites : staticFallbackTitles;
+    const sourceList = favorites;
     if (sourceList.length === 0) {
       alert("No titles available yet – browse Discover first!");
       return;
@@ -751,7 +749,6 @@ const deduplicateSources = (sources: any[]) => {
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
         </div>
-        <AdSlot className="mb-6" />
 
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-4xl md:text-5xl font-extrabold flex items-center gap-4">
@@ -1488,7 +1485,6 @@ const deduplicateSources = (sources: any[]) => {
                   </p>
                 </div>
               )}
-              <AdSlot className="mb-8" />
                             {sourcesLoading ? (
                 <div className="text-center py-16 text-xl">Loading sources...</div>
               ) : paidSources.length > 0 || freeSources.length > 0 ? (

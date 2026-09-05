@@ -1,10 +1,8 @@
 'use client';
-import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { Film, Loader2, MonitorPlay, Heart, Filter, X } from 'lucide-react';
-import { staticFallbackTitles } from '../../lib/static-fallback-titles';
 import HorizontalCarousel from './HorizontalCarousel';
-import AdSlot from './AdSlot';
 
 interface DiscoverTabProps {
   searchQuery: string;
@@ -75,12 +73,12 @@ export default function DiscoverTab({
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(1);
-  const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [trendingItems, setTrendingItems] = useState<any[]>([]);
   const [newReleasesItems, setNewReleasesItems] = useState<any[]>([]);
   const [carouselsLoading, setCarouselsLoading] = useState(false);
   const [genreFilter, setGenreFilter] = useState('');
   const [catalogEmpty, setCatalogEmpty] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -113,7 +111,6 @@ export default function DiscoverTab({
       setPage(1);
       pageRef.current = 1;
       setHasMore(true);
-      setIsUsingFallback(false);
       setCatalogEmpty(false);
       try {
         const url = catalogUrl({
@@ -128,32 +125,23 @@ export default function DiscoverTab({
         });
         const res = await fetch(url);
         const json = await res.json();
-        let newTitles: any[] = json.success && json.titles?.length ? json.titles : [];
+        const newTitles: any[] = json.success && json.titles?.length ? json.titles : [];
         if (json.catalogEmpty) setCatalogEmpty(true);
-        if (newTitles.length === 0) {
-          if (debouncedSearch) {
-            newTitles = [];
-          } else {
-            newTitles = staticFallbackTitles;
-            setIsUsingFallback(true);
-          }
-        }
         setAllTitles(newTitles);
-        setHasMore(Boolean(json.hasMore));
-        if (json.success) setLastUpdated(new Date().toISOString());
+        setHasMore(Boolean(json.hasMore && newTitles.length));
+        if (json.success && newTitles.length) setLastUpdated(new Date().toISOString());
       } catch (err) {
         console.error(err);
-        setAllTitles(debouncedSearch ? [] : staticFallbackTitles);
-        setIsUsingFallback(!debouncedSearch);
+        setAllTitles([]);
         setHasMore(false);
       }
       setLoading(false);
     };
     fetchData();
-  }, [debouncedSearch, region, contentType, minYearFilter, maxYearFilter, minRatingFilter, genreFilter, setLastUpdated]);
+  }, [debouncedSearch, region, contentType, minYearFilter, maxYearFilter, minRatingFilter, genreFilter, setLastUpdated, reloadToken]);
 
   const loadMore = useCallback(async () => {
-    if (loadLock.current || loading || !hasMore || isUsingFallback || pauseInfiniteScroll) return;
+    if (loadLock.current || loading || !hasMore || pauseInfiniteScroll) return;
     loadLock.current = true;
     setLoadingMore(true);
     try {
@@ -189,7 +177,6 @@ export default function DiscoverTab({
   }, [
     loading,
     hasMore,
-    isUsingFallback,
     pauseInfiniteScroll,
     region,
     contentType,
@@ -221,7 +208,7 @@ export default function DiscoverTab({
   // Observer only fires when crossing the threshold. After a page loads the
   // sentinel may still be on-screen — keep fetching until it is pushed down.
   useEffect(() => {
-    if (loading || loadingMore || !hasMore || pauseInfiniteScroll || isUsingFallback) return;
+    if (loading || loadingMore || !hasMore || pauseInfiniteScroll) return;
     const id = window.setTimeout(() => {
       const el = document.getElementById('discover-scroll-sentinel');
       if (!el) return;
@@ -229,7 +216,7 @@ export default function DiscoverTab({
       if (top < window.innerHeight + 900) loadMore();
     }, 50);
     return () => window.clearTimeout(id);
-  }, [allTitles.length, loading, loadingMore, hasMore, pauseInfiniteScroll, isUsingFallback, loadMore]);
+  }, [allTitles.length, loading, loadingMore, hasMore, pauseInfiniteScroll, loadMore]);
 
   useEffect(() => {
     if (!allTitles?.length || !TMDB_READ_TOKEN) return;
@@ -357,9 +344,22 @@ export default function DiscoverTab({
 
   return (
     <>
-      {isUsingFallback && !debouncedSearch && (
-        <div className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-center py-3 px-6 rounded-2xl mx-auto max-w-2xl mb-8 text-sm" role="alert">
-          Showing a small public-domain backup list while the live catalog loads.
+      {!loading && allTitles.length === 0 && (
+        <div className="max-w-xl mx-auto text-center py-16 px-6" role="alert">
+          <p className="text-lg text-white mb-2">
+            {debouncedSearch
+              ? `No free titles matching “${debouncedSearch}”.`
+              : catalogEmpty
+                ? `The ${region} catalogue is still refreshing. Try again in a minute.`
+                : 'Could not load titles just now.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setReloadToken((n) => n + 1)}
+            className="mt-4 px-6 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -590,12 +590,6 @@ export default function DiscoverTab({
               <MonitorPlay className="text-green-400" size={32} /> All Free Titles
             </h3>
             <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. All content from official sources.</p>
-            {catalogEmpty && (
-              <p className="text-center text-sm text-amber-300 mb-4">
-                The full {region} catalogue is still warming up. Showing classic public-domain titles until the daily refresh finishes.
-              </p>
-            )}
-            <AdSlot className="mb-8" />
 
             <div aria-live="polite" className="text-gray-400 mb-8 text-lg">
               {loading ? 'Searching free titles...' : `Found ${filteredTitles.length} titles • Scroll for more`}
@@ -610,8 +604,8 @@ export default function DiscoverTab({
                   const shareUrl = `https://freestreamworld.com/title/${title.id}`;
                   const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
                   return (
-                    <Fragment key={`${title.id}-${index}`}>
                     <button
+                      key={`${title.id}-${index}`}
                       onClick={() => setSelectedTitle(title)}
                       className="group bg-gray-800/80 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:scale-[1.03] transition-all duration-300 cursor-pointer backdrop-blur-sm relative flex flex-col h-full text-left"
                       aria-label={`View free sources for ${title.title} (${title.year})`}
@@ -654,12 +648,6 @@ export default function DiscoverTab({
                         </span>
                       </div>
                     </button>
-                    {(index + 1) % 12 === 0 && (
-                      <div className="col-span-2 sm:col-span-3 md:col-span-4 lg:col-span-5 xl:col-span-6">
-                        <AdSlot />
-                      </div>
-                    )}
-                    </Fragment>
                   );
                 })
               )}

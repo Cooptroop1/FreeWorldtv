@@ -3,7 +3,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { findTitleById } from '@/lib/catalog';
-import AdSlot from '../../_components/AdSlot';
 import TitleWatchLinks from '../../_components/TitleWatchLinks';
 
 export const dynamic = 'force-dynamic';
@@ -124,9 +123,6 @@ export default async function TitlePage({ params }: { params: Promise<{ id: stri
               We do not host or embed video. Buttons below open the official service.
             </p>
           </div>
-        </div>
-        <div className="mt-8">
-          <AdSlot />
         </div>
         <TitleWatchLinks id={title.id} region={title.region} paid={title.paid} />
       </div>
