@@ -2,52 +2,45 @@ import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { CACHE_TTL_SECONDS, catalogKey, isAllowedRegion, previousCatalogKey } from '@/lib/regions';
+import { fetchWatchmodePages, type CatalogTitle } from '@/lib/watchmode-list';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY || '';
-
-function processTitle(t: Record<string, unknown>) {
-  return {
-    id: Number(t.id),
-    title: String(t.title || t.name || 'Unknown Title'),
-    year: t.year ? Number(t.year) : undefined,
-    type: t.type ? String(t.type) : undefined,
-    poster: (t.poster || t.image_url || null) as string | null,
-    popularity: Number(t.popularity || 0),
-    genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
-    tmdb_id: t.tmdb_id ? Number(t.tmdb_id) : undefined,
-  };
-}
-
-async function fetchPages(region: string, sourceType: 'free' | 'sub', maxPages: number) {
-  const seen = new Set<number>();
-  const titles: ReturnType<typeof processTitle>[] = [];
-  for (let page = 1; page <= maxPages; page++) {
-    const url = `https://api.watchmode.com/v1/list-titles/?apiKey=${WATCHMODE_API_KEY}&source_types=${sourceType}&regions=${region}&types=movie,tv_series&sort_by=popularity_desc&page=${page}&limit=250`;
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) break;
-    const data = await res.json();
-    const batch = data.titles || [];
-    if (!batch.length) break;
-    for (const t of batch) {
-      if (!seen.has(t.id)) {
-        seen.add(t.id);
-        titles.push(processTitle(t));
-      }
-    }
-    await new Promise((r) => setTimeout(r, 350));
+async function writeIfFresh(
+  key: string,
+  incoming: CatalogTitle[],
+  previousKey?: string
+): Promise<{ wrote: boolean; stored: number; skipped?: string }> {
+  if (!incoming.length) {
+    const current = await kv.get(key);
+    const n = Array.isArray(current) ? current.length : 0;
+    return {
+      wrote: false,
+      stored: n,
+      skipped: 'Watchmode returned 0 titles — kept existing catalogue',
+    };
   }
-  return titles;
+
+  if (previousKey) {
+    const old = await kv.get(key);
+    if (Array.isArray(old) && old.length > 0) {
+      await kv.set(previousKey, old, { ex: CACHE_TTL_SECONDS });
+    }
+    await kv.set(key, incoming, { ex: CACHE_TTL_SECONDS });
+    return { wrote: true, stored: incoming.length };
+  }
+
+  const current: CatalogTitle[] = (await kv.get(key)) || [];
+  const ids = new Set(incoming.map((t) => t.id));
+  const merged = [...incoming, ...current.filter((t) => !ids.has(t.id))];
+  await kv.set(key, merged, { ex: CACHE_TTL_SECONDS });
+  return { wrote: true, stored: merged.length };
 }
 
 export async function GET(request: Request) {
   if (!isAdminRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  if (!WATCHMODE_API_KEY) {
-    return NextResponse.json({ error: 'WATCHMODE_API_KEY missing' }, { status: 500 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -59,43 +52,44 @@ export async function GET(request: Request) {
   const region = regionRaw;
   const maxPages = mode === 'daily' ? 2 : 20;
 
-  const freeTitles = await fetchPages(region, 'free', maxPages);
-  const premiumTitles = await fetchPages(region, 'sub', maxPages);
+  const free = await fetchWatchmodePages({ region, sourceType: 'free', maxPages });
+  const premium = await fetchWatchmodePages({ region, sourceType: 'sub', maxPages });
 
   const freeKey = catalogKey(false, region);
   const premiumKey = catalogKey(true, region);
 
+  let freeWrite;
+  let premiumWrite;
   if (mode === 'full') {
-    const oldFree = await kv.get(freeKey);
-    if (Array.isArray(oldFree) && oldFree.length > 0) {
-      await kv.set(previousCatalogKey(region), oldFree, { ex: CACHE_TTL_SECONDS });
-    }
-    await kv.set(freeKey, freeTitles, { ex: CACHE_TTL_SECONDS });
-    await kv.set(premiumKey, premiumTitles, { ex: CACHE_TTL_SECONDS });
+    freeWrite = await writeIfFresh(freeKey, free.titles, previousCatalogKey(region));
+    premiumWrite = await writeIfFresh(premiumKey, premium.titles);
     await kv.set('lastFullRefresh', Date.now());
   } else {
-    const currentFree: typeof freeTitles = (await kv.get(freeKey)) || [];
-    const currentPremium: typeof premiumTitles = (await kv.get(premiumKey)) || [];
-    const freeIds = new Set(freeTitles.map((t) => t.id));
-    const premiumIds = new Set(premiumTitles.map((t) => t.id));
-    const mergedFree = [...freeTitles, ...currentFree.filter((t) => !freeIds.has(t.id))];
-    const mergedPremium = [...premiumTitles, ...currentPremium.filter((t) => !premiumIds.has(t.id))];
-    await kv.set(freeKey, mergedFree, { ex: CACHE_TTL_SECONDS });
-    await kv.set(premiumKey, mergedPremium, { ex: CACHE_TTL_SECONDS });
+    freeWrite = await writeIfFresh(freeKey, free.titles);
+    premiumWrite = await writeIfFresh(premiumKey, premium.titles);
     await kv.set('lastDailyRefresh', Date.now());
   }
 
-  const storedFree: unknown[] = (await kv.get(freeKey)) || [];
-  const storedPremium: unknown[] = (await kv.get(premiumKey)) || [];
-
   return NextResponse.json({
-    success: true,
+    success: free.ok || freeWrite.stored > 0,
     mode,
     region,
-    freeTitles: Array.isArray(storedFree) ? storedFree.length : 0,
-    premiumTitles: Array.isArray(storedPremium) ? storedPremium.length : 0,
+    freeTitles: freeWrite.stored,
+    premiumTitles: premiumWrite.stored,
+    watchmode: {
+      freeOk: free.ok,
+      freeFetched: free.titles.length,
+      freeError: free.error || null,
+      premiumOk: premium.ok,
+      premiumFetched: premium.titles.length,
+      premiumError: premium.error || null,
+    },
+    skipped: {
+      free: freeWrite.skipped || null,
+      premium: premiumWrite.skipped || null,
+    },
     message: mode === 'full'
-      ? `Replaced ${region} catalogs (no merge)`
+      ? `Replaced ${region} catalogs (empty Watchmode responses are not saved)`
       : `Smart daily merge for ${region}`,
   });
 }

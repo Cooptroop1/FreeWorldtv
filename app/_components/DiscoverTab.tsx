@@ -124,8 +124,16 @@ export default function DiscoverTab({
           genre: genreFilter,
         });
         const res = await fetch(url);
-        const json = await res.json();
-        const newTitles: any[] = json.success && json.titles?.length ? json.titles : [];
+        let json = await res.json();
+        let newTitles: any[] = json.success && json.titles?.length ? json.titles : [];
+        if (!debouncedSearch && newTitles.length === 0 && (json.catalogEmpty || json.building)) {
+          for (let attempt = 0; attempt < 2 && newTitles.length === 0; attempt++) {
+            await new Promise((r) => setTimeout(r, 2500));
+            const retry = await fetch(url);
+            json = await retry.json();
+            newTitles = json.success && json.titles?.length ? json.titles : [];
+          }
+        }
         if (json.catalogEmpty) setCatalogEmpty(true);
         setAllTitles(newTitles);
         setHasMore(Boolean(json.hasMore && newTitles.length));
@@ -350,7 +358,7 @@ export default function DiscoverTab({
             {debouncedSearch
               ? `No free titles matching “${debouncedSearch}”.`
               : catalogEmpty
-                ? `The ${region} catalogue is still refreshing. Try again in a minute.`
+                ? `No cached list for ${region} yet. The first visit fetches Watchmode, then everyone else uses that cache. Tap retry.`
                 : 'Could not load titles just now.'}
           </p>
           <button

@@ -22,9 +22,9 @@ Next.js 16 · Clerk · Vercel KV · Watchmode · TMDB
 Pass `?secret=REFRESH_SECRET` or `Authorization: Bearer REFRESH_SECRET`:
 
 - `GET /api/refresh-all-free?mode=full&region=GB` — full GB rebuild (use this once after deploy)
-- `GET /api/cron/refresh` — daily GB+US merge, or full rebuild if a catalog is empty
+- `GET /api/cron/refresh` — daily merge for GB+US plus a rotating region; empty catalogues get a fuller rebuild (never writes empty over a good cache)
 - `GET /api/cron/title-map` — ingest Watchmode ID map into KV
 
 Catalog keys: `free_catalog:{region}` and `premium_catalog:{region}`.
 
-Visitor traffic never calls Watchmode for catalogs. Title source lookups are cached 30 days.
+Visitor traffic never calls Watchmode **when a country already has a cache**. The first visitor to an empty country spends a few list-titles calls and KV stores it for everyone else. Title source lookups are cached 30 days per title+region.

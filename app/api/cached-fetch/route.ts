@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import {
   ALLOWED_REGIONS,
-  catalogKey,
   isAllowedRegion,
   previousCatalogKey,
 } from '@/lib/regions';
+import { loadOrSeedCatalog } from '@/lib/ensure-catalog';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 const PAGE_SIZE = 48;
 
@@ -93,11 +94,11 @@ export async function GET(request: NextRequest) {
   const minRating = parseInt(searchParams.get('minRating') || '0', 10);
   const genre = searchParams.get('genre')?.trim().slice(0, 40) || null;
 
-  const key = catalogKey(paid, region);
-  let catalog: Title[] = (await kv.get<Title[]>(key)) || [];
+  const seeded = await loadOrSeedCatalog(paid, region);
+  let catalog: Title[] = seeded.catalog as Title[];
   if (catalog.length === 0 && !paid) {
     const previousRaw = await kv.get(previousCatalogKey(region));
-    catalog = Array.isArray(previousRaw) ? previousRaw : [];
+    catalog = Array.isArray(previousRaw) ? (previousRaw as Title[]) : [];
   }
   const catalogEmpty = catalog.length === 0;
 
@@ -109,19 +110,23 @@ export async function GET(request: NextRequest) {
       hasMore: false,
       totalAvailable: 0,
       region,
-      fromCache: true,
+      fromCache: seeded.fromCache,
       catalogEmpty: true,
-      message: 'Catalog not built yet. Waiting for scheduled refresh.',
+      building: seeded.building,
+      seeded: seeded.seeded,
+      message: seeded.building
+        ? `${region} catalogue is being fetched from Watchmode. Retry in a few seconds.`
+        : seeded.error || 'Catalog not built yet.',
     });
   }
 
   if (section === 'random') {
     const filtered = applyFilters(catalog, null, types, fromYear, toYear, minRating, genre);
     if (!filtered.length) {
-      return NextResponse.json({ success: true, titles: [], region, fromCache: true });
+      return NextResponse.json({ success: true, titles: [], region, fromCache: seeded.fromCache });
     }
     const pick = filtered[Math.floor(Math.random() * filtered.length)];
-    return NextResponse.json({ success: true, titles: [pick], region, fromCache: true });
+    return NextResponse.json({ success: true, titles: [pick], region, fromCache: seeded.fromCache });
   }
 
   if (section === 'trending') {
@@ -131,13 +136,13 @@ export async function GET(request: NextRequest) {
       success: true,
       titles: sorted.slice(0, 20),
       region,
-      fromCache: true,
+      fromCache: seeded.fromCache,
     });
   }
 
   if (section === 'new-releases' && !paid) {
     const previousRaw = await kv.get(previousCatalogKey(region));
-    const previous: Title[] = Array.isArray(previousRaw) ? previousRaw : [];
+    const previous: Title[] = Array.isArray(previousRaw) ? (previousRaw as Title[]) : [];
     const prevIds = new Set(previous.map((t) => t.id));
     let newTitles = catalog.filter((t) => !prevIds.has(t.id));
     if (newTitles.length === 0) {
@@ -150,7 +155,7 @@ export async function GET(request: NextRequest) {
       success: true,
       titles: newTitles,
       region,
-      fromCache: true,
+      fromCache: seeded.fromCache,
     });
   }
 
@@ -166,7 +171,8 @@ export async function GET(request: NextRequest) {
     hasMore,
     totalAvailable: filtered.length,
     region,
-    fromCache: true,
+    fromCache: seeded.fromCache,
     catalogEmpty: false,
+    seeded: seeded.seeded,
   });
 }

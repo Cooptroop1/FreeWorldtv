@@ -496,7 +496,7 @@ useEffect(() => {
     setTop10Loading(true);
     try {
       // Force fresh trending from the full free catalog
-      const res = await fetch(`/api/cached-fetch?types=${encodeURIComponent(contentType)}&section=trending`);
+      const res = await fetch(`/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&section=trending`);
       const json = await res.json();
 
       // Take the top 10 (real popularity sorted)
@@ -513,7 +513,7 @@ useEffect(() => {
   };
 
   fetchRealTop10();
-}, [tab, contentType]);
+}, [tab, contentType, region]);
 
             // === RADIO STATIONS (search + country filter — safe & separate) ===
   useEffect(() => {
