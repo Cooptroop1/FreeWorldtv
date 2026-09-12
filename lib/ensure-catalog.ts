@@ -1,12 +1,23 @@
 import { kv } from '@vercel/kv';
-import { CACHE_TTL_SECONDS, catalogKey } from '@/lib/regions';
+import {
+  CACHE_TTL_SECONDS,
+  CATALOG_TARGET,
+  EXPAND_PAGES,
+  LIST_PAGE_SIZE,
+  SEED_PAGES,
+  catalogCursorKey,
+  catalogKey,
+} from '@/lib/regions';
 import { fetchWatchmodePages, type CatalogTitle } from '@/lib/watchmode-list';
 
-const SEED_PAGES = 3;
 const LOCK_TTL_SEC = 90;
 
 function lockKey(paid: boolean, region: string) {
   return `catalog_lock:${paid ? 'premium' : 'free'}:${region}`;
+}
+
+function exhaustedKey(paid: boolean, region: string) {
+  return `catalog_exhausted:${paid ? 'premium' : 'free'}:${region}`;
 }
 
 function sleep(ms: number) {
@@ -18,7 +29,6 @@ async function readCatalog(paid: boolean, region: string): Promise<CatalogTitle[
   return Array.isArray(raw) ? (raw as CatalogTitle[]) : [];
 }
 
-/** Wait for another request that is already calling Watchmode. */
 async function waitForBuilder(paid: boolean, region: string): Promise<CatalogTitle[]> {
   for (let i = 0; i < 10; i++) {
     await sleep(800);
@@ -30,6 +40,30 @@ async function waitForBuilder(paid: boolean, region: string): Promise<CatalogTit
     }
   }
   return readCatalog(paid, region);
+}
+
+async function mergeAndStore(
+  paid: boolean,
+  region: string,
+  current: CatalogTitle[],
+  incoming: CatalogTitle[],
+  lastPage: number
+) {
+  const ids = new Set(current.map((t) => t.id));
+  const merged = [...current];
+  for (const title of incoming) {
+    if (!ids.has(title.id)) {
+      ids.add(title.id);
+      merged.push(title);
+    }
+  }
+  const stored = merged.slice(0, CATALOG_TARGET);
+  await kv.set(catalogKey(paid, region), stored, { ex: CACHE_TTL_SECONDS });
+  await kv.set(catalogCursorKey(paid, region), lastPage, { ex: CACHE_TTL_SECONDS });
+  if (stored.length >= CATALOG_TARGET) {
+    await kv.set(exhaustedKey(paid, region), 1, { ex: CACHE_TTL_SECONDS });
+  }
+  return stored;
 }
 
 /**
@@ -78,20 +112,14 @@ export async function loadOrSeedCatalog(
       region,
       sourceType: paid ? 'sub' : 'free',
       maxPages: SEED_PAGES,
+      startPage: 1,
     });
 
     if (result.titles.length > 0) {
-      await kv.set(catalogKey(paid, region), result.titles, {
-        ex: CACHE_TTL_SECONDS,
-      });
-      console.log('Seeded catalog', {
-        region,
-        paid,
-        count: result.titles.length,
-        pages: result.pages,
-      });
+      const stored = await mergeAndStore(paid, region, [], result.titles, result.lastPage);
+      console.log('Seeded catalog', { region, paid, count: stored.length, pages: result.pages });
       return {
-        catalog: result.titles,
+        catalog: stored,
         fromCache: false,
         seeded: true,
         building: false,
@@ -104,6 +132,68 @@ export async function loadOrSeedCatalog(
       seeded: false,
       building: false,
       error: result.error || 'Watchmode returned no titles',
+    };
+  } finally {
+    await kv.del(lockKey(paid, region));
+  }
+}
+
+/** Append the next Watchmode pages until this country hits the 10k wall. */
+export async function expandCatalog(
+  paid: boolean,
+  region: string,
+  pages = EXPAND_PAGES
+): Promise<{ stored: number; added: number; exhausted?: boolean; skipped?: string }> {
+  const existing = await readCatalog(paid, region);
+  if (existing.length >= CATALOG_TARGET) {
+    return { stored: existing.length, added: 0, exhausted: true };
+  }
+  if (await kv.get(exhaustedKey(paid, region))) {
+    return { stored: existing.length, added: 0, exhausted: true };
+  }
+
+  const gotLock = await kv.set(lockKey(paid, region), Date.now(), {
+    nx: true,
+    ex: LOCK_TTL_SEC,
+  });
+  if (!gotLock) {
+    return { stored: existing.length, added: 0, skipped: 'locked' };
+  }
+
+  try {
+    const cursor = Number(await kv.get(catalogCursorKey(paid, region))) ||
+      Math.max(1, Math.ceil(existing.length / LIST_PAGE_SIZE));
+    const result = await fetchWatchmodePages({
+      region,
+      sourceType: paid ? 'sub' : 'free',
+      maxPages: pages,
+      startPage: cursor + 1,
+    });
+
+    if (result.exhausted && result.titles.length === 0) {
+      await kv.set(exhaustedKey(paid, region), 1, { ex: CACHE_TTL_SECONDS });
+      return { stored: existing.length, added: 0, exhausted: true };
+    }
+
+    if (!result.titles.length) {
+      return { stored: existing.length, added: 0, skipped: result.error || 'no titles' };
+    }
+
+    const stored = await mergeAndStore(paid, region, existing, result.titles, result.lastPage);
+    if (result.exhausted) {
+      await kv.set(exhaustedKey(paid, region), 1, { ex: CACHE_TTL_SECONDS });
+    }
+    console.log('Expanded catalog', {
+      region,
+      paid,
+      added: stored.length - existing.length,
+      stored: stored.length,
+      lastPage: result.lastPage,
+    });
+    return {
+      stored: stored.length,
+      added: stored.length - existing.length,
+      exhausted: result.exhausted || stored.length >= CATALOG_TARGET,
     };
   } finally {
     await kv.del(lockKey(paid, region));

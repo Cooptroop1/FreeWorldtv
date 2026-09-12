@@ -1,14 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { kv } from '@vercel/kv';
 import {
   ALLOWED_REGIONS,
+  CATALOG_TARGET,
   isAllowedRegion,
   previousCatalogKey,
 } from '@/lib/regions';
-import { loadOrSeedCatalog } from '@/lib/ensure-catalog';
+import { expandCatalog, loadOrSeedCatalog } from '@/lib/ensure-catalog';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 const PAGE_SIZE = 48;
 
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
   const region = regionRaw;
 
   const paid = searchParams.get('paid') === 'true';
-  const page = Math.min(Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1), 200);
+  const page = Math.min(Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1), 250);
   const queryRaw = searchParams.get('query')?.trim() || null;
   const query = queryRaw ? queryRaw.slice(0, 80) : null;
   const section = searchParams.get('section');
@@ -99,6 +100,11 @@ export async function GET(request: NextRequest) {
   if (catalog.length === 0 && !paid) {
     const previousRaw = await kv.get(previousCatalogKey(region));
     catalog = Array.isArray(previousRaw) ? (previousRaw as Title[]) : [];
+  }
+  if (!paid && !section && page === 1 && catalog.length > 0 && catalog.length < CATALOG_TARGET) {
+    after(() =>
+      expandCatalog(false, region).catch((err) => console.error('catalog expand', region, err))
+    );
   }
   const catalogEmpty = catalog.length === 0;
 

@@ -26,17 +26,22 @@ export async function fetchWatchmodePages(opts: {
   region: string;
   sourceType: 'free' | 'sub';
   maxPages: number;
-}): Promise<{ titles: CatalogTitle[]; ok: boolean; error?: string; pages: number }> {
+  startPage?: number;
+}): Promise<{ titles: CatalogTitle[]; ok: boolean; error?: string; pages: number; lastPage: number; exhausted: boolean }> {
   const apiKey = process.env.WATCHMODE_API_KEY || '';
   if (!apiKey) {
-    return { titles: [], ok: false, error: 'WATCHMODE_API_KEY missing', pages: 0 };
+    return { titles: [], ok: false, error: 'WATCHMODE_API_KEY missing', pages: 0, lastPage: 0, exhausted: false };
   }
 
+  const startPage = Math.max(1, opts.startPage || 1);
+  const endPage = startPage + opts.maxPages - 1;
   const seen = new Set<number>();
   const titles: CatalogTitle[] = [];
   let pages = 0;
+  let lastPage = startPage - 1;
+  let exhausted = false;
 
-  for (let page = 1; page <= opts.maxPages; page++) {
+  for (let page = startPage; page <= endPage; page++) {
     const url =
       `https://api.watchmode.com/v1/list-titles/?apiKey=${apiKey}` +
       `&source_types=${opts.sourceType}&regions=${opts.region}` +
@@ -51,6 +56,8 @@ export async function fetchWatchmodePages(opts: {
         ok: false,
         error: err instanceof Error ? err.message : 'Watchmode network error',
         pages,
+        lastPage,
+        exhausted,
       };
     }
 
@@ -68,13 +75,19 @@ export async function fetchWatchmodePages(opts: {
         ok: false,
         error: `Watchmode ${res.status}`,
         pages,
+        lastPage,
+        exhausted,
       };
     }
 
     const data = await res.json();
     const batch = Array.isArray(data.titles) ? data.titles : [];
     pages += 1;
-    if (!batch.length) break;
+    lastPage = page;
+    if (!batch.length) {
+      exhausted = true;
+      break;
+    }
 
     for (const t of batch) {
       const id = Number(t.id);
@@ -84,10 +97,16 @@ export async function fetchWatchmodePages(opts: {
       }
     }
 
-    if (page < opts.maxPages) {
-      await new Promise((r) => setTimeout(r, 300));
+    const totalPages = Number(data.total_pages || 0);
+    if (totalPages && page >= totalPages) {
+      exhausted = true;
+      break;
+    }
+
+    if (page < endPage) {
+      await new Promise((r) => setTimeout(r, 200));
     }
   }
 
-  return { titles, ok: true, pages };
+  return { titles, ok: true, pages, lastPage, exhausted };
 }
