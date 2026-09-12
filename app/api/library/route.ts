@@ -6,8 +6,10 @@ import { rememberAccountUser, type LibraryItem } from '@/lib/account';
 
 export const dynamic = 'force-dynamic';
 
-function sanitize(list: LibraryItem[]): LibraryItem[] {
-  return clampList(list, 400).filter((item) => item && Number(item.id) && item.status);
+function sanitize(list: unknown): LibraryItem[] {
+  return clampList<LibraryItem>(list, 400).filter(
+    (item): item is LibraryItem => Boolean(item && Number(item.id) && item.status)
+  );
 }
 
 export async function GET() {
@@ -22,7 +24,7 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Not logged in' }, { status: 401 });
 
   const body = await request.json().catch(() => null);
-  const library = sanitize(body?.library || []);
+  const library = sanitize(body?.library);
   await kv.set(`library:${user.id}`, library, { ex: 60 * 60 * 24 * 365 });
   const email = user.emailAddresses?.[0]?.emailAddress;
   await rememberAccountUser(user.id, email);
