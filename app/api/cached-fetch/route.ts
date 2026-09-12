@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
   const region = regionRaw;
 
   const paid = searchParams.get('paid') === 'true';
-  const page = Math.min(Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1), 250);
+  const page = Math.min(Math.max(parseInt(searchParams.get('page') || '1', 10) || 1, 1), 450);
   const queryRaw = searchParams.get('query')?.trim() || null;
   const query = queryRaw ? queryRaw.slice(0, 80) : null;
   const section = searchParams.get('section');

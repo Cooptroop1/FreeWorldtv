@@ -19,8 +19,8 @@ export function catalogCursorKey(paid: boolean, region: string) {
 
 export const CACHE_TTL_SECONDS = 86400 * 30;
 /** Discover wall target per country. Watchmode list-titles is 250 per page. */
-export const CATALOG_TARGET = 10000;
+export const CATALOG_TARGET = 20000;
 export const LIST_PAGE_SIZE = 250;
-export const FULL_FREE_PAGES = 40;
+export const FULL_FREE_PAGES = 80;
 export const EXPAND_PAGES = 10;
 export const SEED_PAGES = 4;

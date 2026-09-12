@@ -60,9 +60,6 @@ async function mergeAndStore(
   const stored = merged.slice(0, CATALOG_TARGET);
   await kv.set(catalogKey(paid, region), stored, { ex: CACHE_TTL_SECONDS });
   await kv.set(catalogCursorKey(paid, region), lastPage, { ex: CACHE_TTL_SECONDS });
-  if (stored.length >= CATALOG_TARGET) {
-    await kv.set(exhaustedKey(paid, region), 1, { ex: CACHE_TTL_SECONDS });
-  }
   return stored;
 }
 
