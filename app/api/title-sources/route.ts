@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { WatchmodeClient } from '@watchmode/api-client';
+import { currentUser } from '@clerk/nextjs/server';
 import { isAllowedRegion } from '@/lib/regions';
+import type { AlertItem } from '@/lib/account';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +17,36 @@ function isFreeSource(s: any) {
 
 function isPaidSource(s: any) {
   return s.type === 'sub' || s.subscription === true || (!!s.price && s.price > 0);
+}
+
+function freeNames(sources: any[]): string[] {
+  return sources.filter(isFreeSource).map((s) => String(s.name || '')).filter(Boolean);
+}
+
+async function maybeAlertDrop(userId: string, titleId: string, region: string, names: string[]) {
+  const snapKey = `favsnap:${userId}:${titleId}:${region}`;
+  const prev = ((await kv.get(snapKey)) || []) as string[];
+  await kv.set(snapKey, names, { ex: 86400 * 365 });
+  if (!Array.isArray(prev) || !prev.length || names.length > 0) return;
+  const favs = ((await kv.get(`favorites:${userId}`)) || []) as { id: number; title?: string; year?: number }[];
+  const fav = Array.isArray(favs) ? favs.find((f) => Number(f.id) === Number(titleId)) : null;
+  if (!fav) return;
+  const alerts = ((await kv.get(`alerts:${userId}`)) || []) as AlertItem[];
+  const list = Array.isArray(alerts) ? alerts : [];
+  if (list.some((a) => a.titleId === fav.id && Date.now() - new Date(a.createdAt).getTime() < 14 * 86400000)) {
+    return;
+  }
+  list.unshift({
+    id: `${fav.id}-${Date.now()}`,
+    titleId: fav.id,
+    title: fav.title || 'A saved title',
+    year: fav.year,
+    region,
+    message: `No longer listed as free in ${region}.`,
+    createdAt: new Date().toISOString(),
+    read: false,
+  });
+  await kv.set(`alerts:${userId}`, list.slice(0, 30), { ex: 86400 * 365 });
 }
 
 export async function GET(request: Request) {
@@ -34,6 +66,8 @@ export async function GET(request: Request) {
     const sourcesData = paid
       ? cachedFull.filter((s) => isPaidSource(s))
       : cachedFull.filter((s) => isFreeSource(s));
+    const user = await currentUser();
+    if (user) await maybeAlertDrop(user.id, titleId, region, freeNames(cachedFull));
     return NextResponse.json({
       success: true,
       titleId,
@@ -53,6 +87,9 @@ export async function GET(request: Request) {
       : fullSources.filter((s: any) => isFreeSource(s));
 
     await kv.set(cacheKey, fullSources, { ex: 86400 * 30 });
+    await kv.set(`sources_at:${titleId}:${region}`, Date.now(), { ex: 86400 * 30 });
+    const user = await currentUser();
+    if (user) await maybeAlertDrop(user.id, titleId, region, freeNames(fullSources));
 
     return NextResponse.json({
       success: true,

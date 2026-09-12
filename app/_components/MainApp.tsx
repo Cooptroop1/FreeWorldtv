@@ -6,8 +6,11 @@ import OfflineMessage from './OfflineMessage';
 import GlobalSearch from './GlobalSearch';
 import DiscoverTab from './DiscoverTab';
 import PremiumTab from './PremiumTab';
+import LibraryActions from './LibraryActions';
+import { useAccount } from './useAccount';
 import { providerLogos } from '../../lib/provider-logos';
 import { isSafeHttpUrl } from '../../lib/safe-url';
+import { sortByMyServices, sourceMatchesServices } from '../../lib/account';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 
@@ -70,6 +73,16 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
   const [top10Titles, setTop10Titles] = useState<any[]>([]);
   const [top10Loading, setTop10Loading] = useState(false);
   const { user, isSignedIn } = useUser();
+  const {
+    myServices,
+    setStatus: setLibraryStatus,
+    statusOf,
+    hiddenIds,
+    watchlist,
+    watched,
+    hidden,
+  } = useAccount(isSignedIn, user?.id, region);
+  const [libraryFilter, setLibraryFilter] = useState<'loved' | 'want' | 'watched' | 'hidden'>('loved');
 
   // === FIXED CLOUD FAVORITES (no more random disappearing!) ===
   const loadFavorites = async () => {
@@ -846,7 +859,7 @@ const deduplicateSources = (sources: any[]) => {
             className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'favorites' ? 'border-b-4 border-red-500 text-red-400' : 'text-gray-400 hover:text-white'}`}
             aria-current={tab === 'favorites' ? 'page' : undefined}
           >
-            <Heart size={20} /> Favorites ({favorites.length})
+            <Heart size={20} /> Lists ({favorites.length})
           </button>
                     <button
             role="tab"
@@ -901,6 +914,9 @@ const deduplicateSources = (sources: any[]) => {
             pauseInfiniteScroll={pauseInfiniteScroll}
             continueWatching={continueWatching}
             removeFromContinueWatching={removeFromContinueWatching}
+            hiddenIds={hiddenIds}
+            statusOf={statusOf}
+            setLibraryStatus={setLibraryStatus}
           />
         </>
       )}
@@ -1231,14 +1247,47 @@ const deduplicateSources = (sources: any[]) => {
       {/* FAVORITES TAB */}
       {tab === 'favorites' && (
         <section className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold mb-8 flex items-center gap-4">
+          <h2 className="text-3xl font-bold mb-4 flex items-center gap-4">
             <Heart className="text-red-400" size={32} />
-            My Favorites ({favorites.length})
+            My lists
           </h2>
-          <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos.</p>
-          {favorites.length > 0 ? (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {([
+              ['loved', `Loved (${favorites.length})`],
+              ['want', `Watchlist (${watchlist.length})`],
+              ['watched', `Watched (${watched.length})`],
+              ['hidden', `Hidden (${hidden.length})`],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setLibraryFilter(key)}
+                className={`px-4 py-2 rounded-2xl text-sm ${libraryFilter === key ? 'bg-white text-black' : 'bg-gray-800 hover:bg-gray-700'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-yellow-400 mb-4 text-center text-sm">Links only — we do not host videos. Sign in to sync these across devices.</p>
+          {(() => {
+            const list =
+              libraryFilter === 'loved' ? favorites
+                : libraryFilter === 'want' ? watchlist
+                  : libraryFilter === 'watched' ? watched
+                    : hidden;
+            if (!list.length) {
+              return (
+                <div className="text-center py-20 text-xl text-gray-300">
+                  {libraryFilter === 'loved' && 'No favorites yet. Heart a title on Discover.'}
+                  {libraryFilter === 'want' && 'Watchlist is empty. Tap the bookmark on a title.'}
+                  {libraryFilter === 'watched' && 'Nothing marked watched yet.'}
+                  {libraryFilter === 'hidden' && 'Nothing hidden. Hidden titles stay off Discover.'}
+                </div>
+              );
+            }
+            return (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-5 md:gap-6">
-                            {favorites.map((title: any, index: number) => {
+                            {list.map((title: any, index: number) => {
                 const shareUrl = `https://freestreamworld.com/?title=${encodeURIComponent(title.title)}`;
                 const shareText = `Check out "${title.title}" (${title.year}) on FreeStream World! Free & legal.`;
                 return (
@@ -1290,12 +1339,8 @@ const deduplicateSources = (sources: any[]) => {
                 );
               })}
             </div>
-          ) : (
-            <div className="text-center py-20 text-xl text-gray-300">
-              No favorites saved yet.<br />
-              Go to Discover tab and click the heart.
-            </div>
-          )}
+            );
+          })()}
         </section>
       )}
 
@@ -1458,6 +1503,15 @@ const deduplicateSources = (sources: any[]) => {
                       ))}
                     </div>
                   )}
+
+                  {selectedTitle && (
+                    <div className="mt-4">
+                      <LibraryActions
+                        status={statusOf(selectedTitle.id)}
+                        onSet={(status) => setLibraryStatus(selectedTitle, status)}
+                      />
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => {
@@ -1496,15 +1550,16 @@ const deduplicateSources = (sources: any[]) => {
                         💎 Premium / Subscription Sources
                       </h3>
                       <div className="space-y-3">
-                        {deduplicateSources(paidSources).map((source: any, idx: number) => {
+                        {sortByMyServices(deduplicateSources(paidSources), myServices).map((source: any, idx: number) => {
                           const { logoUrl, initials, color } = getProviderLogo(source.name);
+                          const mine = sourceMatchesServices(source.name || '', myServices);
                           return (
                             <a
                               key={idx}
                               href={source.web_url || '#'}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
+                              className={`flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border ${mine ? 'border-violet-500' : 'border-gray-700 hover:border-gray-500'} group`}
                             >
                               <div className="w-36 h-24 flex-shrink-0 bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 group-hover:border-blue-500 transition-all">
   {logoUrl ? (
@@ -1520,7 +1575,10 @@ const deduplicateSources = (sources: any[]) => {
   )}
 </div>
                               <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
+                                <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">
+                                  {source.name}
+                                  {mine && <span className="ml-2 text-[10px] uppercase tracking-wide text-violet-300">Your app</span>}
+                                </div>
                                 <div className="text-gray-400 text-xs">
                                   Subscription{source.format && ` • ${source.format}`}
                                 </div>
@@ -1540,15 +1598,16 @@ const deduplicateSources = (sources: any[]) => {
                         🎁 Also Free On
                       </h3>
                       <div className="space-y-3">
-                        {freeSources.map((source: any, idx: number) => {
+                        {sortByMyServices(freeSources, myServices).map((source: any, idx: number) => {
                           const { logoUrl, initials, color } = getProviderLogo(source.name);
+                          const mine = sourceMatchesServices(source.name || '', myServices);
                           return (
                             <a
                               key={idx}
                               href={source.web_url || '#'}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border border-gray-700 hover:border-gray-500 group"
+                              className={`flex items-center gap-3 bg-gray-800/70 p-4 rounded-xl hover:bg-gray-700/70 transition-all border ${mine ? 'border-violet-500' : 'border-gray-700 hover:border-gray-500'} group`}
                             >
                               <div className="w-36 h-24 flex-shrink-0 bg-gray-900 rounded-2xl overflow-hidden border border-gray-700 group-hover:border-blue-500 transition-all">
   {logoUrl ? (
@@ -1564,7 +1623,10 @@ const deduplicateSources = (sources: any[]) => {
   )}
 </div>
                               <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">{source.name}</div>
+                                <div className="font-semibold text-base group-hover:text-blue-400 transition-colors">
+                                  {source.name}
+                                  {mine && <span className="ml-2 text-[10px] uppercase tracking-wide text-violet-300">Your app</span>}
+                                </div>
                                 <div className="text-gray-400 text-xs">Free with Ads{source.format && ` • ${source.format}`}</div>
                               </div>
                               <div className="text-blue-400 text-xs font-medium group-hover:translate-x-1 transition-transform">Watch now →</div>

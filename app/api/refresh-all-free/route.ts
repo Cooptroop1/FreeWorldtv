@@ -2,6 +2,7 @@ import { kv } from '@vercel/kv';
 import { NextResponse } from 'next/server';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { CACHE_TTL_SECONDS, catalogKey, isAllowedRegion, previousCatalogKey } from '@/lib/regions';
+import { listedKey, previousListedKey } from '@/lib/account';
 import { fetchWatchmodePages, type CatalogTitle } from '@/lib/watchmode-list';
 
 export const dynamic = 'force-dynamic';
@@ -54,6 +55,14 @@ export async function GET(request: Request) {
 
   const free = await fetchWatchmodePages({ region, sourceType: 'free', maxPages });
   const premium = await fetchWatchmodePages({ region, sourceType: 'sub', maxPages });
+
+  if (free.titles.length > 0) {
+    const oldListed = await kv.get(listedKey(region));
+    if (Array.isArray(oldListed) && oldListed.length > 0) {
+      await kv.set(previousListedKey(region), oldListed, { ex: CACHE_TTL_SECONDS });
+    }
+    await kv.set(listedKey(region), free.titles, { ex: CACHE_TTL_SECONDS });
+  }
 
   const freeKey = catalogKey(false, region);
   const premiumKey = catalogKey(true, region);

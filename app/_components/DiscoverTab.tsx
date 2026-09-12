@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { Film, Loader2, MonitorPlay, Heart, Filter, X } from 'lucide-react';
+import { Film, Loader2, MonitorPlay, Heart, Filter, X, Bookmark, EyeOff } from 'lucide-react';
 import HorizontalCarousel from './HorizontalCarousel';
+import type { LibraryStatus } from '@/lib/account';
 
 interface DiscoverTabProps {
   searchQuery: string;
@@ -29,6 +30,9 @@ interface DiscoverTabProps {
   pauseInfiniteScroll: boolean;
   continueWatching: any[];
   removeFromContinueWatching: (id: number) => void;
+  hiddenIds: Set<number>;
+  statusOf: (id: number) => LibraryStatus | null;
+  setLibraryStatus: (title: any, status: LibraryStatus | null) => void;
 }
 
 function catalogUrl(opts: {
@@ -66,7 +70,10 @@ export default function DiscoverTab({
   setMinYearFilter, setMaxYearFilter, setMinRatingFilter, setContentType,
   pauseInfiniteScroll,
   continueWatching,
-  removeFromContinueWatching
+  removeFromContinueWatching,
+  hiddenIds,
+  statusOf,
+  setLibraryStatus,
 }: DiscoverTabProps) {
   const [allTitles, setAllTitles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +86,10 @@ export default function DiscoverTab({
   const [genreFilter, setGenreFilter] = useState('');
   const [catalogEmpty, setCatalogEmpty] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [arrivedItems, setArrivedItems] = useState<any[]>([]);
+  const [leftItems, setLeftItems] = useState<any[]>([]);
+  const [similarItems, setSimilarItems] = useState<any[]>([]);
+  const [similarSeed, setSimilarSeed] = useState('');
 
   const postersFetched = useRef(new Set<number>());
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -259,7 +270,7 @@ export default function DiscoverTab({
 
   useEffect(() => {
     if (!TMDB_READ_TOKEN) return;
-    const carouselItems = [...trendingItems, ...newReleasesItems];
+    const carouselItems = [...trendingItems, ...newReleasesItems, ...arrivedItems, ...leftItems, ...similarItems];
     const titlesNeedingPoster = carouselItems.filter((title: any) =>
       title.tmdb_id && (title.tmdb_type || title.type) && (!title.poster_path || !postersFetched.current.has(title.tmdb_id))
     );
@@ -286,9 +297,12 @@ export default function DiscoverTab({
       );
       setTrendingItems((prev) => prev.map((title) => updates.find((u: any) => u.id === title.id) || title));
       setNewReleasesItems((prev) => prev.map((title) => updates.find((u: any) => u.id === title.id) || title));
+      setArrivedItems((prev) => prev.map((title) => updates.find((u: any) => u.id === title.id) || title));
+      setLeftItems((prev) => prev.map((title) => updates.find((u: any) => u.id === title.id) || title));
+      setSimilarItems((prev) => prev.map((title) => updates.find((u: any) => u.id === title.id) || title));
     };
     fetchWithLimit();
-  }, [trendingItems, newReleasesItems, TMDB_READ_TOKEN]);
+  }, [trendingItems, newReleasesItems, arrivedItems, leftItems, similarItems, TMDB_READ_TOKEN]);
 
   useEffect(() => {
     const fetchCarousels = async () => {
@@ -302,6 +316,13 @@ export default function DiscoverTab({
         const newRes = await fetch(catalogUrl({ region, contentType, section: 'new-releases' }));
         const newJson = await newRes.json();
         if (newJson.success) setNewReleasesItems(newJson.titles || []);
+
+        const changeRes = await fetch(`/api/catalog-changes?region=${region}`);
+        const changeJson = await changeRes.json();
+        if (changeJson.success) {
+          setArrivedItems(changeJson.arrived || []);
+          setLeftItems(changeJson.left || []);
+        }
       } catch (err) {
         console.error('Carousel fetch failed:', err);
       } finally {
@@ -311,7 +332,31 @@ export default function DiscoverTab({
     fetchCarousels();
   }, [contentType, debouncedSearch, region]);
 
-  const filteredTitles = allTitles;
+  useEffect(() => {
+    const seed = favorites[0];
+    if (!seed?.id || debouncedSearch) {
+      setSimilarItems([]);
+      setSimilarSeed('');
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/similar?id=${seed.id}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        setSimilarSeed(seed.title || '');
+        setSimilarItems(Array.isArray(json.titles) ? json.titles.filter((t: any) => t.id !== seed.id) : []);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [favorites[0]?.id, favorites[0]?.title, debouncedSearch]);
+
+  const filteredTitles = allTitles.filter((t) => !hiddenIds.has(t.id));
+  const visibleTrending = trendingItems.filter((t) => !hiddenIds.has(t.id));
+  const visibleNew = newReleasesItems.filter((t) => !hiddenIds.has(t.id));
+  const visibleArrived = arrivedItems.filter((t) => !hiddenIds.has(t.id));
+  const visibleLeft = leftItems.filter((t) => !hiddenIds.has(t.id));
+  const visibleSimilar = similarItems.filter((t) => !hiddenIds.has(t.id));
 
   const jsonLd = useMemo(() => JSON.stringify({
     "@context": "https://schema.org",
@@ -461,24 +506,44 @@ export default function DiscoverTab({
 
           <HorizontalCarousel
             title="Trending Now"
-            items={trendingItems}
+            items={visibleTrending}
             loading={carouselsLoading}
             favorites={favorites}
             toggleFavorite={toggleFavorite}
             setSelectedTitle={setSelectedTitle}
           />
+          {visibleArrived.length > 0 && (
+            <HorizontalCarousel
+              title="New on the free list"
+              items={visibleArrived}
+              loading={carouselsLoading}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              setSelectedTitle={setSelectedTitle}
+            />
+          )}
           <HorizontalCarousel
             title="New Today"
-            items={newReleasesItems}
+            items={visibleNew}
             loading={carouselsLoading}
             favorites={favorites}
             toggleFavorite={toggleFavorite}
             setSelectedTitle={setSelectedTitle}
           />
-          {favorites.length > 0 && (
+          {visibleLeft.length > 0 && (
             <HorizontalCarousel
-              title="Because You Favorited..."
-              items={favorites.slice(0, 20)}
+              title="Left the free list"
+              items={visibleLeft}
+              loading={carouselsLoading}
+              favorites={favorites}
+              toggleFavorite={toggleFavorite}
+              setSelectedTitle={setSelectedTitle}
+            />
+          )}
+          {visibleSimilar.length > 0 && (
+            <HorizontalCarousel
+              title={similarSeed ? `Because you liked ${similarSeed}` : 'More like your favourites'}
+              items={visibleSimilar}
               favorites={favorites}
               toggleFavorite={toggleFavorite}
               setSelectedTitle={setSelectedTitle}
@@ -640,6 +705,24 @@ export default function DiscoverTab({
                           >
                             <Heart size={28} className={isFavorite ? 'fill-red-500' : ''} />
                           </button>
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setLibraryStatus(title, statusOf(title.id) === 'want' ? null : 'want'); }}
+                              className="text-white hover:text-blue-400"
+                              aria-label="Watchlist"
+                            >
+                              <Bookmark size={22} className={statusOf(title.id) === 'want' ? 'fill-blue-400 text-blue-400' : ''} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setLibraryStatus(title, statusOf(title.id) === 'hidden' ? null : 'hidden'); }}
+                              className="text-white hover:text-amber-400"
+                              aria-label="Hide from Discover"
+                            >
+                              <EyeOff size={22} className={statusOf(title.id) === 'hidden' ? 'text-amber-400' : ''} />
+                            </button>
+                          </div>
                           <div className="flex gap-5">
                             <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(shareUrl); }} aria-label="Copy link" className="text-white hover:text-blue-400 text-2xl">📋</button>
                             <button onClick={(e) => { e.stopPropagation(); window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`, '_blank'); }} aria-label="Share on X" className="text-white hover:text-blue-400 text-2xl">𝕏</button>
