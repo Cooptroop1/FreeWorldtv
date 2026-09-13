@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { isSafeHttpUrl } from '@/lib/safe-url';
 import { sortByMyServices, sourceMatchesServices } from '@/lib/account';
 
-type Source = { name?: string; web_url?: string; format?: string };
+type Source = { name?: string; web_url?: string; android_url?: string; ios_url?: string; format?: string };
 
 export default function TitleWatchLinks({
   id,
@@ -69,6 +69,8 @@ export default function TitleWatchLinks({
             const href = isSafeHttpUrl(source.web_url || '') ? source.web_url : undefined;
             if (!href) return null;
             const mine = sourceMatchesServices(source.name || '', services);
+            const android = isSafeHttpUrl(source.android_url || '') ? source.android_url : undefined;
+            const ios = isSafeHttpUrl(source.ios_url || '') ? source.ios_url : undefined;
             return (
               <a
                 key={`${source.name}-${idx}`}
@@ -81,7 +83,11 @@ export default function TitleWatchLinks({
                   {source.name}
                   {mine && <span className="ml-2 text-[10px] uppercase tracking-wide text-violet-300">Your app</span>}
                 </span>
-                <span className="text-blue-400 text-sm">Watch now →</span>
+                <span className="text-blue-400 text-sm flex gap-3">
+                  {android && <span>Android</span>}
+                  {ios && <span>iOS</span>}
+                  Watch now →
+                </span>
               </a>
             );
           })}

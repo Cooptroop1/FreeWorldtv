@@ -1,7 +1,55 @@
+/** Grandfathered free-tier countries (this account). */
 export const ALLOWED_REGIONS = ['US', 'GB', 'CA', 'AU', 'IN', 'ES', 'BR'] as const;
 export type Region = (typeof ALLOWED_REGIONS)[number];
 
-export function isAllowedRegion(value: string): value is Region {
+/** Extra countries Watchmode Startup unlocks. First visitor still seeds KV. */
+export const STARTUP_REGIONS = [
+  'US', 'GB', 'CA', 'AU', 'IN', 'ES', 'BR',
+  'DE', 'FR', 'IT', 'NL', 'IE', 'PT', 'SE', 'NO', 'DK', 'FI', 'PL', 'AT', 'BE', 'CH',
+  'MX', 'AR', 'CL', 'CO', 'JP', 'KR', 'NZ', 'ZA', 'AE', 'SG', 'HK', 'TW', 'PH', 'ID', 'TH', 'TR',
+] as const;
+
+export const REGION_LABELS: Record<string, string> = {
+  US: '🇺🇸 United States',
+  GB: '🇬🇧 United Kingdom',
+  CA: '🇨🇦 Canada',
+  AU: '🇦🇺 Australia',
+  IN: '🇮🇳 India',
+  ES: '🇪🇸 Spain',
+  BR: '🇧🇷 Brazil',
+  DE: '🇩🇪 Germany',
+  FR: '🇫🇷 France',
+  IT: '🇮🇹 Italy',
+  NL: '🇳🇱 Netherlands',
+  IE: '🇮🇪 Ireland',
+  PT: '🇵🇹 Portugal',
+  SE: '🇸🇪 Sweden',
+  NO: '🇳🇴 Norway',
+  DK: '🇩🇰 Denmark',
+  FI: '🇫🇮 Finland',
+  PL: '🇵🇱 Poland',
+  AT: '🇦🇹 Austria',
+  BE: '🇧🇪 Belgium',
+  CH: '🇨🇭 Switzerland',
+  MX: '🇲🇽 Mexico',
+  AR: '🇦🇷 Argentina',
+  CL: '🇨🇱 Chile',
+  CO: '🇨🇴 Colombia',
+  JP: '🇯🇵 Japan',
+  KR: '🇰🇷 South Korea',
+  NZ: '🇳🇿 New Zealand',
+  ZA: '🇿🇦 South Africa',
+  AE: '🇦🇪 UAE',
+  SG: '🇸🇬 Singapore',
+  HK: '🇭🇰 Hong Kong',
+  TW: '🇹🇼 Taiwan',
+  PH: '🇵🇭 Philippines',
+  ID: '🇮🇩 Indonesia',
+  TH: '🇹🇭 Thailand',
+  TR: '🇹🇷 Turkey',
+};
+
+export function isAllowedRegion(value: string): boolean {
   return (ALLOWED_REGIONS as readonly string[]).includes(value);
 }
 

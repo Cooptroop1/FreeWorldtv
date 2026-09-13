@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
-import { catalogKey, isAllowedRegion } from '@/lib/regions';
+import { catalogKey } from '@/lib/regions';
+import { activeRegions } from '@/lib/watchmode-plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   if (!query) {
     return NextResponse.json({ success: false, error: 'Missing search query' }, { status: 400 });
   }
-  if (!isAllowedRegion(regionRaw)) {
+  if (!activeRegions().includes(regionRaw)) {
     return NextResponse.json({ success: false, error: 'Unsupported region' }, { status: 400 });
   }
 

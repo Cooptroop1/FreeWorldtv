@@ -10,11 +10,13 @@ import LibraryActions from './LibraryActions';
 import { useAccount } from './useAccount';
 import RecommendedRail from './RecommendedRail';
 import RecommendBox from './RecommendBox';
+import EpisodeList from './EpisodeList';
 import { providerLogos } from '../../lib/provider-logos';
 import { isSafeHttpUrl } from '../../lib/safe-url';
 import { sortByMyServices, sourceMatchesServices } from '../../lib/account';
 import { usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import { ALLOWED_REGIONS, REGION_LABELS } from '../../lib/regions';
 
 const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -51,6 +53,9 @@ const freeWorldwideServices = [
 export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' }) {
   const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio'>(defaultTab);
   const [region, setRegion] = useState('GB');
+  const [regionOptions, setRegionOptions] = useState<{ code: string; label: string }[]>(
+    ALLOWED_REGIONS.map((code) => ({ code, label: REGION_LABELS[code] || code }))
+  );
   const [contentType, setContentType] = useState('movie,tv_series');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -237,6 +242,12 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
     const params = new URLSearchParams(window.location.search);
     const q = params.get('title') || params.get('search') || params.get('q');
     if (q) setSearchQuery(q);
+    fetch('/api/watchmode-plan')
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.regionOptions) && d.regionOptions.length) setRegionOptions(d.regionOptions);
+      })
+      .catch(() => {});
   }, []);
   useEffect(() => {
     localStorage.setItem('region', region);
@@ -795,13 +806,9 @@ const deduplicateSources = (sources: any[]) => {
     className="bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
     aria-label="Choose streaming region"
   >
-    <option value="US">🇺🇸 United States</option>
-    <option value="GB">🇬🇧 United Kingdom</option>
-    <option value="CA">🇨🇦 Canada</option>
-    <option value="AU">🇦🇺 Australia</option>
-    <option value="IN">🇮🇳 India</option>
-    <option value="ES">🇪🇸 Spain</option>
-    <option value="BR">🇧🇷 Brazil</option>
+    {regionOptions.map((opt) => (
+      <option key={opt.code} value={opt.code}>{opt.label}</option>
+    ))}
   </select>
 </div>
 
@@ -1518,6 +1525,7 @@ const deduplicateSources = (sources: any[]) => {
                         onSet={(status) => setLibraryStatus(selectedTitle, status)}
                       />
                       <RecommendBox isSignedIn={Boolean(isSignedIn)} title={selectedTitle} />
+                      <EpisodeList titleId={selectedTitle.id} type={selectedTitle.type} />
                     </div>
                   )}
                 </div>

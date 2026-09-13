@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { WatchmodeClient } from '@watchmode/api-client';
 import { currentUser } from '@clerk/nextjs/server';
-import { isAllowedRegion } from '@/lib/regions';
+import { activeRegions } from '@/lib/watchmode-plan';
 import type { AlertItem } from '@/lib/account';
 
 export const dynamic = 'force-dynamic';
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const titleId = searchParams.get('id');
   const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
-  const region = isAllowedRegion(regionRaw) ? regionRaw : 'GB';
+  const region = activeRegions().includes(regionRaw) ? regionRaw : 'GB';
   const paid = searchParams.get('paid') === 'true';
 
   if (!titleId || !/^\d+$/.test(titleId)) {

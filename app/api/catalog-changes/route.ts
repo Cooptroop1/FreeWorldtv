@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
-import { isAllowedRegion } from '@/lib/regions';
 import { listedKey, previousListedKey } from '@/lib/account';
+import { activeRegions } from '@/lib/watchmode-plan';
 import type { CatalogTitle } from '@/lib/watchmode-list';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
-  if (!isAllowedRegion(regionRaw)) {
+  if (!activeRegions().includes(regionRaw)) {
     return NextResponse.json({ success: false, error: 'Unsupported region' }, { status: 400 });
   }
 

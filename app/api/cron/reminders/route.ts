@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { isAdminRequest } from '@/lib/admin-auth';
-import { isAllowedRegion } from '@/lib/regions';
+import { activeRegions } from '@/lib/watchmode-plan';
 import type { AlertItem } from '@/lib/account';
 
 export const dynamic = 'force-dynamic';
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     if (fetches >= MAX_FETCHES) break;
     const prefs = ((await kv.get(`prefs:${userId}`)) || {}) as { region?: string; email?: string };
     const regionRaw = String(prefs.region || 'GB').toUpperCase();
-    const region = isAllowedRegion(regionRaw) ? regionRaw : 'GB';
+    const region = activeRegions().includes(regionRaw) ? regionRaw : 'GB';
     const favorites = ((await kv.get(`favorites:${userId}`)) || []) as { id: number; title?: string; year?: number }[];
     if (!Array.isArray(favorites) || !favorites.length) continue;
 

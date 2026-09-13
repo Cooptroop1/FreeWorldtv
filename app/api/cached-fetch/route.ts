@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import {
-  ALLOWED_REGIONS,
   CATALOG_TARGET,
   catalogExhaustedKey,
   isAllowedRegion,
   previousCatalogKey,
 } from '@/lib/regions';
+import { activeRegions } from '@/lib/watchmode-plan';
 import { expandCatalog, loadOrSeedCatalog } from '@/lib/ensure-catalog';
 
 export const dynamic = 'force-dynamic';
@@ -77,9 +77,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
 
   const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
-  if (!isAllowedRegion(regionRaw)) {
+  const allowed = activeRegions();
+  if (!allowed.includes(regionRaw) && !isAllowedRegion(regionRaw)) {
     return NextResponse.json(
-      { success: false, error: 'Unsupported region', allowed: ALLOWED_REGIONS },
+      { success: false, error: 'Unsupported region', allowed },
       { status: 400 }
     );
   }
