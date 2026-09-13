@@ -2,6 +2,7 @@ import { kv } from '@vercel/kv';
 import { currentUser } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { rememberAccountUser } from '@/lib/account';
+import { isSiteAdminUser } from '@/lib/admin-auth';
 import {
   BOARD_KEY,
   REC_LIMIT,
@@ -10,6 +11,7 @@ import {
   clampStars,
   cleanReview,
   recsUserKey,
+  reviewIsClean,
   slimRec,
   type BoardItem,
   type RecItem,
@@ -36,6 +38,7 @@ export async function GET() {
     board: board.slice(0, 15),
     mine,
     limit: REC_LIMIT,
+    admin: isSiteAdminUser(user),
   });
 }
 
@@ -49,6 +52,9 @@ export async function POST(request: Request) {
   }
 
   const review = cleanReview(body.review);
+  if (!reviewIsClean(review)) {
+    return NextResponse.json({ error: 'Keep the review clean — no swearing.' }, { status: 400 });
+  }
   const stars = clampStars(body.stars);
   const item = slimRec(body as Record<string, unknown>, review, stars);
   if (!item) return NextResponse.json({ error: 'Pick 1 to 5 stars' }, { status: 400 });

@@ -34,6 +34,14 @@ export function cleanReview(raw: unknown): string {
   return text.slice(0, REVIEW_MAX);
 }
 
+const SWEAR =
+  /\b(fuck(?:ing|er)?|shit|cunt|bitch|nigg(?:a|er)s?|faggot|rape|asshole|bastard|dickhead|slut|whore)\b/i;
+
+export function reviewIsClean(text: string): boolean {
+  if (!text) return true;
+  return !SWEAR.test(text);
+}
+
 export function clampStars(raw: unknown): number {
   const n = Math.round(Number(raw));
   if (n < 1 || n > 5) return 0;

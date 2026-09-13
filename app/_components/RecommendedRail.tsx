@@ -21,6 +21,7 @@ export default function RecommendedRail({
   const [board, setBoard] = useState<BoardItem[]>([]);
   const [mine, setMine] = useState<RecItem[]>([]);
   const [limit, setLimit] = useState(5);
+  const [admin, setAdmin] = useState(false);
 
   const load = useCallback(() => {
     fetch('/api/recommendations')
@@ -28,6 +29,7 @@ export default function RecommendedRail({
       .then((d) => {
         setBoard(Array.isArray(d.board) ? d.board : []);
         setMine(Array.isArray(d.mine) ? d.mine : []);
+        setAdmin(Boolean(d.admin));
         if (d.limit) setLimit(d.limit);
       })
       .catch(() => {});
@@ -51,6 +53,20 @@ export default function RecommendedRail({
       .catch(() => {});
   };
 
+  const moderate = (id: number, action: 'title' | 'review') => {
+    fetch('/api/recommendations/moderate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.board) setBoard(d.board);
+        window.dispatchEvent(new Event('fsw-recs'));
+      })
+      .catch(() => {});
+  };
+
   const list = (
     <ul className="space-y-2">
       {board.length === 0 && (
@@ -59,7 +75,7 @@ export default function RecommendedRail({
         </li>
       )}
       {board.map((item, i) => (
-        <li key={item.id}>
+        <li key={item.id} className="relative">
           <button
             type="button"
             onClick={() => onSelect(item)}
@@ -82,6 +98,26 @@ export default function RecommendedRail({
               )}
             </span>
           </button>
+          {admin && (
+            <div className="flex gap-1 mt-1">
+              {item.reviews[0]?.text && (
+                <button
+                  type="button"
+                  onClick={() => moderate(item.id, 'review')}
+                  className="text-[10px] text-zinc-400 hover:text-white px-1.5 py-0.5 rounded bg-zinc-800"
+                >
+                  Hide review
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => moderate(item.id, 'title')}
+                className="text-[10px] text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded bg-zinc-800"
+              >
+                Remove
+              </button>
+            </div>
+          )}
         </li>
       ))}
     </ul>
@@ -142,22 +178,32 @@ export default function RecommendedRail({
             <p className="text-xs text-zinc-400">Be the first — open a title and recommend it.</p>
           )}
           {board.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onSelect(item)}
-              className="w-28 flex-shrink-0 text-left"
-            >
-              {posterSrc(item) ? (
-                <img src={posterSrc(item)} alt="" className="w-28 h-40 object-cover rounded-xl bg-zinc-800" />
-              ) : (
-                <div className="w-28 h-40 rounded-xl bg-zinc-800" />
+            <div key={item.id} className="w-28 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => onSelect(item)}
+                className="w-full text-left"
+              >
+                {posterSrc(item) ? (
+                  <img src={posterSrc(item)} alt="" className="w-28 h-40 object-cover rounded-xl bg-zinc-800" />
+                ) : (
+                  <div className="w-28 h-40 rounded-xl bg-zinc-800" />
+                )}
+                <span className="block text-xs font-medium text-white mt-1 line-clamp-2">{item.title}</span>
+                <span className="block text-[10px] text-amber-300">
+                  {item.stars ? `${Number(item.stars).toFixed(1)}★ · ` : ''}{item.count} recs
+                </span>
+              </button>
+              {admin && (
+                <button
+                  type="button"
+                  onClick={() => moderate(item.id, 'title')}
+                  className="text-[10px] text-red-400 mt-1"
+                >
+                  Remove
+                </button>
               )}
-              <span className="block text-xs font-medium text-white mt-1 line-clamp-2">{item.title}</span>
-              <span className="block text-[10px] text-amber-300">
-                {item.stars ? `${Number(item.stars).toFixed(1)}★ · ` : ''}{item.count} recs
-              </span>
-            </button>
+            </div>
           ))}
         </div>
       </section>
