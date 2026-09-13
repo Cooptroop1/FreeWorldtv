@@ -7,6 +7,7 @@ import {
   REC_LIMIT,
   REC_TTL,
   applyRecToBoard,
+  clampStars,
   cleanReview,
   recsUserKey,
   slimRec,
@@ -48,8 +49,9 @@ export async function POST(request: Request) {
   }
 
   const review = cleanReview(body.review);
-  const item = slimRec(body as Record<string, unknown>, review);
-  if (!item) return NextResponse.json({ error: 'Missing title' }, { status: 400 });
+  const stars = clampStars(body.stars);
+  const item = slimRec(body as Record<string, unknown>, review, stars);
+  if (!item) return NextResponse.json({ error: 'Pick 1 to 5 stars' }, { status: 400 });
 
   const mine = await readMine(user.id);
   const existing = mine.find((r) => r.id === item.id);

@@ -75,6 +75,7 @@ export default function RecommendedRail({
               <span className="block text-xs font-semibold text-white leading-snug line-clamp-2">{item.title}</span>
               <span className="block text-[11px] text-zinc-400">
                 {item.year || ''} · {item.count} rec{item.count === 1 ? '' : 's'}
+                {item.stars ? ` · ${Number(item.stars).toFixed(1)}★` : ''}
               </span>
               {item.reviews[0]?.text && (
                 <span className="block text-[11px] text-zinc-300 italic mt-0.5 line-clamp-2">“{item.reviews[0].text}”</span>
@@ -153,7 +154,9 @@ export default function RecommendedRail({
                 <div className="w-28 h-40 rounded-xl bg-zinc-800" />
               )}
               <span className="block text-xs font-medium text-white mt-1 line-clamp-2">{item.title}</span>
-              <span className="block text-[10px] text-amber-300">{item.count} recs</span>
+              <span className="block text-[10px] text-amber-300">
+                {item.stars ? `${Number(item.stars).toFixed(1)}★ · ` : ''}{item.count} recs
+              </span>
             </button>
           ))}
         </div>
