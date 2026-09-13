@@ -5,8 +5,10 @@ export type FranchiseTitle = {
   title: string;
   year?: number;
   poster: string | null;
+  poster_path?: string;
   popularity: number;
   tmdb_id?: number;
+  type?: string;
 };
 
 export type FranchiseSet = {
@@ -83,8 +85,10 @@ function slim(t: CatalogTitle): FranchiseTitle {
     title: t.title,
     year: t.year,
     poster: t.poster,
+    poster_path: (t as CatalogTitle & { poster_path?: string }).poster_path,
     popularity: t.popularity || 0,
     tmdb_id: t.tmdb_id,
+    type: t.type,
   };
 }
 

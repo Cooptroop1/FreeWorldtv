@@ -1,10 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Clapperboard, X } from 'lucide-react';
 import type { FranchiseSet, FranchiseTitle } from '@/lib/franchises';
 
 const EVENT = 'fsw-franchise';
+const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
+
+function posterUrl(t: FranchiseTitle) {
+  if (t.poster_path) return `https://image.tmdb.org/t/p/w342${t.poster_path}`;
+  if (t.poster && t.poster.startsWith('http') && !t.poster.includes('watchmode.com')) return t.poster;
+  return '';
+}
 
 function openSet(set: FranchiseSet) {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: set }));
@@ -16,15 +23,52 @@ export function FranchisePosterModal({
   onSelect: (title: FranchiseTitle) => void;
 }) {
   const [active, setActive] = useState<FranchiseSet | null>(null);
+  const fetched = useRef(new Set<number>());
 
   useEffect(() => {
     const onOpen = (e: Event) => {
       const set = (e as CustomEvent<FranchiseSet>).detail;
-      if (set?.titles?.length) setActive(set);
+      if (set?.titles?.length) {
+        fetched.current = new Set();
+        setActive({ ...set, titles: set.titles.map((t) => ({ ...t })) });
+      }
     };
     window.addEventListener(EVENT, onOpen);
     return () => window.removeEventListener(EVENT, onOpen);
   }, []);
+
+  useEffect(() => {
+    if (!active || !TMDB_READ_TOKEN) return;
+    const missing = active.titles.filter((t) => t.tmdb_id && !posterUrl(t) && !fetched.current.has(t.tmdb_id));
+    if (!missing.length) return;
+    missing.forEach((t) => fetched.current.add(t.tmdb_id as number));
+    let cancelled = false;
+    (async () => {
+      const updates = await Promise.all(
+        missing.slice(0, 12).map(async (t) => {
+          try {
+            const res = await fetch(`https://api.themoviedb.org/3/movie/${t.tmdb_id}?language=en-US`, {
+              headers: { accept: 'application/json', Authorization: `Bearer ${TMDB_READ_TOKEN}` },
+            });
+            if (!res.ok) return t;
+            const json = await res.json();
+            return { ...t, poster_path: json.poster_path || t.poster_path };
+          } catch {
+            return t;
+          }
+        })
+      );
+      if (cancelled) return;
+      setActive((prev) => {
+        if (!prev) return prev;
+        const map = new Map(updates.map((u) => [u.id, u]));
+        return { ...prev, titles: prev.titles.map((t) => map.get(t.id) || t) };
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [active]);
 
   if (!active) return null;
 
@@ -48,25 +92,30 @@ export function FranchisePosterModal({
           </button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {active.titles.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => {
-                onSelect(t);
-                setActive(null);
-              }}
-              className="text-left group"
-            >
-              {t.poster ? (
-                <img src={t.poster} alt="" className="w-full aspect-[2/3] object-cover rounded-xl bg-zinc-800 group-hover:ring-2 ring-sky-400" />
-              ) : (
-                <div className="w-full aspect-[2/3] rounded-xl bg-zinc-800" />
-              )}
-              <span className="block text-sm font-medium text-white mt-2 line-clamp-2">{t.title}</span>
-              <span className="block text-xs text-zinc-500">{t.year || ''}</span>
-            </button>
-          ))}
+          {active.titles.map((t) => {
+            const src = posterUrl(t);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => {
+                  onSelect({ ...t, poster_path: t.poster_path });
+                  setActive(null);
+                }}
+                className="text-left group"
+              >
+                {src ? (
+                  <img src={src} alt="" className="w-full aspect-[2/3] object-cover rounded-xl bg-zinc-800 group-hover:ring-2 ring-sky-400" />
+                ) : (
+                  <div className="w-full aspect-[2/3] rounded-xl bg-zinc-800 flex items-end p-2">
+                    <span className="text-xs text-zinc-400 line-clamp-3">{t.title}</span>
+                  </div>
+                )}
+                <span className="block text-sm font-medium text-white mt-2 line-clamp-2">{t.title}</span>
+                <span className="block text-xs text-zinc-500">{t.year || ''}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
