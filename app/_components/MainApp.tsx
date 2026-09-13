@@ -9,6 +9,7 @@ import PremiumTab from './PremiumTab';
 import LibraryActions from './LibraryActions';
 import { useAccount } from './useAccount';
 import RecommendedRail from './RecommendedRail';
+import DonateRail from './DonateRail';
 import RecommendBox from './RecommendBox';
 import EpisodeList from './EpisodeList';
 import { providerLogos } from '../../lib/provider-logos';
@@ -893,6 +894,7 @@ const deduplicateSources = (sources: any[]) => {
 
       <OfflineMessage />
 
+      <DonateRail />
       <RecommendedRail
         isSignedIn={Boolean(isSignedIn)}
         onSelect={(title) => setSelectedTitle(title)}
