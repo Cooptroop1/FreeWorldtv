@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse, after } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import {
   ALLOWED_REGIONS,
@@ -101,10 +101,16 @@ export async function GET(request: NextRequest) {
     const previousRaw = await kv.get(previousCatalogKey(region));
     catalog = Array.isArray(previousRaw) ? (previousRaw as Title[]) : [];
   }
+  let wallAdded = 0;
+  let wallExhausted = catalog.length >= CATALOG_TARGET;
   if (!paid && !section && page === 1 && catalog.length > 0 && catalog.length < CATALOG_TARGET) {
-    after(() =>
-      expandCatalog(false, region).catch((err) => console.error('catalog expand', region, err))
-    );
+    const exp = await expandCatalog(false, region, 6);
+    wallAdded = exp.added;
+    wallExhausted = Boolean(exp.exhausted);
+    if (exp.added > 0) {
+      const latest = await loadOrSeedCatalog(paid, region);
+      catalog = latest.catalog as Title[];
+    }
   }
   const catalogEmpty = catalog.length === 0;
 
@@ -177,8 +183,14 @@ export async function GET(request: NextRequest) {
     hasMore,
     totalAvailable: filtered.length,
     region,
-    fromCache: seeded.fromCache,
+    fromCache: seeded.fromCache && wallAdded === 0,
     catalogEmpty: false,
     seeded: seeded.seeded,
+    wall: {
+      size: catalog.length,
+      target: CATALOG_TARGET,
+      added: wallAdded,
+      exhausted: wallExhausted,
+    },
   });
 }

@@ -6,6 +6,7 @@ import {
   LIST_PAGE_SIZE,
   SEED_PAGES,
   catalogCursorKey,
+  catalogExhaustedKey,
   catalogKey,
 } from '@/lib/regions';
 import { fetchWatchmodePages, type CatalogTitle } from '@/lib/watchmode-list';
@@ -17,14 +18,14 @@ function lockKey(paid: boolean, region: string) {
 }
 
 function exhaustedKey(paid: boolean, region: string) {
-  return `catalog_exhausted:${paid ? 'premium' : 'free'}:${region}`;
+  return catalogExhaustedKey(paid, region);
 }
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function readCatalog(paid: boolean, region: string): Promise<CatalogTitle[]> {
+export async function readCatalog(paid: boolean, region: string): Promise<CatalogTitle[]> {
   const raw = await kv.get(catalogKey(paid, region));
   return Array.isArray(raw) ? (raw as CatalogTitle[]) : [];
 }
@@ -135,7 +136,7 @@ export async function loadOrSeedCatalog(
   }
 }
 
-/** Append the next Watchmode pages until this country hits the 10k wall. */
+/** Append the next Watchmode pages until this country hits the 20k wall. */
 export async function expandCatalog(
   paid: boolean,
   region: string,
@@ -143,9 +144,6 @@ export async function expandCatalog(
 ): Promise<{ stored: number; added: number; exhausted?: boolean; skipped?: string }> {
   const existing = await readCatalog(paid, region);
   if (existing.length >= CATALOG_TARGET) {
-    return { stored: existing.length, added: 0, exhausted: true };
-  }
-  if (await kv.get(exhaustedKey(paid, region))) {
     return { stored: existing.length, added: 0, exhausted: true };
   }
 
@@ -158,16 +156,29 @@ export async function expandCatalog(
   }
 
   try {
-    const cursor = Number(await kv.get(catalogCursorKey(paid, region))) ||
-      Math.max(1, Math.ceil(existing.length / LIST_PAGE_SIZE));
-    const result = await fetchWatchmodePages({
+    const storedCursor = Number(await kv.get(catalogCursorKey(paid, region))) || 0;
+    const guessed = Math.max(1, Math.ceil(existing.length / LIST_PAGE_SIZE));
+    let startPage = (storedCursor || guessed) + 1;
+
+    let result = await fetchWatchmodePages({
       region,
       sourceType: paid ? 'sub' : 'free',
       maxPages: pages,
-      startPage: cursor + 1,
+      startPage,
     });
 
-    if (result.exhausted && result.titles.length === 0) {
+    // Cursor was too far ahead (old 10k run). Rewind and try the next real page.
+    if (result.ok && result.titles.length === 0 && startPage > guessed + 1) {
+      startPage = guessed + 1;
+      result = await fetchWatchmodePages({
+        region,
+        sourceType: paid ? 'sub' : 'free',
+        maxPages: pages,
+        startPage,
+      });
+    }
+
+    if (result.ok && result.titles.length === 0) {
       await kv.set(exhaustedKey(paid, region), 1, { ex: CACHE_TTL_SECONDS });
       return { stored: existing.length, added: 0, exhausted: true };
     }
@@ -176,6 +187,7 @@ export async function expandCatalog(
       return { stored: existing.length, added: 0, skipped: result.error || 'no titles' };
     }
 
+    await kv.del(exhaustedKey(paid, region));
     const stored = await mergeAndStore(paid, region, existing, result.titles, result.lastPage);
     if (result.exhausted) {
       await kv.set(exhaustedKey(paid, region), 1, { ex: CACHE_TTL_SECONDS });

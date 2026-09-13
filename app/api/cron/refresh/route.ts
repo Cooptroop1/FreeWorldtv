@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { adminToken, isAdminRequest } from '@/lib/admin-auth';
-import { ALLOWED_REGIONS, CATALOG_TARGET, catalogKey } from '@/lib/regions';
+import { ALLOWED_REGIONS, CATALOG_TARGET, catalogExhaustedKey, catalogKey } from '@/lib/regions';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -23,11 +23,12 @@ export async function GET(request: Request) {
     ALLOWED_REGIONS.map(async (region) => ({
       region,
       size: await catalogSize(region),
+      exhausted: Boolean(await kv.get(catalogExhaustedKey(false, region))),
     }))
   );
 
   const undersized = sizes
-    .filter((s) => s.size < CATALOG_TARGET)
+    .filter((s) => s.size < CATALOG_TARGET && !s.exhausted)
     .sort((a, b) => a.size - b.size);
 
   const jobs: { region: string; mode: 'expand' | 'daily'; size: number }[] = [];

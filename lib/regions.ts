@@ -17,6 +17,10 @@ export function catalogCursorKey(paid: boolean, region: string) {
   return `catalog_cursor:${paid ? 'premium' : 'free'}:${region}`;
 }
 
+export function catalogExhaustedKey(paid: boolean, region: string) {
+  return `catalog_exhausted:${paid ? 'premium' : 'free'}:${region}`;
+}
+
 export const CACHE_TTL_SECONDS = 86400 * 30;
 /** Discover wall target per country. Watchmode list-titles is 250 per page. */
 export const CATALOG_TARGET = 20000;
