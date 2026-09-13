@@ -45,7 +45,7 @@ export function FranchisePosterModal({
     let cancelled = false;
     (async () => {
       const updates = await Promise.all(
-        missing.slice(0, 12).map(async (t) => {
+        missing.slice(0, 40).map(async (t) => {
           try {
             const res = await fetch(`https://api.themoviedb.org/3/movie/${t.tmdb_id}?language=en-US`, {
               headers: { accept: 'application/json', Authorization: `Bearer ${TMDB_READ_TOKEN}` },
@@ -154,7 +154,7 @@ export default function FranchiseRail({
       </h2>
       <p className="text-[11px] text-zinc-400 mb-3">Tap a set to see the movies.</p>
       <ul className="space-y-1.5">
-        {sets.slice(0, 8).map((set) => (
+        {sets.slice(0, 12).map((set) => (
           <li key={set.name}>
             <button
               type="button"
@@ -179,7 +179,7 @@ export default function FranchiseRail({
             <Clapperboard size={14} className="text-sky-400" /> Trending sets
           </h2>
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {sets.slice(0, 8).map((set) => (
+            {sets.slice(0, 12).map((set) => (
               <button
                 key={set.name}
                 type="button"
