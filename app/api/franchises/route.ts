@@ -11,8 +11,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
   const region = activeRegions().includes(regionRaw) ? regionRaw : 'GB';
-  const catalog = ((await kv.get(catalogKey(false, region))) || []) as CatalogTitle[];
+  const paid = searchParams.get('paid') === 'true';
+  const catalog = ((await kv.get(catalogKey(paid, region))) || []) as CatalogTitle[];
   const list = Array.isArray(catalog) ? catalog : [];
   const franchises = buildFranchiseSets(list);
-  return NextResponse.json({ success: true, region, franchises });
+  return NextResponse.json({
+    success: true,
+    region,
+    paid,
+    catalogSize: list.length,
+    franchises,
+  });
 }

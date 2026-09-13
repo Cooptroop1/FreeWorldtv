@@ -131,28 +131,84 @@ export default function FranchiseRail({
   variant?: 'sidebar' | 'row' | 'both';
 }) {
   const [sets, setSets] = useState<FranchiseSet[]>([]);
+  const [paid, setPaid] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      setPaid(localStorage.getItem('fsw-sets-paid') === '1');
+    } catch { /* ignore */ }
+    const sync = () => {
+      try {
+        setPaid(localStorage.getItem('fsw-sets-paid') === '1');
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('fsw-sets-paid', sync);
+    return () => window.removeEventListener('fsw-sets-paid', sync);
+  }, []);
+
+  const choosePaid = (next: boolean) => {
+    setPaid(next);
+    try {
+      localStorage.setItem('fsw-sets-paid', next ? '1' : '0');
+    } catch { /* ignore */ }
+    window.dispatchEvent(new Event('fsw-sets-paid'));
+  };
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/franchises?region=${region}`)
+    setLoaded(false);
+    fetch(`/api/franchises?region=${region}&paid=${paid}`)
       .then((r) => r.json())
       .then((d) => {
-        if (!cancelled && Array.isArray(d.franchises)) setSets(d.franchises);
+        if (!cancelled) {
+          setSets(Array.isArray(d.franchises) ? d.franchises : []);
+          setLoaded(true);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) {
+          setSets([]);
+          setLoaded(true);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, [region]);
+  }, [region, paid]);
 
-  if (!sets.length) return null;
+  const toggle = (
+    <div className="flex rounded-lg bg-zinc-900 border border-zinc-700 p-0.5 mb-3">
+      <button
+        type="button"
+        onClick={() => choosePaid(false)}
+        className={`flex-1 text-[11px] font-semibold rounded-md py-1 ${!paid ? 'bg-sky-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+      >
+        Free
+      </button>
+      <button
+        type="button"
+        onClick={() => choosePaid(true)}
+        className={`flex-1 text-[11px] font-semibold rounded-md py-1 ${paid ? 'bg-violet-600 text-white' : 'text-zinc-400 hover:text-white'}`}
+      >
+        Premium
+      </button>
+    </div>
+  );
 
   const card = (
     <div className="rounded-2xl border border-zinc-700 bg-zinc-950/90 backdrop-blur p-3.5 shadow-xl">
       <h2 className="text-sm font-bold text-white flex items-center gap-1.5 mb-1">
         <Clapperboard size={14} className="text-sky-400" /> Trending sets
       </h2>
-      <p className="text-[11px] text-zinc-400 mb-3">Tap a set to see the movies.</p>
+      <p className="text-[11px] text-zinc-400 mb-2">
+        {paid ? 'On subscription apps in this country.' : 'Free with ads in this country.'}
+      </p>
+      {toggle}
+      {!loaded && <p className="text-[11px] text-zinc-500">Loading…</p>}
+      {loaded && !sets.length && (
+        <p className="text-[11px] text-zinc-500">No 2+ movie sets in this {paid ? 'premium' : 'free'} list yet.</p>
+      )}
       <ul className="space-y-1.5">
         {sets.slice(0, 12).map((set) => (
           <li key={set.name}>
@@ -175,9 +231,30 @@ export default function FranchiseRail({
       {variant !== 'row' && <div className={variant === 'sidebar' ? 'mt-3' : 'hidden 2xl:block mt-3'}>{card}</div>}
       {variant !== 'sidebar' && (
         <section className="2xl:hidden max-w-7xl mx-auto mb-8">
-          <h2 className="text-sm font-bold text-white flex items-center gap-1.5 mb-2">
-            <Clapperboard size={14} className="text-sky-400" /> Trending sets
-          </h2>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+              <Clapperboard size={14} className="text-sky-400" /> Trending sets
+            </h2>
+            <div className="flex rounded-lg bg-zinc-900 border border-zinc-700 p-0.5 w-40">
+              <button
+                type="button"
+                onClick={() => choosePaid(false)}
+                className={`flex-1 text-[11px] font-semibold rounded-md py-1 ${!paid ? 'bg-sky-600 text-white' : 'text-zinc-400'}`}
+              >
+                Free
+              </button>
+              <button
+                type="button"
+                onClick={() => choosePaid(true)}
+                className={`flex-1 text-[11px] font-semibold rounded-md py-1 ${paid ? 'bg-violet-600 text-white' : 'text-zinc-400'}`}
+              >
+                Premium
+              </button>
+            </div>
+          </div>
+          {loaded && !sets.length && (
+            <p className="text-xs text-zinc-500 mb-2">No 2+ movie sets in this {paid ? 'premium' : 'free'} list yet.</p>
+          )}
           <div className="flex gap-2 overflow-x-auto pb-2">
             {sets.slice(0, 12).map((set) => (
               <button
