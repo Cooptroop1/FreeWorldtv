@@ -10,6 +10,7 @@ import LibraryActions from './LibraryActions';
 import { useAccount } from './useAccount';
 import RecommendedRail from './RecommendedRail';
 import DonateRail from './DonateRail';
+import FranchiseRail from './FranchiseRail';
 import RecommendBox from './RecommendBox';
 import EpisodeList from './EpisodeList';
 import { providerLogos } from '../../lib/provider-logos';
@@ -894,7 +895,18 @@ const deduplicateSources = (sources: any[]) => {
 
       <OfflineMessage />
 
-      <DonateRail />
+      <DonateRail>
+        <FranchiseRail
+          variant="sidebar"
+          region={region}
+          onSelect={(title) => setSelectedTitle(title)}
+        />
+      </DonateRail>
+      <FranchiseRail
+        variant="row"
+        region={region}
+        onSelect={(title) => setSelectedTitle(title)}
+      />
       <RecommendedRail
         isSignedIn={Boolean(isSignedIn)}
         onSelect={(title) => setSelectedTitle(title)}

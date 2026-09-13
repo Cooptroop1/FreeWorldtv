@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Copy, Check } from 'lucide-react';
 
 export const ETH_DONATE = '0x9D1AC5323583683666588B567C92FFCB1f41ba02';
@@ -56,7 +56,7 @@ function Addresses() {
   );
 }
 
-export default function DonateRail() {
+export default function DonateRail({ children }: { children?: ReactNode }) {
   return (
     <>
       <aside className="hidden 2xl:block fixed left-3 top-24 z-30 w-56 max-h-[calc(100vh-7.5rem)] overflow-y-auto">
@@ -74,6 +74,7 @@ export default function DonateRail() {
           </p>
           <Addresses />
         </div>
+        {children}
       </aside>
 
       <section className="2xl:hidden max-w-7xl mx-auto mb-8">
