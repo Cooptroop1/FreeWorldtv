@@ -89,7 +89,7 @@ export default function RecommendedRail({
 
   return (
     <>
-      <aside className="hidden xl:block fixed right-3 top-24 z-30 w-56 max-h-[calc(100vh-7.5rem)] overflow-y-auto pr-1">
+      <aside className="hidden 2xl:block fixed right-3 top-24 z-30 w-56 max-h-[calc(100vh-7.5rem)] overflow-y-auto pr-1">
         <div className="rounded-2xl border border-zinc-700 bg-zinc-950/90 backdrop-blur p-3 shadow-xl">
           <h2 className="text-sm font-bold text-white flex items-center gap-1.5 mb-1">
             <Star size={14} className="text-amber-400" fill="currentColor" /> Recommended
@@ -126,7 +126,7 @@ export default function RecommendedRail({
         </div>
       </aside>
 
-      <section className="xl:hidden max-w-7xl mx-auto mb-8">
+      <section className="2xl:hidden max-w-7xl mx-auto mb-8">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
             <Star size={14} className="text-amber-400" fill="currentColor" /> Recommended by viewers
