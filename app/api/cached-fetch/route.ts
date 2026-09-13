@@ -3,6 +3,7 @@ import { kv } from '@vercel/kv';
 import {
   ALLOWED_REGIONS,
   CATALOG_TARGET,
+  catalogExhaustedKey,
   isAllowedRegion,
   previousCatalogKey,
 } from '@/lib/regions';
@@ -103,7 +104,8 @@ export async function GET(request: NextRequest) {
   }
   let wallAdded = 0;
   let wallExhausted = catalog.length >= CATALOG_TARGET;
-  if (!paid && !section && page === 1 && catalog.length > 0 && catalog.length < CATALOG_TARGET) {
+  const alreadyDone = wallExhausted || Boolean(await kv.get(catalogExhaustedKey(false, region)));
+  if (!paid && !section && page === 1 && catalog.length > 0 && !alreadyDone) {
     const exp = await expandCatalog(false, region, 6);
     wallAdded = exp.added;
     wallExhausted = Boolean(exp.exhausted);
@@ -111,6 +113,8 @@ export async function GET(request: NextRequest) {
       const latest = await loadOrSeedCatalog(paid, region);
       catalog = latest.catalog as Title[];
     }
+  } else if (alreadyDone) {
+    wallExhausted = true;
   }
   const catalogEmpty = catalog.length === 0;
 

@@ -146,6 +146,9 @@ export async function expandCatalog(
   if (existing.length >= CATALOG_TARGET) {
     return { stored: existing.length, added: 0, exhausted: true };
   }
+  if (await kv.get(exhaustedKey(paid, region))) {
+    return { stored: existing.length, added: 0, exhausted: true, skipped: 'watchmode empty' };
+  }
 
   const gotLock = await kv.set(lockKey(paid, region), Date.now(), {
     nx: true,
