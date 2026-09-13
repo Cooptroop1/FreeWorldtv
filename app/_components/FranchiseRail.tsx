@@ -1,20 +1,87 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clapperboard } from 'lucide-react';
+import { Clapperboard, X } from 'lucide-react';
 import type { FranchiseSet, FranchiseTitle } from '@/lib/franchises';
+
+const EVENT = 'fsw-franchise';
+
+function openSet(set: FranchiseSet) {
+  window.dispatchEvent(new CustomEvent(EVENT, { detail: set }));
+}
+
+export function FranchisePosterModal({
+  onSelect,
+}: {
+  onSelect: (title: FranchiseTitle) => void;
+}) {
+  const [active, setActive] = useState<FranchiseSet | null>(null);
+
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const set = (e as CustomEvent<FranchiseSet>).detail;
+      if (set?.titles?.length) setActive(set);
+    };
+    window.addEventListener(EVENT, onOpen);
+    return () => window.removeEventListener(EVENT, onOpen);
+  }, []);
+
+  if (!active) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-sm flex items-start justify-center p-4 md:p-8 overflow-y-auto"
+      onClick={() => setActive(null)}
+    >
+      <div
+        className="w-full max-w-5xl bg-zinc-950 border border-zinc-700 rounded-2xl p-5 md:p-8 my-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-sky-400 mb-1">Movie set</p>
+            <h2 className="text-2xl font-bold text-white">{active.name}</h2>
+            <p className="text-sm text-zinc-400 mt-1">{active.count} movies · pick one to see where to watch</p>
+          </div>
+          <button type="button" onClick={() => setActive(null)} className="text-zinc-400 hover:text-white text-3xl leading-none" aria-label="Close">
+            <X />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {active.titles.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => {
+                onSelect(t);
+                setActive(null);
+              }}
+              className="text-left group"
+            >
+              {t.poster ? (
+                <img src={t.poster} alt="" className="w-full aspect-[2/3] object-cover rounded-xl bg-zinc-800 group-hover:ring-2 ring-sky-400" />
+              ) : (
+                <div className="w-full aspect-[2/3] rounded-xl bg-zinc-800" />
+              )}
+              <span className="block text-sm font-medium text-white mt-2 line-clamp-2">{t.title}</span>
+              <span className="block text-xs text-zinc-500">{t.year || ''}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function FranchiseRail({
   region,
-  onSelect,
   variant = 'both',
 }: {
   region: string;
-  onSelect: (title: FranchiseTitle) => void;
+  onSelect?: (title: FranchiseTitle) => void;
   variant?: 'sidebar' | 'row' | 'both';
 }) {
   const [sets, setSets] = useState<FranchiseSet[]>([]);
-  const [open, setOpen] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,21 +98,19 @@ export default function FranchiseRail({
 
   if (!sets.length) return null;
 
-  const active = sets.find((s) => s.name === open);
-
   const card = (
     <div className="rounded-2xl border border-zinc-700 bg-zinc-950/90 backdrop-blur p-3.5 shadow-xl">
       <h2 className="text-sm font-bold text-white flex items-center gap-1.5 mb-1">
         <Clapperboard size={14} className="text-sky-400" /> Trending sets
       </h2>
-      <p className="text-[11px] text-zinc-400 mb-3">Trilogies and series with 2+ movies, from this country’s free list.</p>
+      <p className="text-[11px] text-zinc-400 mb-3">Tap a set to see the movies.</p>
       <ul className="space-y-1.5">
         {sets.slice(0, 8).map((set) => (
           <li key={set.name}>
             <button
               type="button"
-              onClick={() => setOpen(open === set.name ? null : set.name)}
-              className={`w-full text-left rounded-xl px-2.5 py-2 border ${open === set.name ? 'border-sky-500 bg-sky-950/50' : 'border-zinc-800 bg-zinc-900/70 hover:bg-zinc-800'}`}
+              onClick={() => openSet(set)}
+              className="w-full text-left rounded-xl px-2.5 py-2 border border-zinc-800 bg-zinc-900/70 hover:bg-zinc-800 hover:border-sky-500"
             >
               <span className="block text-xs font-semibold text-white leading-snug">{set.name}</span>
               <span className="block text-[10px] text-zinc-400">{set.count} movies</span>
@@ -53,29 +118,6 @@ export default function FranchiseRail({
           </li>
         ))}
       </ul>
-      {active && (
-        <ul className="mt-3 space-y-1.5 border-t border-zinc-800 pt-3">
-          {active.titles.map((t) => (
-            <li key={t.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(t)}
-                className="w-full flex gap-2 text-left items-center rounded-lg hover:bg-zinc-800 p-1"
-              >
-                {t.poster ? (
-                  <img src={t.poster} alt="" className="w-8 h-11 object-cover rounded bg-zinc-800 flex-shrink-0" />
-                ) : (
-                  <div className="w-8 h-11 rounded bg-zinc-800 flex-shrink-0" />
-                )}
-                <span className="min-w-0">
-                  <span className="block text-[11px] text-white leading-snug line-clamp-2">{t.title}</span>
-                  <span className="block text-[10px] text-zinc-500">{t.year || ''}</span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   );
 
@@ -83,38 +125,24 @@ export default function FranchiseRail({
     <>
       {variant !== 'row' && <div className={variant === 'sidebar' ? 'mt-3' : 'hidden 2xl:block mt-3'}>{card}</div>}
       {variant !== 'sidebar' && (
-      <section className="2xl:hidden max-w-7xl mx-auto mb-8">
-        <h2 className="text-sm font-bold text-white flex items-center gap-1.5 mb-2">
-          <Clapperboard size={14} className="text-sky-400" /> Trending sets
-        </h2>
-        <div className="flex gap-2 overflow-x-auto pb-2">
-          {sets.slice(0, 8).map((set) => (
-            <button
-              key={set.name}
-              type="button"
-              onClick={() => setOpen(open === set.name ? null : set.name)}
-              className={`flex-shrink-0 rounded-xl px-3 py-2 border text-left ${open === set.name ? 'border-sky-500 bg-sky-950' : 'border-zinc-700 bg-zinc-900'}`}
-            >
-              <span className="block text-xs font-semibold text-white whitespace-nowrap">{set.name}</span>
-              <span className="block text-[10px] text-zinc-400">{set.count} movies</span>
-            </button>
-          ))}
-        </div>
-        {active && (
-          <div className="flex gap-3 overflow-x-auto pb-2 mt-2">
-            {active.titles.map((t) => (
-              <button key={t.id} type="button" onClick={() => onSelect(t)} className="w-24 flex-shrink-0 text-left">
-                {t.poster ? (
-                  <img src={t.poster} alt="" className="w-24 h-36 object-cover rounded-xl bg-zinc-800" />
-                ) : (
-                  <div className="w-24 h-36 rounded-xl bg-zinc-800" />
-                )}
-                <span className="block text-[11px] text-white mt-1 line-clamp-2">{t.title}</span>
+        <section className="2xl:hidden max-w-7xl mx-auto mb-8">
+          <h2 className="text-sm font-bold text-white flex items-center gap-1.5 mb-2">
+            <Clapperboard size={14} className="text-sky-400" /> Trending sets
+          </h2>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {sets.slice(0, 8).map((set) => (
+              <button
+                key={set.name}
+                type="button"
+                onClick={() => openSet(set)}
+                className="flex-shrink-0 rounded-xl px-3 py-2 border border-zinc-700 bg-zinc-900 text-left hover:border-sky-500"
+              >
+                <span className="block text-xs font-semibold text-white whitespace-nowrap">{set.name}</span>
+                <span className="block text-[10px] text-zinc-400">{set.count} movies</span>
               </button>
             ))}
           </div>
-        )}
-      </section>
+        </section>
       )}
     </>
   );

@@ -63,7 +63,7 @@ const KNOWN: { name: string; test: RegExp }[] = [
   { name: 'Jumanji', test: /\bjumanji\b/i },
   { name: 'Paddington', test: /paddington/i },
   { name: 'Downton Abbey', test: /downton abbey/i },
-  { name: 'Bridget Jones', test: /bridget jones/i },
+  { name: 'Carry On', test: /\bcarry on\b/i },
   { name: 'Beverly Hills Cop', test: /beverly hills cop/i },
   { name: 'Bad Boys', test: /\bbad boys\b/i },
   { name: 'Taken', test: /\btaken\b/i },
