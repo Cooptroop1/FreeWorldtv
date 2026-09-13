@@ -8,6 +8,8 @@ import DiscoverTab from './DiscoverTab';
 import PremiumTab from './PremiumTab';
 import LibraryActions from './LibraryActions';
 import { useAccount } from './useAccount';
+import RecommendedRail from './RecommendedRail';
+import RecommendBox from './RecommendBox';
 import { providerLogos } from '../../lib/provider-logos';
 import { isSafeHttpUrl } from '../../lib/safe-url';
 import { sortByMyServices, sourceMatchesServices } from '../../lib/account';
@@ -757,7 +759,7 @@ const deduplicateSources = (sources: any[]) => {
   }, [tab, debouncedSearch, favorites.length]);
 
   return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8">
+        <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-8 xl:pr-64">
       <header className="max-w-7xl mx-auto mb-10">
         <div className="bg-yellow-900/50 border border-yellow-600 text-yellow-200 p-4 mb-6 rounded-lg text-center text-sm md:text-base">
           <strong>Important Disclaimer:</strong> We do NOT host, stream, or embed any video content. All links go directly to official, legal providers (Tubi, Pluto TV, BBC iPlayer, etc.). Some services are geo-restricted, require a TV licence, or need a VPN. We are not responsible for content availability or legality. User-added links in "My Links" are your responsibility — do NOT add copyrighted or illegal streams.
@@ -883,6 +885,11 @@ const deduplicateSources = (sources: any[]) => {
       </header>
 
       <OfflineMessage />
+
+      <RecommendedRail
+        isSignedIn={Boolean(isSignedIn)}
+        onSelect={(title) => setSelectedTitle(title)}
+      />
 
             {/* DISCOVER TAB + CONTINUE WATCHING ROW (Netflix style) */}
       {tab === 'discover' && (
@@ -1510,6 +1517,7 @@ const deduplicateSources = (sources: any[]) => {
                         status={statusOf(selectedTitle.id)}
                         onSet={(status) => setLibraryStatus(selectedTitle, status)}
                       />
+                      <RecommendBox isSignedIn={Boolean(isSignedIn)} title={selectedTitle} />
                     </div>
                   )}
                 </div>
