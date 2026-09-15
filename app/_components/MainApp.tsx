@@ -785,7 +785,7 @@ const deduplicateSources = (sources: any[]) => {
           </h1>
           <Image src="/logo.png" alt="FreeStream World Logo" width={88} height={88} className="rounded-2xl shadow-2xl ring-1 ring-white/10 flex-shrink-0 hover:scale-105 transition-transform" priority />
         </div>
-        <p className="text-lg md:text-xl text-gray-300 mb-8">Free movies, TV shows & live channels worldwide — no sign-up needed</p>
+        <p className="text-lg md:text-xl text-gray-300 mb-8">Free movies, TV and live channels — browse now, sign in to save lists and recommend titles</p>
 
         {/* SEARCH + REGION SELECTOR + BUTTONS */}
         <div className="flex flex-wrap gap-3 mb-8 items-center">
@@ -1814,7 +1814,8 @@ const deduplicateSources = (sources: any[]) => {
   )}
 </div>
         <footer id="footer" className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
-        <p>Only public & official free streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require VPN, TV licence, or geo-availability. Availability changes and is not guaranteed.</p>
+        <p>Only public & official streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require a TV licence or are geo-restricted. Availability changes and is not guaranteed.</p>
+        <p className="mt-2">You can browse without an account. Sign in to save watchlists, continue watching, your apps and recommendations.</p>
         <p className="mt-2">
           <a href="/about" className="text-blue-400 hover:underline mx-2">About</a> |
           <a href="/privacy" className="text-blue-400 hover:underline mx-2">Privacy Policy</a> |

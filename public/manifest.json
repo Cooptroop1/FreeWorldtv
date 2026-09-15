@@ -1,7 +1,7 @@
 {
   "name": "FreeStream World",
   "short_name": "FreeStream",
-  "description": "100% legal free movies, TV shows & live channels worldwide — no sign-up needed",
+  "description": "Legal free movies, TV and live channels. Sign in to save lists and recommendations.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -11,7 +11,7 @@ export default function TermsOfService() {
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-12">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
-        <p className="text-gray-300 mb-6">Last updated: 25 August 2026</p>
+        <p className="text-gray-300 mb-6">Last updated: 15 September 2026</p>
 
         <div className="space-y-6 text-gray-300 leading-relaxed">
           <p>
@@ -26,7 +26,12 @@ export default function TermsOfService() {
           </ul>
 
           <h2 className="text-2xl font-semibold text-white">2. Accounts</h2>
-          <p>An account is optional. It is only needed if you want favourites and continue-watching to sync across devices. You must keep your login details safe.</p>
+          <p>
+            An account is optional. Browse without signing in. Create one if you want watchlists, continue watching,
+            your apps, radio favourites and public recommendations to sync across devices. You must keep your login details safe.
+            Public recommendations (stars and short reviews) can be seen by everyone; keep them civil. We may hide or remove
+            reviews that include swearing or abuse.
+          </p>
 
           <h2 className="text-2xl font-semibold text-white">3. My Links (user-added streams)</h2>
           <ul className="list-disc pl-6 space-y-2">
@@ -36,7 +41,11 @@ export default function TermsOfService() {
           </ul>
 
           <h2 className="text-2xl font-semibold text-white">4. Advertising</h2>
-          <p>We do not currently show third-party ads on FreeStream World.</p>
+          <p>
+            The site may show ads via Google AdSense. Google’s advertising cookies and policies apply.
+            Crypto donation addresses on the site are voluntary gifts toward running costs (servers and catalogue APIs).
+            Donations are not a purchase of extra features.
+          </p>
 
           <h2 className="text-2xl font-semibold text-white">5. Intellectual property</h2>
           <p>Title names, posters and trademarks belong to their owners. TMDB data is used under TMDB's terms. This site is not endorsed by TMDB, Watchmode or any streaming service.</p>

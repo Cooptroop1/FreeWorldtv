@@ -4,7 +4,7 @@ export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
   title: 'My Favorites | FreeStream World',
-  description: 'Your personal collection of saved free movies, shows and channels.',
+  description: 'Your saved movies, shows and channels. Sign in so the list follows you on every device.',
 };
 
 export default function FavoritesPage() {

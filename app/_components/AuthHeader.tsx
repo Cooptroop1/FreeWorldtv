@@ -12,7 +12,7 @@ export default function AuthHeader() {
         {!isSignedIn && (
           <SignInButton mode="modal">
             <button className="px-4 py-2 text-sm text-gray-300 hover:text-white rounded-xl hover:bg-zinc-800 transition-all">
-              Sign in to save lists
+              Sign in to save lists & recs
             </button>
           </SignInButton>
         )}

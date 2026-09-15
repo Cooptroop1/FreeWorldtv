@@ -7,7 +7,7 @@ import { CookieConsent } from './_components/CookieConsent';
 export const metadata: Metadata = {
   metadataBase: new URL('https://freestreamworld.com'),
   title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio (Legal)',
-  description: '100% legal free movies, TV shows, live channels and 50,000+ worldwide radio stations. Direct links to Tubi, Pluto TV, BBC iPlayer, ITVX and more. No sign-up needed.',
+  description: 'Find legal free movies, TV, live TV and radio. Browse without an account — sign in to save watchlists, continue watching and recommend titles.',
   keywords: ['free streaming', 'legal free movies', 'free TV shows', 'tubi', 'pluto tv', 'bbc iplayer', 'free live tv', 'free radio', 'internet radio', 'live radio stations', 'worldwide radio'],
   manifest: '/manifest.json',
   icons: {
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'FreeStream World - Free Movies, TV Shows, Live TV & Radio',
-    description: 'Watch completely free movies, TV shows, live TV and 50,000+ radio stations legally. No signup. No fees.',
+    description: 'Legal free movies, TV, live TV and radio. Browse straight away, or sign in to save lists and recommendations.',
     url: 'https://freestreamworld.com',
     siteName: 'FreeStream World',
     images: [
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'FreeStream World - Watch Free Movies, TV & Radio Legally',
-    description: '100% legal free streaming including movies, live TV and worldwide radio stations.',
+    description: 'Legal free streaming discovery. Sign in to save watchlists and recommend titles.',
     images: ['https://freestreamworld.com/og-image.jpg'],
   },
   robots: {
@@ -88,7 +88,7 @@ export default function RootLayout({
                   "name": "FreeStream World",
                   "url": "https://freestreamworld.com",
                   "logo": "https://freestreamworld.com/logo.png",
-                  "description": "100% legal free streaming discovery site with movies, live TV and radio",
+                  "description": "Legal free streaming discovery — movies, live TV and radio. Optional account to save lists.",
                 },
                 {
                   "@type": "WebSite",
