@@ -11,7 +11,7 @@ export default function TermsOfService() {
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-12">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
-        <p className="text-gray-300 mb-6">Last updated: 15 September 2026</p>
+        <p className="text-gray-300 mb-6">Last updated: 20 September 2026</p>
 
         <div className="space-y-6 text-gray-300 leading-relaxed">
           <p>
@@ -40,9 +40,9 @@ export default function TermsOfService() {
             <li>We do not review or endorse user-added links.</li>
           </ul>
 
-          <h2 className="text-2xl font-semibold text-white">4. Advertising</h2>
+          <h2 className="text-2xl font-semibold text-white">4. Donations</h2>
           <p>
-            The site may show ads via Google AdSense. Google’s advertising cookies and policies apply.
+            We do not currently show third-party ads on FreeStream World.
             Crypto donation addresses on the site are voluntary gifts toward running costs (servers and catalogue APIs).
             Donations are not a purchase of extra features.
           </p>

@@ -63,7 +63,7 @@ export function CookieConsent() {
             <h2 className="text-lg font-semibold mb-2">Cookies & privacy</h2>
             <p className="text-sm text-gray-300 mb-4 leading-relaxed">
               We use strictly necessary cookies to keep the site working (including sign-in if you use it).
-              Google AdSense may show ads. Optional analytics cookies only load if you accept them. See our{' '}
+              Optional analytics cookies only load if you accept them. See our{' '}
               <a href="/privacy" className="text-blue-400 underline">Privacy Policy</a>.
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
