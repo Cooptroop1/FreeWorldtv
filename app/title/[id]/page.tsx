@@ -13,6 +13,7 @@ type TmdbDetails = {
   overview?: string;
   poster_path?: string;
   vote_average?: number;
+  vote_count?: number;
   runtime?: number;
   number_of_seasons?: number;
   genres?: { id: number; name: string }[];
@@ -82,13 +83,16 @@ export default async function TitlePage({ params }: { params: Promise<{ id: stri
             datePublished: title.year ? String(title.year) : undefined,
             image: poster || undefined,
             description: tmdb?.overview || undefined,
-            aggregateRating: tmdb?.vote_average
-              ? {
-                  '@type': 'AggregateRating',
-                  ratingValue: tmdb.vote_average,
-                  bestRating: 10,
-                }
-              : undefined,
+            aggregateRating:
+              tmdb?.vote_average && Number(tmdb.vote_count) > 0
+                ? {
+                    '@type': 'AggregateRating',
+                    ratingValue: tmdb.vote_average,
+                    ratingCount: tmdb.vote_count,
+                    bestRating: 10,
+                    worstRating: 1,
+                  }
+                : undefined,
           }),
         }}
       />
