@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { kv } from '@vercel/kv';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { activeRegions } from '@/lib/watchmode-plan';
+import { secondsUntilNextCycle, sourcesAtKey, sourcesKey, CYCLE_DAY } from '@/lib/watchmode-cycle';
 import type { AlertItem } from '@/lib/account';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +11,6 @@ export const maxDuration = 60;
 const MAX_USERS = 80;
 const MAX_FAVS = 20;
 const MAX_FETCHES = 40;
-const STALE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function isFreeSource(s: { type?: string; price?: number; free_with_ads?: boolean }) {
   return s.type === 'free' || s.price === 0 || s.free_with_ads === true;
@@ -74,14 +74,15 @@ export async function GET(request: Request) {
 
     for (const fav of favorites.slice(0, MAX_FAVS)) {
       if (!fav?.id) continue;
-      const sourcesKey = `sources:${fav.id}:${region}`;
-      const atKey = `sources_at:${fav.id}:${region}`;
+      const sourcesCacheKey = sourcesKey(fav.id, region);
+      const atKey = sourcesAtKey(fav.id, region);
       const snapKey = `favsnap:${userId}:${fav.id}:${region}`;
-      const fetchedAt = Number((await kv.get(atKey)) || 0);
-      let sources = (await kv.get(sourcesKey)) as unknown[] | null;
+      let sources = (await kv.get(sourcesCacheKey)) as unknown[] | null;
+      if ((!Array.isArray(sources) || !sources.length) && new Date().getUTCDate() < CYCLE_DAY) {
+        sources = (await kv.get(`sources:${fav.id}:${region}`)) as unknown[] | null;
+      }
 
-      const stale = !fetchedAt || Date.now() - fetchedAt > STALE_MS;
-      if ((!Array.isArray(sources) || stale) && apiKey && fetches < MAX_FETCHES) {
+      if ((!Array.isArray(sources) || !sources.length) && apiKey && fetches < MAX_FETCHES) {
         try {
           const res = await fetch(
             `https://api.watchmode.com/v1/title/${fav.id}/sources/?apiKey=${apiKey}&regions=${region}`,
@@ -91,8 +92,9 @@ export async function GET(request: Request) {
           if (res.ok) {
             const data = await res.json();
             sources = Array.isArray(data) ? data : data.sources || [];
-            await kv.set(sourcesKey, sources, { ex: 86400 * 30 });
-            await kv.set(atKey, Date.now(), { ex: 86400 * 30 });
+            const ttl = secondsUntilNextCycle();
+            await kv.set(sourcesCacheKey, sources, { ex: ttl });
+            await kv.set(atKey, Date.now(), { ex: ttl });
           }
         } catch {
           fetches += 1;

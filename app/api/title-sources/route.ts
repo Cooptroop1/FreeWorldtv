@@ -3,6 +3,7 @@ import { kv } from '@vercel/kv';
 import { WatchmodeClient } from '@watchmode/api-client';
 import { currentUser } from '@clerk/nextjs/server';
 import { activeRegions } from '@/lib/watchmode-plan';
+import { secondsUntilNextCycle, sourcesAtKey, sourcesKey, CYCLE_DAY } from '@/lib/watchmode-cycle';
 import type { AlertItem } from '@/lib/account';
 
 export const dynamic = 'force-dynamic';
@@ -60,8 +61,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Missing title id' }, { status: 400 });
   }
 
-  const cacheKey = `sources:${titleId}:${region}`;
-  const cachedFull = await kv.get<unknown[]>(cacheKey);
+  const cacheKey = sourcesKey(titleId, region);
+  let cachedFull = await kv.get<unknown[]>(cacheKey);
+  if ((!cachedFull || !Array.isArray(cachedFull)) && new Date().getUTCDate() < CYCLE_DAY) {
+    cachedFull = await kv.get<unknown[]>(`sources:${titleId}:${region}`);
+  }
   if (cachedFull && Array.isArray(cachedFull)) {
     const sourcesData = paid
       ? cachedFull.filter((s) => isPaidSource(s))
@@ -86,8 +90,9 @@ export async function GET(request: Request) {
       ? fullSources.filter((s: any) => isPaidSource(s))
       : fullSources.filter((s: any) => isFreeSource(s));
 
-    await kv.set(cacheKey, fullSources, { ex: 86400 * 30 });
-    await kv.set(`sources_at:${titleId}:${region}`, Date.now(), { ex: 86400 * 30 });
+    const ttl = secondsUntilNextCycle();
+    await kv.set(cacheKey, fullSources, { ex: ttl });
+    await kv.set(sourcesAtKey(titleId, region), Date.now(), { ex: ttl });
     const user = await currentUser();
     if (user) await maybeAlertDrop(user.id, titleId, region, freeNames(fullSources));
 

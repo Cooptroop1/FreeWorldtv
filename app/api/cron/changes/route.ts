@@ -3,6 +3,7 @@ import { kv } from '@vercel/kv';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { isPremiumPlan } from '@/lib/watchmode-plan';
 import { ALLOWED_REGIONS } from '@/lib/regions';
+import { sourcesKey } from '@/lib/watchmode-cycle';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
   for (const region of ALLOWED_REGIONS) {
     const ids = await hit('changes/titles_sources_changed/', `&regions=${region}`);
     for (const id of ids.slice(0, 400)) {
-      await kv.del(`sources:${id}:${region}`);
+      await kv.del(sourcesKey(id, region));
       invalidated += 1;
     }
   }
