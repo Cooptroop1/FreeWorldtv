@@ -86,15 +86,3 @@ export function CookieConsent() {
     </>
   );
 }
-
-export function CookieSettingsLink({ className = 'text-blue-400 hover:underline' }: { className?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={() => window.dispatchEvent(new Event('fsw:open-cookies'))}
-      className={className}
-    >
-      Cookie settings
-    </button>
-  );
-}

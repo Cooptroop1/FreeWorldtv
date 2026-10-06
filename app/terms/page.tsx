@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { CookieSettingsLink } from '../_components/CookieConsent';
 
 export const metadata: Metadata = {
   title: 'Terms of Service | FreeStream World',
@@ -10,6 +9,15 @@ export default function TermsOfService() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-black to-gray-950 text-white p-6 md:p-12">
       <div className="max-w-4xl mx-auto">
+        <p className="mb-8 text-sm">
+          <a href="/" className="text-blue-400 hover:underline">← FreeStream World</a>
+          <span className="text-gray-600 mx-2">|</span>
+          <a href="/about" className="text-blue-400 hover:underline">About</a>
+          <span className="text-gray-600 mx-2">|</span>
+          <a href="/privacy" className="text-blue-400 hover:underline">Privacy Policy</a>
+          <span className="text-gray-600 mx-2">|</span>
+          <span className="text-white">Terms of Service</span>
+        </p>
         <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>
         <p className="text-gray-300 mb-6">Last updated: 20 September 2026</p>
 
@@ -55,7 +63,6 @@ export default function TermsOfService() {
 
           <h2 className="text-2xl font-semibold text-white">7. Governing law</h2>
           <p>These terms are governed by the laws of England and Wales. The courts of England and Wales have exclusive jurisdiction.</p>
-          <p className="mt-6"><CookieSettingsLink /></p>
         </div>
       </div>
     </div>
