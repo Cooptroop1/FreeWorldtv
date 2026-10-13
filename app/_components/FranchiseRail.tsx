@@ -112,7 +112,7 @@ export function FranchisePosterModal({
                   </div>
                 )}
                 <span className="block text-sm font-medium text-white mt-2 line-clamp-2">{t.title}</span>
-                <span className="block text-xs text-zinc-500">{t.year || ''}</span>
+                <span className="block text-xs text-zinc-400">{t.year || ''}</span>
               </button>
             );
           })}
@@ -205,9 +205,9 @@ export default function FranchiseRail({
         {paid ? 'On subscription apps in this country.' : 'Free with ads in this country.'}
       </p>
       {toggle}
-      {!loaded && <p className="text-[11px] text-zinc-500">Loading…</p>}
+      {!loaded && <p className="text-[11px] text-zinc-400">Loading…</p>}
       {loaded && !sets.length && (
-        <p className="text-[11px] text-zinc-500">No 2+ movie sets in this {paid ? 'premium' : 'free'} list yet.</p>
+        <p className="text-[11px] text-zinc-400">No 2+ movie sets in this {paid ? 'premium' : 'free'} list yet.</p>
       )}
       <ul className="space-y-1.5">
         {sets.slice(0, 12).map((set) => (
@@ -253,7 +253,7 @@ export default function FranchiseRail({
             </div>
           </div>
           {loaded && !sets.length && (
-            <p className="text-xs text-zinc-500 mb-2">No 2+ movie sets in this {paid ? 'premium' : 'free'} list yet.</p>
+            <p className="text-xs text-zinc-400 mb-2">No 2+ movie sets in this {paid ? 'premium' : 'free'} list yet.</p>
           )}
           <div className="flex gap-2 overflow-x-auto pb-2">
             {sets.slice(0, 12).map((set) => (

@@ -176,7 +176,7 @@ export default function PremiumTab({
               loading={index < 3 ? "eager" : "lazy"}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-600" /></div>
+            <div className="w-full h-full flex items-center justify-center"><Film className="w-16 h-16 text-gray-400" /></div>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); toggleFavorite(title); }}

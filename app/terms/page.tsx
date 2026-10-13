@@ -11,11 +11,11 @@ export default function TermsOfService() {
       <div className="max-w-4xl mx-auto">
         <p className="mb-8 text-sm">
           <a href="/" className="text-blue-400 hover:underline">← FreeStream World</a>
-          <span className="text-gray-600 mx-2">|</span>
+          <span className="text-gray-400 mx-2">|</span>
           <a href="/about" className="text-blue-400 hover:underline">About</a>
-          <span className="text-gray-600 mx-2">|</span>
+          <span className="text-gray-400 mx-2">|</span>
           <a href="/privacy" className="text-blue-400 hover:underline">Privacy Policy</a>
-          <span className="text-gray-600 mx-2">|</span>
+          <span className="text-gray-400 mx-2">|</span>
           <span className="text-white">Terms of Service</span>
         </p>
         <h1 className="text-4xl font-bold mb-8">Terms of Service</h1>

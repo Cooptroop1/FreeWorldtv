@@ -151,7 +151,7 @@ export default function RecommendedRail({
                     <button type="button" className="truncate text-left hover:text-white" onClick={() => onSelect(item)}>
                       {item.title}
                     </button>
-                    <button type="button" className="text-zinc-500 hover:text-white" onClick={() => remove(item.id)} aria-label="Remove">
+                    <button type="button" className="text-zinc-400 hover:text-white" onClick={() => remove(item.id)} aria-label="Remove">
                       <X size={12} />
                     </button>
                   </li>

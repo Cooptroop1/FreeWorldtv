@@ -449,7 +449,7 @@ export default function DiscoverTab({
                 />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-gray-800 to-black flex items-center justify-center">
-                  <div className="text-center"><Film className="w-24 h-24 text-gray-600 mx-auto mb-6" /><p className="text-4xl font-bold text-white">{filteredTitles[0].title}</p></div>
+                  <div className="text-center"><Film className="w-24 h-24 text-gray-400 mx-auto mb-6" /><p className="text-4xl font-bold text-white">{filteredTitles[0].title}</p></div>
                 </div>
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/70 to-transparent" />

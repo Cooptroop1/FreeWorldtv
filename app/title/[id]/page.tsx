@@ -103,7 +103,7 @@ export default async function TitlePage({ params }: { params: Promise<{ id: stri
             {poster ? (
               <Image src={poster} alt={`${title.title} poster`} fill className="object-cover" sizes="220px" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-500">No poster</div>
+              <div className="w-full h-full flex items-center justify-center text-gray-400">No poster</div>
             )}
           </div>
           <div>

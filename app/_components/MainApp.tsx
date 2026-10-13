@@ -983,7 +983,7 @@ const deduplicateSources = (sources: any[]) => {
                                     />
                                   ) : (
                               <div className="w-full h-full flex items-center justify-center">
-                                <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                                <Film className="w-16 h-16 text-gray-400 group-hover:text-gray-200 transition-colors" />
                               </div>
                             )}
 
@@ -1337,7 +1337,7 @@ const deduplicateSources = (sources: any[]) => {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Film className="w-16 h-16 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                          <Film className="w-16 h-16 text-gray-400 group-hover:text-gray-200 transition-colors" />
                         </div>
                       )}
                       <button
@@ -1557,7 +1557,7 @@ const deduplicateSources = (sources: any[]) => {
               </div>
 
               {sourcesLastUpdated && (
-                <p className="text-xs text-gray-500 mb-6">Sources last updated: {sourcesLastUpdated}</p>
+                <p className="text-xs text-gray-400 mb-6">Sources last updated: {sourcesLastUpdated}</p>
               )}
                             {/* Plot Overview */}
               {tmdbDetails?.overview && (
@@ -1716,7 +1716,7 @@ const deduplicateSources = (sources: any[]) => {
                           )}
                         </div>
                         <p className="text-sm mt-3 font-medium line-clamp-2">{actor.name}</p>
-                        <p className="text-xs text-gray-500 line-clamp-1">{actor.character}</p>
+                        <p className="text-xs text-gray-400 line-clamp-1">{actor.character}</p>
                       </div>
                     ))}
                   </div>
@@ -1813,7 +1813,7 @@ const deduplicateSources = (sources: any[]) => {
     </button>
   )}
 </div>
-        <footer id="footer" className="max-w-7xl mx-auto mt-20 text-center text-gray-500 text-sm">
+        <footer id="footer" className="max-w-7xl mx-auto mt-20 text-center text-gray-400 text-sm">
         <p>Only public & official streams. All content belongs to its original owners. We do not host, embed, or control any video playback — all links go to official sources. Some services may require a TV licence or are geo-restricted. Availability changes and is not guaranteed.</p>
         <p className="mt-2">You can browse without an account. Sign in to save watchlists, continue watching, your apps and recommendations.</p>
         <p className="mt-2">

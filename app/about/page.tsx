@@ -11,11 +11,11 @@ export default function About() {
       <div className="max-w-4xl mx-auto">
         <p className="mb-8 text-sm">
           <a href="/" className="text-blue-400 hover:underline">← FreeStream World</a>
-          <span className="text-gray-600 mx-2">|</span>
+          <span className="text-gray-400 mx-2">|</span>
           <span className="text-white">About</span>
-          <span className="text-gray-600 mx-2">|</span>
+          <span className="text-gray-400 mx-2">|</span>
           <a href="/privacy" className="text-blue-400 hover:underline">Privacy Policy</a>
-          <span className="text-gray-600 mx-2">|</span>
+          <span className="text-gray-400 mx-2">|</span>
           <a href="/terms" className="text-blue-400 hover:underline">Terms of Service</a>
         </p>
         <h1 className="text-4xl font-bold mb-8">About FreeStream World</h1>

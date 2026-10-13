@@ -133,7 +133,7 @@ export default function HorizontalCarousel({
               );
             })
           ) : (
-            <p className="text-gray-500 italic">No titles in this section yet</p>
+            <p className="text-gray-400 italic">No titles in this section yet</p>
           )}
         </div>
         <button

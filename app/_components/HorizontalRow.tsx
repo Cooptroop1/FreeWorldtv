@@ -44,7 +44,7 @@ export default function HorizontalRow({ title, items, onClick }: HorizontalRowPr
                 />
               ) : (
                 <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-                  <Film className="w-12 h-12 text-gray-600" />
+                  <Film className="w-12 h-12 text-gray-400" />
                 </div>
               )}
             </div>

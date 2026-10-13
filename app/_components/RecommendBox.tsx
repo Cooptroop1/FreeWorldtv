@@ -29,7 +29,7 @@ function StarPicker({
         >
           <Star
             size={size}
-            className={shown >= n ? 'text-amber-400' : 'text-zinc-600'}
+            className={shown >= n ? 'text-amber-400' : 'text-zinc-400'}
             fill={shown >= n ? 'currentColor' : 'none'}
           />
         </button>
@@ -144,9 +144,9 @@ export default function RecommendBox({
         onChange={(e) => setReview(e.target.value.slice(0, REVIEW_MAX))}
         placeholder="Optional — why should people watch it?"
         rows={2}
-        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-sm text-white placeholder:text-zinc-500"
+        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-sm text-white placeholder:text-zinc-400"
       />
-      <p className="text-[11px] text-zinc-500 mt-1">{review.length}/{REVIEW_MAX}</p>
+      <p className="text-[11px] text-zinc-400 mt-1">{review.length}/{REVIEW_MAX}</p>
       <div className="flex gap-2 mt-2">
         <button
           type="button"

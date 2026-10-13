@@ -18,7 +18,7 @@ export default function EpisodeList({ titleId, type }: { titleId?: number; type?
   if (!data) return null;
   if (!data.available) {
     return (
-      <p className="text-xs text-zinc-500 mt-4">
+      <p className="text-xs text-zinc-400 mt-4">
         Episode-by-episode watch links will show here when Watchmode Startup is on.
       </p>
     );
