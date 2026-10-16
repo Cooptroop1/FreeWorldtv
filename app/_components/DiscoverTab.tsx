@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Image from 'next/image';
-import { Film, Loader2, MonitorPlay, Heart, Filter, X, Bookmark, EyeOff } from 'lucide-react';
+import { Film, Loader2, MonitorPlay, Heart, Filter, X, Bookmark, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react';
 import HorizontalCarousel from './HorizontalCarousel';
 import type { LibraryStatus } from '@/lib/account';
 
@@ -92,6 +92,24 @@ export default function DiscoverTab({
   const [similarSeed, setSimilarSeed] = useState('');
 
   const postersFetched = useRef(new Set<number>());
+  const continueRef = useRef<HTMLDivElement>(null);
+  const [continueLeft, setContinueLeft] = useState(false);
+  const [continueRight, setContinueRight] = useState(false);
+
+  useEffect(() => {
+    const el = continueRef.current;
+    if (!el) return;
+    const update = () => {
+      setContinueLeft(el.scrollLeft > 20);
+      setContinueRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
+    };
+    const t = window.setTimeout(update, 100);
+    window.addEventListener('resize', update);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener('resize', update);
+    };
+  }, [continueWatching]);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadLock = useRef(false);
   const pageRef = useRef(1);
@@ -466,7 +484,25 @@ export default function DiscoverTab({
               <h2 id="continue-heading" className="text-2xl font-bold mb-4 px-4 flex items-center gap-3">
                 ▶️ Continue Watching ({continueWatching.length})
               </h2>
-              <div className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="relative group">
+                <button
+                  type="button"
+                  onClick={() => continueRef.current?.scrollBy({ left: -176, behavior: 'smooth' })}
+                  className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full transition-all shadow-lg ${continueLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                  aria-label="Scroll continue watching left"
+                >
+                  <ChevronLeft size={28} />
+                </button>
+                <div
+                  ref={continueRef}
+                  onScroll={() => {
+                    const el = continueRef.current;
+                    if (!el) return;
+                    setContinueLeft(el.scrollLeft > 20);
+                    setContinueRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 20);
+                  }}
+                  className="flex gap-4 overflow-x-auto pb-6 px-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
                 {continueWatching
                   .sort((a: any, b: any) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime())
                   .map((title: any) => (
@@ -500,6 +536,15 @@ export default function DiscoverTab({
                       <p className="text-xs text-center text-gray-400">{title.year}</p>
                     </button>
                   ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => continueRef.current?.scrollBy({ left: 176, behavior: 'smooth' })}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-black/70 hover:bg-black/90 text-white p-3 rounded-full transition-all shadow-lg ${continueRight ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                  aria-label="Scroll continue watching right"
+                >
+                  <ChevronRight size={28} />
+                </button>
               </div>
             </section>
           )}
