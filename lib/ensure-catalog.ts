@@ -10,6 +10,7 @@ import {
   catalogKey,
 } from '@/lib/regions';
 import { fetchWatchmodePages, type CatalogTitle } from '@/lib/watchmode-list';
+import { writeCatalogPages } from '@/lib/catalog-pages';
 
 const LOCK_TTL_SEC = 90;
 
@@ -61,6 +62,11 @@ async function mergeAndStore(
   const stored = merged.slice(0, CATALOG_TARGET);
   await kv.set(catalogKey(paid, region), stored, { ex: CACHE_TTL_SECONDS });
   await kv.set(catalogCursorKey(paid, region), lastPage, { ex: CACHE_TTL_SECONDS });
+  try {
+    await writeCatalogPages(paid, region, stored);
+  } catch (err) {
+    console.error('catalog page write failed', { region, paid, err });
+  }
   return stored;
 }
 

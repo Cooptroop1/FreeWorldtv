@@ -13,9 +13,21 @@ import {
 import { listedKey, previousListedKey } from '@/lib/account';
 import { fetchWatchmodePages, type CatalogTitle } from '@/lib/watchmode-list';
 import { expandCatalog } from '@/lib/ensure-catalog';
+import { writeCatalogPages } from '@/lib/catalog-pages';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
+
+async function mirrorPages(key: string, titles: CatalogTitle[]) {
+  const paid = key.startsWith('premium_catalog');
+  const region = key.split(':')[1];
+  if (!region) return;
+  try {
+    await writeCatalogPages(paid, region, titles);
+  } catch (err) {
+    console.error('catalog page write failed', { key, err });
+  }
+}
 
 async function writeIfFresh(
   key: string,
@@ -39,6 +51,7 @@ async function writeIfFresh(
     }
     const capped = incoming.slice(0, CATALOG_TARGET);
     await kv.set(key, capped, { ex: CACHE_TTL_SECONDS });
+    await mirrorPages(key, capped);
     return { wrote: true, stored: capped.length };
   }
 
@@ -46,6 +59,7 @@ async function writeIfFresh(
   const ids = new Set(incoming.map((t) => t.id));
   const merged = [...incoming, ...current.filter((t) => !ids.has(t.id))].slice(0, CATALOG_TARGET);
   await kv.set(key, merged, { ex: CACHE_TTL_SECONDS });
+  await mirrorPages(key, merged);
   return { wrote: true, stored: merged.length };
 }
 
