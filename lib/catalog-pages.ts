@@ -1,6 +1,7 @@
 import { kv } from '@vercel/kv';
 import { CACHE_TTL_SECONDS } from '@/lib/regions';
 import type { CatalogTitle } from '@/lib/watchmode-list';
+import { buildFranchiseSets } from '@/lib/franchises';
 
 /** Same size Discover asks for. One Redis key = one screen of posters. */
 export const CATALOG_PAGE_SIZE = 48;
@@ -54,14 +55,12 @@ export async function writeCatalogPages(paid: boolean, region: string, titles: C
 
   const meta: CatalogPageMeta = { pages: pageCount, count: titles.length };
   await kv.set(metaKey, meta, { ex: CACHE_TTL_SECONDS });
-}
-
-/** First browse after deploy builds pages from the list already loaded. */
-export async function backfillCatalogPages(paid: boolean, region: string, titles: CatalogTitle[]) {
-  if (!titles.length || !catalogPageReadsEnabled()) return;
-  const prev = await kv.get<CatalogPageMeta>(catalogPageMetaKey(paid, region));
-  if (prev?.pages && prev.count === titles.length) return;
-  await writeCatalogPages(paid, region, titles);
+  try {
+    const sets = buildFranchiseSets(titles).slice(0, 24);
+    await kv.set(`franchise_sets:${kind(paid)}:${region}`, sets, { ex: CACHE_TTL_SECONDS });
+  } catch (err) {
+    console.error('franchise cache write failed', err);
+  }
 }
 
 export async function readCatalogPage(

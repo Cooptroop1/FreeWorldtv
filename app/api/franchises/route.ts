@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { catalogKey } from '@/lib/regions';
 import { kv } from '@vercel/kv';
 import { activeRegions } from '@/lib/watchmode-plan';
 import { buildFranchiseSets } from '@/lib/franchises';
-import type { CatalogTitle } from '@/lib/watchmode-list';
+import { cachedWatchmodePage } from '@/lib/wall-fallback';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,14 +11,24 @@ export async function GET(request: Request) {
   const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
   const region = activeRegions().includes(regionRaw) ? regionRaw : 'GB';
   const paid = searchParams.get('paid') === 'true';
-  const catalog = ((await kv.get(catalogKey(paid, region))) || []) as CatalogTitle[];
-  const list = Array.isArray(catalog) ? catalog : [];
-  const franchises = buildFranchiseSets(list);
+  const key = `franchise_sets:${paid ? 'premium' : 'free'}:${region}`;
+
+  try {
+    const cached = await kv.get(key);
+    if (Array.isArray(cached) && cached.length) {
+      return NextResponse.json({ success: true, region, paid, franchises: cached, fromCache: true });
+    }
+  } catch {
+    /* Redis capped — fall through to a small Watchmode page */
+  }
+
+  const list = await cachedWatchmodePage(region, paid, 1);
   return NextResponse.json({
     success: true,
     region,
     paid,
     catalogSize: list.length,
-    franchises,
+    franchises: buildFranchiseSets(list),
+    fromCache: false,
   });
 }

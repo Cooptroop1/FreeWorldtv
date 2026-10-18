@@ -1,5 +1,6 @@
-import { kv } from '@vercel/kv';
-import { catalogKey } from '@/lib/regions';
+import { cache } from 'react';
+import { readCatalogPage } from '@/lib/catalog-pages';
+import { cachedWatchmodePage } from '@/lib/wall-fallback';
 
 export type CatalogTitle = {
   id: number;
@@ -16,22 +17,62 @@ export type CatalogTitle = {
   vote_average?: number;
 };
 
-export async function findTitleById(
-  id: number,
-  preferredRegion = 'GB'
-): Promise<(CatalogTitle & { region: string; paid: boolean }) | null> {
-  const regions = Array.from(new Set([preferredRegion, 'GB', 'US']));
-  for (const region of regions) {
-    for (const paid of [false, true]) {
-      const catalog = (await kv.get<CatalogTitle[]>(catalogKey(paid, region))) || [];
-      const hit = catalog.find((t) => Number(t.id) === id);
-      if (hit) return { ...hit, region, paid };
-    }
+async function detailsFromWatchmode(id: number): Promise<CatalogTitle | null> {
+  const apiKey = process.env.WATCHMODE_API_KEY || '';
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      `https://api.watchmode.com/v1/title/${id}/details/?apiKey=${apiKey}`,
+      { next: { revalidate: 60 * 60 * 24 * 14 } }
+    );
+    if (!res.ok) return null;
+    const t = await res.json();
+    if (!t?.title) return null;
+    return {
+      id: Number(t.id || id),
+      title: String(t.title),
+      year: t.year ? Number(t.year) : undefined,
+      type: t.type ? String(t.type) : undefined,
+      poster: (t.poster as string | null) || null,
+      popularity: Number(t.popularity || 0),
+      genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
+      tmdb_id: t.tmdb_id ? Number(t.tmdb_id) : undefined,
+      tmdb_rating: t.user_rating ? Number(t.user_rating) : undefined,
+    };
+  } catch (err) {
+    console.error('title details failed', err);
+    return null;
   }
-  return null;
 }
 
+/** One title. Does not download a country list. */
+export const findTitleById = cache(async (
+  id: number,
+  preferredRegion = 'GB'
+): Promise<(CatalogTitle & { region: string; paid: boolean }) | null> => {
+  const title = await detailsFromWatchmode(id);
+  if (!title) return null;
+  return { ...title, region: preferredRegion, paid: false };
+});
+
 export async function listSitemapTitles(limit = 400): Promise<CatalogTitle[]> {
-  const catalog = (await kv.get<CatalogTitle[]>(catalogKey(false, 'GB'))) || [];
-  return catalog.slice(0, limit);
+  try {
+    const pages = Math.ceil(limit / 48);
+    const out: CatalogTitle[] = [];
+    for (let p = 1; p <= pages; p++) {
+      const slice = await readCatalogPage(false, 'GB', p);
+      if (!slice?.titles.length) break;
+      out.push(...slice.titles);
+      if (out.length >= limit) break;
+    }
+    if (out.length) return out.slice(0, limit);
+  } catch {
+    /* page keys missing or Redis capped */
+  }
+  try {
+    const rows = await cachedWatchmodePage('GB', false, 1);
+    return rows.slice(0, limit);
+  } catch {
+    return [];
+  }
 }
