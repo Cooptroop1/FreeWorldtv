@@ -13,7 +13,7 @@ type LiveEvent = {
   links: LiveLink[];
 };
 
-const SUPPORTED = new Set(['US', 'GB', 'CA', 'AU']);
+const SUPPORTED = new Set(['US', 'GB']);
 
 function when(iso: string) {
   const t = new Date(iso);
@@ -65,7 +65,7 @@ export default function LiveEventsRail({ region }: { region: string }) {
         <Radio size={20} className="text-emerald-400" /> Live sports & events
       </h2>
       <p className="text-sm text-gray-400 mb-4">
-        A sample for the UK, US, Canada and Australia. Most of these are on a channel or a subscription, not the free film list.
+        A sample for the UK and the US. Most of these are on a channel or a subscription, not the free film list.
       </p>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {events.map((event) => (

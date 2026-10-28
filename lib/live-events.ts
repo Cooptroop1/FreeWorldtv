@@ -1,12 +1,12 @@
 import { kv } from '@vercel/kv';
 import { isSafeHttpUrl } from '@/lib/safe-url';
 
-export const LIVE_REGIONS = ['US', 'GB', 'CA', 'AU'] as const;
+export const LIVE_REGIONS = ['US', 'GB'] as const;
 export type LiveRegion = (typeof LIVE_REGIONS)[number];
 
 const KEY = 'live-events:v1';
 const LOCK = 'live-events:lock';
-/** One refresh of all 4 countries. About 100 Watchmode credits. */
+/** One refresh of the UK and the US. About 50 Watchmode credits. */
 const TTL_SECONDS = 60 * 60 * 24;
 
 export type LiveLink = {
