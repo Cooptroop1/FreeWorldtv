@@ -53,8 +53,8 @@ const freeWorldwideServices = [
   { name: '9Now', officialUrl: 'https://www.9now.com.au' },
 ];
 
-export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' }) {
-  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio'>(defaultTab);
+export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' | 'events' }) {
+  const [tab, setTab] = useState<'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' | 'events'>(defaultTab);
   const [region, setRegion] = useState('GB');
   const [regionOptions, setRegionOptions] = useState<{ code: string; label: string }[]>(
     ALLOWED_REGIONS.map((code) => ({ code, label: REGION_LABELS[code] || code }))
@@ -268,19 +268,21 @@ export default function MainApp({ defaultTab = 'discover' }: { defaultTab?: 'dis
       case '/favorites': return 'favorites';
       case '/top-10': return 'top10';
       case '/premium': return 'premium';
-      case '/radio': return 'radio';           // ← new
+      case '/radio': return 'radio';
+      case '/events': return 'events';
       default: return defaultTab;
     }
   };
 
-    const handleTabChange = (newTab: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio') => {
+    const handleTabChange = (newTab: 'discover' | 'live' | 'mylinks' | 'favorites' | 'top10' | 'premium' | 'radio' | 'events') => {
     let newPath = '/discover';
     if (newTab === 'live') newPath = '/live-tv';
     else if (newTab === 'mylinks') newPath = '/my-links';
     else if (newTab === 'top10') newPath = '/top-10';
     else if (newTab === 'favorites') newPath = '/favorites';
     else if (newTab === 'premium') newPath = '/premium';
-    else if (newTab === 'radio') newPath = '/radio';   // ← new
+    else if (newTab === 'radio') newPath = '/radio';
+    else if (newTab === 'events') newPath = '/events';
     setTab(newTab);
     router.push(newPath, { scroll: false });
   };
@@ -768,6 +770,8 @@ const deduplicateSources = (sources: any[]) => {
       newTitle = 'My Custom Streams - FreeStream World';
     } else if (tab === 'favorites') {
       newTitle = `My Favorites (${favorites.length}) - FreeStream World`;
+    } else if (tab === 'events') {
+      newTitle = 'Live Sports & Events - FreeStream World';
     }
     document.title = newTitle;
   }, [tab, debouncedSearch, favorites.length]);
@@ -891,6 +895,15 @@ const deduplicateSources = (sources: any[]) => {
           >
             💎 Premium
           </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'events'}
+            onClick={() => handleTabChange('events')}
+            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'events' ? 'border-b-4 border-emerald-500 text-emerald-400' : 'text-gray-400 hover:text-white'}`}
+            aria-current={tab === 'events' ? 'page' : undefined}
+          >
+            <Radio size={20} /> Sport
+          </button>
         </div>
       </header>
 
@@ -915,7 +928,6 @@ const deduplicateSources = (sources: any[]) => {
             {/* DISCOVER TAB + CONTINUE WATCHING ROW (Netflix style) */}
       {tab === 'discover' && (
         <>
-          <LiveEventsRail region={region} />
           <DiscoverTab
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -1182,6 +1194,12 @@ const deduplicateSources = (sources: any[]) => {
     </div>
   </section>
 )}
+
+      {tab === 'events' && (
+        <section className="max-w-7xl mx-auto">
+          <LiveEventsRail region={region} />
+        </section>
+      )}
 
       {/* MY CUSTOM LINKS TAB */}
       {tab === 'mylinks' && (
