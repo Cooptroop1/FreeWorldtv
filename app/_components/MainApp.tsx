@@ -11,6 +11,7 @@ import { useAccount } from './useAccount';
 import RecommendedRail from './RecommendedRail';
 import DonateRail from './DonateRail';
 import FranchiseRail, { FranchisePosterModal } from './FranchiseRail';
+import LiveEventsRail from './LiveEventsRail';
 import RecommendBox from './RecommendBox';
 import EpisodeList from './EpisodeList';
 import { providerLogos } from '../../lib/provider-logos';
@@ -914,8 +915,7 @@ const deduplicateSources = (sources: any[]) => {
             {/* DISCOVER TAB + CONTINUE WATCHING ROW (Netflix style) */}
       {tab === 'discover' && (
         <>
-          
-          {/* The original DiscoverTab (still works exactly the same) */}
+          <LiveEventsRail region={region} />
           <DiscoverTab
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
