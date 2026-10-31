@@ -895,15 +895,6 @@ const deduplicateSources = (sources: any[]) => {
           >
             💎 Premium
           </button>
-          <button
-            role="tab"
-            aria-selected={tab === 'events'}
-            onClick={() => handleTabChange('events')}
-            className={`flex items-center gap-2 pb-3 px-5 md:px-6 font-semibold text-base md:text-lg transition-colors ${tab === 'events' ? 'border-b-4 border-emerald-500 text-emerald-400' : 'text-gray-400 hover:text-white'}`}
-            aria-current={tab === 'events' ? 'page' : undefined}
-          >
-            <Radio size={20} /> Sport
-          </button>
         </div>
       </header>
 

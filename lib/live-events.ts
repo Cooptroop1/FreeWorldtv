@@ -108,35 +108,8 @@ async function refreshAll(apiKey: string): Promise<Bundle> {
   return bundle;
 }
 
-export async function liveEventsFor(region: LiveRegion): Promise<{ events: LiveEvent[]; cached: boolean }> {
-  if (memory && Date.now() - memory.at < TTL_SECONDS * 1000 && memory.regions[region]) {
-    return { events: memory.regions[region] || [], cached: true };
-  }
-  try {
-    const saved = await kv.get<Bundle>(KEY);
-    if (saved?.at && Date.now() - saved.at < TTL_SECONDS * 1000) {
-      memory = saved;
-      return { events: saved.regions[region] || [], cached: true };
-    }
-  } catch (err) {
-    console.error('live events cache read failed', err);
-    if (memory?.regions[region]) return { events: memory.regions[region] || [], cached: true };
-    return { events: [], cached: true };
-  }
-
-  const apiKey = process.env.WATCHMODE_API_KEY || '';
-  if (!apiKey) return { events: [], cached: true };
-
-  let locked = false;
-  try {
-    const got = await kv.set(LOCK, '1', { nx: true, ex: 120 });
-    locked = Boolean(got);
-  } catch {
-    locked = true;
-  }
-  if (!locked) {
-    return { events: memory?.regions[region] || [], cached: true };
-  }
-  const bundle = await refreshAll(apiKey);
-  return { events: bundle.regions[region] || [], cached: false };
+export async function liveEventsFor(_region: LiveRegion): Promise<{ events: LiveEvent[]; cached: boolean }> {
+  // Off until we turn it back on. Do not call Watchmode.
+  return { events: [], cached: true };
 }
+
