@@ -10,6 +10,9 @@ import {
   catalogPageReadsEnabled,
   readCatalogPage,
   CATALOG_PAGE_SIZE,
+  catalogPageKey,
+  catalogPageMetaKey,
+  type CatalogPageMeta,
 } from '@/lib/catalog-pages';
 import { cachedWatchmodePage, fallbackUiPage } from '@/lib/wall-fallback';
 
@@ -168,6 +171,35 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const scanned = await filterCatalogPages(paid, region, scanStart(searchParams), {
+    query,
+    types,
+    fromYear,
+    toYear,
+    minRating,
+    genre,
+  });
+  if (scanned) {
+    return NextResponse.json({
+      success: true,
+      titles: scanned.titles,
+      page,
+      hasMore: scanned.hasMore,
+      nextScan: scanned.nextScan,
+      totalAvailable: scanned.total,
+      region,
+      fromCache: true,
+      catalogEmpty: scanned.total === 0,
+      paged: true,
+      wall: {
+        size: scanned.total,
+        target: CATALOG_TARGET,
+        added: 0,
+        exhausted: true,
+      },
+    });
+  }
+
   const pool = await cachedWatchmodePage(region, paid, 1);
   const filtered = applyFilters(pool, query, types, fromYear, toYear, minRating, genre);
   const start = (page - 1) * PAGE_SIZE;
@@ -188,6 +220,62 @@ export async function GET(request: NextRequest) {
       exhausted: true,
     },
   });
+}
+
+function scanStart(searchParams: URLSearchParams) {
+  const raw = searchParams.get('scan') || searchParams.get('page') || '1';
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+/** Walk the saved pages until one screen of matches is filled. Does not call Watchmode. */
+async function filterCatalogPages(
+  paid: boolean,
+  region: string,
+  startPage: number,
+  filters: {
+    query: string | null;
+    types: string;
+    fromYear: number;
+    toYear: number;
+    minRating: number;
+    genre: string | null;
+  }
+): Promise<{ titles: Title[]; hasMore: boolean; nextScan: number | null; total: number } | null> {
+  let meta: CatalogPageMeta | null = null;
+  try {
+    meta = await kv.get<CatalogPageMeta>(catalogPageMetaKey(paid, region));
+  } catch {
+    return null;
+  }
+  if (!meta?.pages || !meta.count) return null;
+
+  const collected: Title[] = [];
+  let p = Math.max(1, startPage);
+  let reads = 0;
+  while (p <= meta.pages && collected.length < PAGE_SIZE && reads < 80) {
+    let raw: Title[] | null = null;
+    try {
+      raw = await kv.get<Title[]>(catalogPageKey(paid, region, p));
+    } catch {
+      return null;
+    }
+    reads++;
+    const hits = Array.isArray(raw)
+      ? applyFilters(raw, filters.query, filters.types, filters.fromYear, filters.toYear, filters.minRating, filters.genre)
+      : [];
+    if (collected.length > 0 && collected.length + hits.length > PAGE_SIZE) break;
+    collected.push(...hits);
+    p++;
+  }
+
+  const hasMore = p <= meta.pages;
+  return {
+    titles: collected.slice(0, PAGE_SIZE),
+    hasMore,
+    nextScan: hasMore ? p : null,
+    total: meta.count,
+  };
 }
 
 async function newOnFreeList(region: string): Promise<Title[]> {

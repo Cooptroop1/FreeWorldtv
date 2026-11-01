@@ -32,6 +32,7 @@ export default function PremiumTab({
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadLock = useRef(false);
   const pageRef = useRef(1);
+  const scanRef = useRef(0);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
   // Search state for Premium tab only
@@ -44,6 +45,7 @@ export default function PremiumTab({
       setPremiumTitles([]);
       setPage(1);
       pageRef.current = 1;
+      scanRef.current = 0;
       setHasMore(true);
       try {
         const res = await fetch(
@@ -54,6 +56,7 @@ export default function PremiumTab({
           ? json.titles.map((t: any) => ({ ...t, fromPremium: true }))
           : [];
         setPremiumTitles(titles);
+        scanRef.current = typeof json.nextScan === 'number' ? json.nextScan : 0;
         setHasMore(Boolean(json.hasMore));
       } catch (err) {
         console.error('Premium fetch failed:', err);
@@ -72,8 +75,9 @@ export default function PremiumTab({
     setLoadingMore(true);
     try {
       const nextPage = pageRef.current + 1;
+      const scan = scanRef.current;
       const res = await fetch(
-        `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&page=${nextPage}&paid=true`
+        `/api/cached-fetch?region=${region}&types=${encodeURIComponent(contentType)}&paid=true&${scan > 0 ? `scan=${scan}` : `page=${nextPage}`}`
       );
       const json = await res.json();
       const newTitles = json.success && json.titles?.length
@@ -87,7 +91,8 @@ export default function PremiumTab({
         pageRef.current = nextPage;
         setPage(nextPage);
       }
-      setHasMore(Boolean(json.hasMore && newTitles.length));
+      scanRef.current = typeof json.nextScan === 'number' ? json.nextScan : 0;
+      setHasMore(Boolean(json.hasMore));
     } catch {
       setHasMore(false);
     } finally {

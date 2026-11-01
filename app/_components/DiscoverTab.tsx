@@ -39,6 +39,7 @@ function catalogUrl(opts: {
   region: string;
   contentType: string;
   page?: number;
+  scan?: number;
   search?: string;
   minYear?: string;
   maxYear?: string;
@@ -50,6 +51,7 @@ function catalogUrl(opts: {
   params.set('region', opts.region);
   params.set('types', opts.contentType);
   if (opts.page) params.set('page', String(opts.page));
+  if (opts.scan) params.set('scan', String(opts.scan));
   if (opts.search) params.set('query', opts.search);
   if (opts.minYear) params.set('fromYear', opts.minYear);
   if (opts.maxYear) params.set('toYear', opts.maxYear);
@@ -113,6 +115,7 @@ export default function DiscoverTab({
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadLock = useRef(false);
   const pageRef = useRef(1);
+  const scanRef = useRef(0);
   const prevSearchRef = useRef(debouncedSearch);
   const TMDB_READ_TOKEN = process.env.NEXT_PUBLIC_TMDB_READ_TOKEN || '';
 
@@ -129,6 +132,7 @@ export default function DiscoverTab({
       setAllTitles([]);
       setPage(1);
       pageRef.current = 1;
+      scanRef.current = 0;
       setHasMore(true);
     }
   }, [debouncedSearch]);
@@ -139,6 +143,7 @@ export default function DiscoverTab({
       setAllTitles([]);
       setPage(1);
       pageRef.current = 1;
+      scanRef.current = 0;
       setHasMore(true);
       setCatalogEmpty(false);
       try {
@@ -164,8 +169,9 @@ export default function DiscoverTab({
           }
         }
         if (json.catalogEmpty) setCatalogEmpty(true);
+        scanRef.current = typeof json.nextScan === 'number' ? json.nextScan : 0;
         setAllTitles(newTitles);
-        setHasMore(Boolean(json.hasMore && newTitles.length));
+        setHasMore(Boolean(json.hasMore));
         if (json.success && newTitles.length) setLastUpdated(new Date().toISOString());
       } catch (err) {
         console.error(err);
@@ -183,10 +189,12 @@ export default function DiscoverTab({
     setLoadingMore(true);
     try {
       const nextPage = pageRef.current + 1;
+      const scan = scanRef.current;
       const url = catalogUrl({
         region,
         contentType,
-        page: nextPage,
+        page: scan > 0 ? undefined : nextPage,
+        scan: scan > 0 ? scan : undefined,
         search: debouncedSearch,
         minYear: minYearFilter,
         maxYear: maxYearFilter,
@@ -204,7 +212,8 @@ export default function DiscoverTab({
         pageRef.current = nextPage;
         setPage(nextPage);
       }
-      setHasMore(Boolean(json.hasMore && newTitles.length));
+      scanRef.current = typeof json.nextScan === 'number' ? json.nextScan : 0;
+      setHasMore(Boolean(json.hasMore));
     } catch {
       setHasMore(false);
     } finally {
