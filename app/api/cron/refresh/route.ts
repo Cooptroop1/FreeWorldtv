@@ -16,6 +16,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Lists are full enough. Do not call Watchmode to add more.
+  return NextResponse.json({
+    success: true,
+    paused: true,
+    message: 'Catalog growth is paused. Country lists stay as they are.',
+  });
+
   const origin = new URL(request.url).origin;
   const token = adminToken();
 

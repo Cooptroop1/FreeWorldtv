@@ -68,6 +68,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Lists are full enough. Do not call Watchmode to add more.
+  return NextResponse.json({
+    success: true,
+    paused: true,
+    message: 'Catalog growth is paused. Country lists stay as they are.',
+  });
+
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get('mode') || 'expand';
   const regionRaw = (searchParams.get('region') || 'GB').toUpperCase();
