@@ -28,6 +28,10 @@ export function catalogPageMetaKey(paid: boolean, region: string) {
   return `catmeta:${kind(paid)}:${region}`;
 }
 
+export function franchiseSetsKey(paid: boolean, region: string) {
+  return `franchise_sets:v2:${kind(paid)}:${region}`;
+}
+
 export async function writeCatalogPages(paid: boolean, region: string, titles: CatalogTitle[]) {
   const pageCount = Math.max(1, Math.ceil(titles.length / CATALOG_PAGE_SIZE) || 1);
   const metaKey = catalogPageMetaKey(paid, region);
@@ -57,7 +61,7 @@ export async function writeCatalogPages(paid: boolean, region: string, titles: C
   await kv.set(metaKey, meta, { ex: CACHE_TTL_SECONDS });
   try {
     const sets = buildFranchiseSets(titles).slice(0, 24);
-    await kv.set(`franchise_sets:${kind(paid)}:${region}`, sets, { ex: CACHE_TTL_SECONDS });
+    await kv.set(franchiseSetsKey(paid, region), sets, { ex: CACHE_TTL_SECONDS });
   } catch (err) {
     console.error('franchise cache write failed', err);
   }
