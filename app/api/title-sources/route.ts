@@ -3,7 +3,7 @@ import { kv } from '@vercel/kv';
 import { WatchmodeClient } from '@watchmode/api-client';
 import { currentUser } from '@clerk/nextjs/server';
 import { activeRegions } from '@/lib/watchmode-plan';
-import { secondsUntilNextCycle, sourcesAtKey, sourcesKey, CYCLE_DAY } from '@/lib/watchmode-cycle';
+import { sourcesAtKey, sourcesKey } from '@/lib/watchmode-cycle';
 import type { AlertItem } from '@/lib/account';
 
 export const dynamic = 'force-dynamic';
@@ -94,24 +94,40 @@ export async function GET(request: Request) {
       }
     }
     return NextResponse.json({
+    success: true,
+    titleId,
+    allSources: cachedFull,
+    freeSources: paid ? [] : sourcesData,
+    paidSources: paid ? sourcesData : [],
+    sources: sourcesData,
+    fromCache: true,
+  });
+  }
+
+  try {
+    const result = await client.title.getSources(titleId, { regions: region });
+    const fullSources = result.data || [];
+    const sourcesData = paid
+      ? fullSources.filter((s: any) => isPaidSource(s))
+      : fullSources.filter((s: any) => isFreeSource(s));
+    try {
+      await kv.set(stableKey, fullSources, { ex: 86400 * 30 });
+      await kv.set(sourcesAtKey(titleId, region), Date.now(), { ex: 86400 * 30 });
+    } catch (err) {
+      console.error('source cache write failed', err);
+    }
+    return NextResponse.json({
       success: true,
       titleId,
-      allSources: cachedFull,
+      allSources: fullSources,
       freeSources: paid ? [] : sourcesData,
       paidSources: paid ? sourcesData : [],
       sources: sourcesData,
-      fromCache: true,
+      fromCache: false,
     });
+  } catch (error: unknown) {
+    console.error('Title sources error:', error);
+    const message = error instanceof Error ? error.message : 'Failed to fetch sources';
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
-
-  return NextResponse.json({
-    success: true,
-    titleId,
-    allSources: [],
-    freeSources: [],
-    paidSources: [],
-    sources: [],
-    fromCache: true,
-    paused: true,
-  });
 }
