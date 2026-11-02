@@ -111,8 +111,8 @@ export async function GET(request: Request) {
   });
 
   if (free.titles.length > 0) {
-    const oldListed = (await kv.get(listedKey(region))) as { id: number }[] | null;
-    if (oldListed && oldListed.length > 0) {
+    const oldListed = ((await kv.get(listedKey(region))) ?? []) as { id: number }[];
+    if (oldListed.length > 0) {
       await kv.set(previousListedKey(region), oldListed, { ex: CACHE_TTL_SECONDS });
     }
     await kv.set(listedKey(region), free.titles, { ex: CACHE_TTL_SECONDS });
