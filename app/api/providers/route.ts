@@ -16,10 +16,7 @@ export async function GET() {
       return NextResponse.json(cached);
     }
 
-    const result = await client.sources.list();
-    const providers = Array.isArray(result.data) ? result.data : [];
-    await kv.set(cacheKey, providers, { ex: 86400 * 30 });
-    return NextResponse.json(providers);
+    return NextResponse.json([]);
   } catch (err) {
     console.error('Providers route error:', err);
     return NextResponse.json([]);

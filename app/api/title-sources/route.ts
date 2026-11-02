@@ -61,18 +61,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: 'Missing title id' }, { status: 400 });
   }
 
-  const cacheKey = sourcesKey(titleId, region);
+  const stableKey = `sources:${titleId}:${region}`;
   let cachedFull: unknown[] | null = null;
   try {
-    cachedFull = await kv.get<unknown[]>(cacheKey);
-    if ((!cachedFull || !Array.isArray(cachedFull)) && new Date().getUTCDate() < CYCLE_DAY) {
-      cachedFull = await kv.get<unknown[]>(`sources:${titleId}:${region}`);
+    const keys = [stableKey, sourcesKey(titleId, region)];
+    for (const key of keys) {
+      const row = await kv.get<unknown[]>(key);
+      if (Array.isArray(row) && row.length) {
+        cachedFull = row;
+        break;
+      }
     }
   } catch (err) {
     console.error('source cache read failed', err);
     cachedFull = null;
   }
   if (cachedFull && Array.isArray(cachedFull)) {
+    try {
+      await kv.set(stableKey, cachedFull, { ex: 86400 * 30 });
+    } catch (err) {
+      console.error('source cache refresh failed', err);
+    }
     const sourcesData = paid
       ? cachedFull.filter((s) => isPaidSource(s))
       : cachedFull.filter((s) => isFreeSource(s));
@@ -95,46 +104,14 @@ export async function GET(request: Request) {
     });
   }
 
-  try {
-    const result = await client.title.getSources(titleId, { regions: region });
-    const fullSources = result.data || [];
-    const sourcesData = paid
-      ? fullSources.filter((s: any) => isPaidSource(s))
-      : fullSources.filter((s: any) => isFreeSource(s));
-
-    const ttl = secondsUntilNextCycle();
-    try {
-      await kv.set(cacheKey, fullSources, { ex: ttl });
-      await kv.set(sourcesAtKey(titleId, region), Date.now(), { ex: ttl });
-    } catch (err) {
-      console.error('source cache write failed', err);
-    }
-    const user = await currentUser();
-    if (user) {
-      try {
-        await maybeAlertDrop(user.id, titleId, region, freeNames(fullSources));
-      } catch (err) {
-        console.error('alert drop skipped', err);
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      titleId,
-      allSources: fullSources,
-      freeSources: paid ? [] : sourcesData,
-      paidSources: paid ? sourcesData : [],
-      sources: sourcesData,
-      fromCache: false,
-    });
-  } catch (error: unknown) {
-    console.error('Title sources error:', error);
-    try {
-      await kv.set(cacheKey, [], { ex: 3600 });
-    } catch {
-      /* Redis capped */
-    }
-    const message = error instanceof Error ? error.message : 'Failed to fetch sources';
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+  return NextResponse.json({
+    success: true,
+    titleId,
+    allSources: [],
+    freeSources: [],
+    paidSources: [],
+    sources: [],
+    fromCache: true,
+    paused: true,
+  });
 }

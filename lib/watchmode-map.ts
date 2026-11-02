@@ -46,30 +46,7 @@ async function remember(tmdbId: number, watchmodeId: number | null) {
   return null;
 }
 
-async function searchByTmdb(tmdbId: number, type?: 'movie' | 'tv'): Promise<number | null> {
-  const apiKey = process.env.WATCHMODE_API_KEY || '';
-  if (!apiKey) return null;
-
-  const fields = type === 'tv'
-    ? ['tmdb_tv_id']
-    : type === 'movie'
-      ? ['tmdb_movie_id']
-      : ['tmdb_movie_id', 'tmdb_tv_id'];
-
-  for (const field of fields) {
-    const url =
-      `https://api.watchmode.com/v1/search/?apiKey=${apiKey}` +
-      `&search_field=${field}&search_value=${tmdbId}`;
-    try {
-      const res = await fetch(url, { cache: 'no-store' });
-      if (!res.ok) continue;
-      const json = await res.json();
-      const id = Number(json?.title_results?.[0]?.id);
-      if (id > 0) return id;
-    } catch (err) {
-      console.error('Watchmode TMDB search failed', field, err);
-    }
-  }
+async function searchByTmdb(_tmdbId: number, _type?: 'movie' | 'tv'): Promise<number | null> {
   return null;
 }
 

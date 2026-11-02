@@ -21,25 +21,6 @@ export async function GET() {
     return NextResponse.json({ success: true, available: true, fromCache: true, titles: cached });
   }
 
-  const apiKey = process.env.WATCHMODE_API_KEY || '';
-  try {
-    const res = await fetch(
-      `https://api.watchmode.com/v1/releases/?apiKey=${apiKey}&limit=25`,
-      { cache: 'no-store' }
-    );
-    if (!res.ok) {
-      return NextResponse.json({ success: false, available: true, titles: [], error: `HTTP ${res.status}` });
-    }
-    const data = await res.json();
-    const titles = Array.isArray(data) ? data : data.releases || data.titles || [];
-    await kv.set('upcoming_releases', titles, { ex: 86400 });
-    return NextResponse.json({ success: true, available: true, fromCache: false, titles });
-  } catch (err) {
-    return NextResponse.json({
-      success: false,
-      available: true,
-      titles: [],
-      error: err instanceof Error ? err.message : 'Upcoming fetch failed',
-    });
-  }
+  return NextResponse.json({ success: true, available: false, titles: [], paused: true });
 }
+

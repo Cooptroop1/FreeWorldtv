@@ -10,6 +10,5 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const result = await ingestTitleIdMap();
-  return NextResponse.json(result, { status: result.success ? 200 : 500 });
+  return NextResponse.json({ success: true, paused: true, message: 'Title map download is paused.' });
 }

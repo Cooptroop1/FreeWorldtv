@@ -17,32 +17,8 @@ export type CatalogTitle = {
   vote_average?: number;
 };
 
-async function detailsFromWatchmode(id: number): Promise<CatalogTitle | null> {
-  const apiKey = process.env.WATCHMODE_API_KEY || '';
-  if (!apiKey) return null;
-  try {
-    const res = await fetch(
-      `https://api.watchmode.com/v1/title/${id}/details/?apiKey=${apiKey}`,
-      { next: { revalidate: 60 * 60 * 24 * 14 } }
-    );
-    if (!res.ok) return null;
-    const t = await res.json();
-    if (!t?.title) return null;
-    return {
-      id: Number(t.id || id),
-      title: String(t.title),
-      year: t.year ? Number(t.year) : undefined,
-      type: t.type ? String(t.type) : undefined,
-      poster: (t.poster as string | null) || null,
-      popularity: Number(t.popularity || 0),
-      genre_names: Array.isArray(t.genre_names) ? t.genre_names : [],
-      tmdb_id: t.tmdb_id ? Number(t.tmdb_id) : undefined,
-      tmdb_rating: t.user_rating ? Number(t.user_rating) : undefined,
-    };
-  } catch (err) {
-    console.error('title details failed', err);
-    return null;
-  }
+async function detailsFromWatchmode(_id: number): Promise<CatalogTitle | null> {
+  return null;
 }
 
 /** One title. Does not download a country list. */

@@ -23,22 +23,7 @@ export async function cachedWatchmodePage(
   paid: boolean,
   wmPage: number
 ): Promise<CatalogTitle[]> {
-  const apiKey = process.env.WATCHMODE_API_KEY || '';
-  if (!apiKey || wmPage < 1 || wmPage > MAX_WM_PAGE) return [];
-  const url =
-    `https://api.watchmode.com/v1/list-titles/?apiKey=${apiKey}` +
-    `&source_types=${paid ? 'sub' : 'free'}&regions=${region}` +
-    `&types=movie,tv_series&sort_by=popularity_desc&page=${wmPage}&limit=250`;
-  try {
-    const res = await fetch(url, { next: { revalidate: 60 * 60 * 12 } });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const batch = Array.isArray(data.titles) ? data.titles : [];
-    return batch.map((t: Record<string, unknown>) => mapTitle(t)).filter((t: CatalogTitle) => t.id);
-  } catch (err) {
-    console.error('watchmode list fallback failed', err);
-    return [];
-  }
+  return [];
 }
 
 export async function fallbackUiPage(region: string, paid: boolean, uiPage: number) {

@@ -82,25 +82,6 @@ export async function GET(request: Request) {
         sources = (await kv.get(`sources:${fav.id}:${region}`)) as unknown[] | null;
       }
 
-      if ((!Array.isArray(sources) || !sources.length) && apiKey && fetches < MAX_FETCHES) {
-        try {
-          const res = await fetch(
-            `https://api.watchmode.com/v1/title/${fav.id}/sources/?apiKey=${apiKey}&regions=${region}`,
-            { cache: 'no-store' }
-          );
-          fetches += 1;
-          if (res.ok) {
-            const data = await res.json();
-            sources = Array.isArray(data) ? data : data.sources || [];
-            const ttl = secondsUntilNextCycle();
-            await kv.set(sourcesCacheKey, sources, { ex: ttl });
-            await kv.set(atKey, Date.now(), { ex: ttl });
-          }
-        } catch {
-          fetches += 1;
-        }
-      }
-
       const names = freeNames(sources || []);
       const prev = ((await kv.get(snapKey)) || []) as string[];
       const prevNames = Array.isArray(prev) ? prev : [];
